@@ -24,5 +24,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// replace github.com/ethereum/go-ethereum => github.com/concrete-eth/concrete-geth v0.0.0-20240305143403-3b4e01dda940
-replace github.com/ethereum/go-ethereum => ../framework/concrete-geth
+replace github.com/ethereum/go-ethereum => github.com/concrete-eth/concrete-geth v0.0.0-20240305143403-3b4e01dda940

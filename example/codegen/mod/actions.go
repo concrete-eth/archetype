@@ -3,71 +3,68 @@
 package model
 
 import (
-    "fmt"
-    "reflect"
+	"fmt"
+	"reflect"
 
-    "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var (
 	_ = common.Big1
 )
 
-
 const (
-    ActionId_Tick uint8 = iota
-    ActionId_Move
+	ActionId_Tick uint8 = iota
+	ActionId_Move
 )
-var Actions = map[uint8]struct{
-    Id uint8
-    Name string
-    MethodName string
+
+var Actions = map[uint8]struct {
+	Id         uint8
+	Name       string
+	MethodName string
 }{
-    ActionId_Tick: {
-        Id: ActionId_Tick,
-        Name: "Tick",
-        MethodName: "tick",
-    },
-    ActionId_Move: {
-        Id: ActionId_Move,
-        Name: "Move",
-        MethodName: "move",
-    },
+	ActionId_Tick: {
+		Id:         ActionId_Tick,
+		Name:       "Tick",
+		MethodName: "tick",
+	},
+	ActionId_Move: {
+		Id:         ActionId_Move,
+		Name:       "Move",
+		MethodName: "move",
+	},
 }
 
 var ActionIdsByMethodName = map[string]uint8{
-    "tick": ActionId_Tick,
-    "move": ActionId_Move,
+	"tick": ActionId_Tick,
+	"move": ActionId_Move,
 }
 
-type ActionData_Tick struct{
+type ActionData_Tick struct {
 }
 
-
-type ActionData_Move struct{
-    PlayerId uint8 `json:"playerId"`
-    Direction uint8 `json:"direction"`
+type ActionData_Move struct {
+	PlayerId  uint8 `json:"playerId"`
+	Direction uint8 `json:"direction"`
 }
 
 func (action *ActionData_Move) GetPlayerId() uint8 {
-    return action.PlayerId
+	return action.PlayerId
 }
 
 func (action *ActionData_Move) GetDirection() uint8 {
-    return action.Direction
+	return action.Direction
 }
-
-
 
 func ActionIdFromAction(action interface{}) (uint8, bool) {
 	switch action.(type) {
-    case *ActionData_Tick:
-        return ActionId_Tick, true
-    case *ActionData_Move:
-        return ActionId_Move, true
-    default:
-        return 0, false
-    }
+	case *ActionData_Tick:
+		return ActionId_Tick, true
+	case *ActionData_Move:
+		return ActionId_Move, true
+	default:
+		return 0, false
+	}
 }
 
 // Sets all the fields of the destination struct that are present in the source struct.
