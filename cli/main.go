@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/naoina/toml"
+	"github.com/spf13/viper"
+
 	"github.com/concrete-eth/archetype/codegen"
 	"github.com/concrete-eth/archetype/codegen/gogen"
 	"github.com/concrete-eth/archetype/codegen/solgen"
@@ -120,22 +123,38 @@ func printSchemaDescription(title string, schema []datamod.TableSchema) {
 
 func getConfig(cmd *cobra.Command) codegen.Config {
 	return codegen.Config{
-		Actions: cmd.Flag("actions").Value.String(),
-		Tables:  cmd.Flag("tables").Value.String(),
-		Out:     cmd.Flag("out").Value.String(),
+		Actions: viper.GetString("actions"),
+		Tables:  viper.GetString("tables"),
+		Out:     viper.GetString("out"),
 	}
 }
 
 func runCodegen(cmd *cobra.Command, args []string) {
 	startTime := time.Now()
 
+	verbose := viper.GetBool("verbose")
+
+	if verbose {
+		// Print settings
+		allSettings := viper.AllSettings()
+		settingsToml, err := toml.Marshal(allSettings)
+		if err != nil {
+			logFatal(err)
+		}
+		logDebug(string(settingsToml))
+	}
+
+	// Get basic config
 	config := getConfig(cmd)
+	if err := ensureDir(config.Out); err != nil {
+		logFatal(err)
+	}
 	if err := config.Validate(); err != nil {
 		logFatal(err)
 	}
 
-	verbose, _ := cmd.Flags().GetBool("verbose")
 	if verbose {
+		// Print schema descriptions
 		actionsSchema, err := loadSchemaFromFile(config.Actions)
 		if err != nil {
 			logFatal(err)
@@ -150,24 +169,27 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		fmt.Println("")
 	}
 
+	// Run concrete datamod
 	if isInstalled(CONCRETE_BIN) {
 		runConcrete(cmd, args)
 	} else {
 		logFatal(fmt.Errorf("concrete cli is not installed"))
 	}
 
+	// Run go and solidity codegen
 	runGogen(cmd, args)
 	runSolgen(cmd, args)
 
+	// Run gofmt
 	if isInstalled(GOFMT_BIN) {
 		runGofmt(config.Out)
 	} else {
 		logWarning("gofmt is not installed. Install it to format the generated code.")
 	}
 
+	// Done
 	logInfo("\nCode generation completed successfully.")
 	logInfo("Files written to:", config.Out)
-
 	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
 }
 
@@ -181,8 +203,8 @@ func runGogen(cmd *cobra.Command, args []string) {
 	}
 	config := gogen.Config{
 		Config:  codegenConfig,
-		Package: cmd.Flag("pkg").Value.String(),
-		Datamod: cmd.Flag("datamod").Value.String(),
+		Package: viper.GetString("pkg"),
+		Datamod: viper.GetString("datamod"),
 	}
 	if err := gogen.Codegen(config); err != nil {
 		logTaskFail(taskName, nil)
@@ -242,16 +264,59 @@ func runGofmt(outDir string) {
 }
 
 func NewRootCmd() *cobra.Command {
-	var rootCmd = &cobra.Command{Use: "cli"}
+	var cfgFile string
+	var rootCmd = &cobra.Command{
+		Use: "cli",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			initConfig(cfgFile)
+		},
+	}
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.cli.yaml)")
+
 	codegenCmd := &cobra.Command{Use: "codegen", Short: "generate code", Run: runCodegen}
+
 	codegenCmd.Flags().StringP("out", "o", "./", "output directory")
 	codegenCmd.Flags().StringP("tables", "t", "./tables.json", "table schema")
 	codegenCmd.Flags().StringP("actions", "a", "./actions.json", "action schema")
 	codegenCmd.Flags().String("datamod", "", "datamod module")
 	codegenCmd.Flags().String("pkg", "model", "go package name")
 	codegenCmd.Flags().BoolP("verbose", "v", false, "verbose output")
+
+	viper.BindPFlag("out", codegenCmd.Flags().Lookup("out"))
+	viper.BindPFlag("tables", codegenCmd.Flags().Lookup("tables"))
+	viper.BindPFlag("actions", codegenCmd.Flags().Lookup("actions"))
+	viper.BindPFlag("datamod", codegenCmd.Flags().Lookup("datamod"))
+	viper.BindPFlag("pkg", codegenCmd.Flags().Lookup("pkg"))
+	viper.BindPFlag("verbose", codegenCmd.Flags().Lookup("verbose"))
+
 	rootCmd.AddCommand(codegenCmd)
+
 	return rootCmd
+}
+
+func initConfig(cfgFile string) {
+	// Get config from file
+	if cfgFile != "" {
+		// Use config file from the flag
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Search for config in the working directory
+		viper.AddConfigPath(".")
+		viper.SetConfigName("arch")
+	}
+
+	// Get config from environment
+	viper.SetEnvPrefix("ARCH")
+	viper.AutomaticEnv()
+
+	// Read config
+	if err := viper.ReadInConfig(); err == nil {
+		logDebug("Using config file:", viper.ConfigFileUsed())
+		fmt.Println("")
+	} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		logError(err)
+		os.Exit(1)
+	}
 }
 
 func Execute() {

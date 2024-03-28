@@ -1,0 +1,6 @@
+actions = "example/actions.json"
+datamod = "github.com/concrete-eth/archetype/example/codegen/datamod"
+out = "example/codegen"
+pkg = "model"
+tables = "example/tables.json"
+verbose = false

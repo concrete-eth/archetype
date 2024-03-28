@@ -3,7 +3,7 @@
 package model
 
 import (
-	"github.com/concrete-eth/archetype/example/datamod"
+	"github.com/concrete-eth/archetype/example/codegen/datamod"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/lib"
