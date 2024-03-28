@@ -1,0 +1,18 @@
+{
+    "config": {
+        "schema": {
+            "startBlock": "uint64",
+            "maxPlayers": "uint8"
+        }
+    },
+    "players": {
+        "keySchema": {
+            "playerId": "uint8"
+        },
+        "schema": {
+            "x": "int16",
+            "y": "int16",
+            "health": "uint8"
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "tick": {
+        "schema": {}
+    },
+    "move": {
+        "schema": {
+            "playerId": "uint8",
+            "direction": "uint8"
+        }
+    }
+}
