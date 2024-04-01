@@ -239,7 +239,7 @@ func runConcrete(cmd *cobra.Command, args []string) {
 		logTaskFail(taskName, nil)
 		logFatal(err)
 	}
-	concreteCmd := exec.Command("concrete", "datamod", config.Tables, "--pkg", "datamod", "--out", outDir)
+	concreteCmd := exec.Command("concrete", "datamod", config.Tables, "--pkg", "datamod", "--out", outDir, "--more-experimental")
 	var out bytes.Buffer
 	concreteCmd.Stdout = &out
 	if err := concreteCmd.Run(); err != nil {
