@@ -64,7 +64,7 @@ type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex in
 type State struct {
 	datastore  lib.Datastore
     {{- range .Schemas }}
-    {{_lowerFirstChar .Name}} *datamod.{{.Name}}WithHooks
+    {{_lowerFirstChar .Name}} *datamod.{{.Name}}{{if $.Experimental}}WithHooks{{end}}
     {{- end }}
 	OnSetTable TableUpdateHandler
 }
@@ -79,6 +79,7 @@ func (s *State) SetTableUpdateHandler(handler TableUpdateHandler) {
 	s.OnSetTable = handler
 }
 {{ range .Schemas }}
+{{ if $.Experimental }}
 func (s *State) {{.Name}}() *datamod.{{.Name}}WithHooks {
     {{- $fieldName := _lowerFirstChar .Name}}
     if s.{{$fieldName}} == nil || (s.{{$fieldName}}.OnSetRow == nil && s.OnSetTable != nil) {
@@ -91,6 +92,15 @@ func (s *State) {{.Name}}() *datamod.{{.Name}}WithHooks {
     }
     return s.{{$fieldName}}
 }
+{{ else }}
+func (s *State) {{.Name}}() *datamod.{{.Name}} {
+    {{- $fieldName := _lowerFirstChar .Name}}
+    if s.{{$fieldName}} == nil {
+        s.{{$fieldName}} = datamod.New{{.Name}}(s.datastore)
+    }
+    return s.{{$fieldName}}
+}
+{{ end }}
 {{ end }}
 
 {{ range .Schemas }}

@@ -16,8 +16,9 @@ var tablesTpl string
 
 type Config struct {
 	codegen.Config
-	Package string
-	Datamod string
+	Package      string
+	Datamod      string
+	Experimental bool
 }
 
 func (c Config) Validate() error {
@@ -36,9 +37,8 @@ func (c Config) Validate() error {
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = "model"
-
+	data["Experimental"] = config.Experimental
 	outPath := filepath.Join(config.Out, "actions.go")
-
 	return codegen.ExecuteTemplate(actionsTpl, config.Actions, outPath, data, nil)
 }
 
@@ -46,6 +46,7 @@ func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = "model"
 	data["Imports"] = []string{config.Datamod}
+	data["Experimental"] = config.Experimental
 	outPath := filepath.Join(config.Out, "tables.go")
 	return codegen.ExecuteTemplate(tablesTpl, config.Tables, outPath, data, nil)
 }

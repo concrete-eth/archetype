@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	GO_BIN       = "go"
 	CONCRETE_BIN = "concrete"
 	GOFMT_BIN    = "gofmt"
 )
@@ -39,7 +40,7 @@ func logTaskFail(name string, err error) {
 	red.Print("[FAIL] ")
 	fmt.Print(name)
 	if err != nil {
-		fmt.Println(": ", err)
+		fmt.Println(":", err)
 	} else {
 		fmt.Println()
 	}
@@ -74,7 +75,7 @@ func logFatal(err error) {
 	os.Exit(1)
 }
 
-/* Directory and PATH checks */
+/* Environment utils */
 
 func ensureDir(dirName string) error {
 	info, err := os.Stat(dirName)
@@ -93,9 +94,40 @@ func ensureDir(dirName string) error {
 	return nil
 }
 
+// Check if a command is installed
 func isInstalled(cmd string) bool {
-	err := exec.Command(cmd, "-h").Run()
-	return err == nil
+	// Attempt to run the command with a help flag
+	for _, flag := range []string{"-h", "--help", "help"} {
+		if err := exec.Command(cmd, flag).Run(); err == nil {
+			// If the command runs without error, it is installed
+			return true
+		}
+	}
+	return false
+}
+
+func isInGoModule() bool {
+	cmd := exec.Command(GO_BIN, "env", "GOMOD")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	gomod := strings.TrimSpace(out.String())
+	return gomod != "" && gomod != "/dev/null"
+}
+
+func getGoModule() (string, error) {
+	if !isInGoModule() {
+		return "", fmt.Errorf("not in a go module")
+	}
+	cmd := exec.Command(GO_BIN, "list", "-m")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
 }
 
 /* Verbose */
@@ -169,11 +201,25 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		fmt.Println("")
 	}
 
+	// Preliminary checks
+	if !isInstalled(GO_BIN) {
+		logFatal(fmt.Errorf("go is not installed (go_bin=%s)", GO_BIN))
+	}
+	if !isInGoModule() {
+		logFatal(fmt.Errorf("not in a go module"))
+	}
+
 	// Run concrete datamod
 	if isInstalled(CONCRETE_BIN) {
-		runConcrete(cmd, args)
+		var (
+			_outDir = filepath.Join(config.Out, "datamod")
+			_tables = config.Tables
+			_pkg    = "datamod" // todo
+			_exp    = viper.GetBool("more-experimental")
+		)
+		runConcrete(_outDir, _tables, _pkg, _exp)
 	} else {
-		logFatal(fmt.Errorf("concrete cli is not installed"))
+		logFatal(fmt.Errorf("concrete cli is not installed (concrete_bin=%s)", CONCRETE_BIN))
 	}
 
 	// Run go and solidity codegen
@@ -184,7 +230,7 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	if isInstalled(GOFMT_BIN) {
 		runGofmt(config.Out)
 	} else {
-		logWarning("gofmt is not installed. Install it to format the generated code.")
+		logWarning(fmt.Sprintf("gofmt is not installed (gofmt_bin=%s). Install it to format the generated go code.", GOFMT_BIN))
 	}
 
 	// Done
@@ -193,24 +239,44 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
 }
 
-func runGogen(cmd *cobra.Command, args []string) {
+func runGogen(cmd *cobra.Command, args []string) (err error) {
 	taskName := "Go"
+	defer func() {
+		if err == nil {
+			logTaskSuccess(taskName)
+		} else {
+			logTaskFail(taskName, err)
+			logFatal(err)
+		}
+	}()
+
 	codegenConfig := getConfig(cmd)
+	rootOutDir := codegenConfig.Out
 	codegenConfig.Out = filepath.Join(codegenConfig.Out, "mod")
 	if err := ensureDir(codegenConfig.Out); err != nil {
-		logTaskFail(taskName, nil)
-		logFatal(err)
+		return err
 	}
+
+	var modName, relDatamodPath string
+	if modName, err = getGoModule(); err != nil {
+		return err
+	}
+	if relDatamodPath, err = filepath.Rel(".", filepath.Join(rootOutDir, "datamod")); err != nil {
+		return err
+	}
+	datamodPkg := filepath.Join(modName, relDatamodPath)
+
 	config := gogen.Config{
-		Config:  codegenConfig,
-		Package: viper.GetString("pkg"),
-		Datamod: viper.GetString("datamod"),
+		Config:       codegenConfig,
+		Package:      viper.GetString("pkg"),
+		Datamod:      datamodPkg,
+		Experimental: viper.GetBool("more-experimental"),
 	}
 	if err := gogen.Codegen(config); err != nil {
-		logTaskFail(taskName, nil)
-		logFatal(err)
+		return err
 	}
-	logTaskSuccess(taskName)
+
+	return nil
 }
 
 func runSolgen(cmd *cobra.Command, args []string) {
@@ -231,21 +297,25 @@ func runSolgen(cmd *cobra.Command, args []string) {
 	logTaskSuccess(taskName)
 }
 
-func runConcrete(cmd *cobra.Command, args []string) {
+func runConcrete(outDir, tables, pkg string, experimental bool) {
 	taskName := "Concrete datamod"
-	config := getConfig(cmd)
-	outDir := filepath.Join(config.Out, "datamod")
 	if err := ensureDir(outDir); err != nil {
 		logTaskFail(taskName, nil)
 		logFatal(err)
 	}
-	concreteCmd := exec.Command("concrete", "datamod", config.Tables, "--pkg", "datamod", "--out", outDir, "--more-experimental")
+
+	cmdArgs := []string{"datamod", tables, "--pkg", pkg, "--out", outDir}
+	if experimental {
+		cmdArgs = append(cmdArgs, "--more-experimental")
+	}
+	cmd := exec.Command(CONCRETE_BIN, cmdArgs...)
+
 	var out bytes.Buffer
-	concreteCmd.Stdout = &out
-	if err := concreteCmd.Run(); err != nil {
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("concrete datamod failed: %w", err)
 		logTaskFail(taskName, nil)
-		logDebug(">", strings.Join(concreteCmd.Args, " "))
+		logDebug(">", strings.Join(cmd.Args, " "))
 		logDebug(out.String())
 		logFatal(err)
 		return
@@ -253,9 +323,9 @@ func runConcrete(cmd *cobra.Command, args []string) {
 	logTaskSuccess(taskName)
 }
 
-func runGofmt(outDir string) {
+func runGofmt(dir string) {
 	taskName := "gofmt"
-	if err := exec.Command("gofmt", "-w", outDir).Run(); err != nil {
+	if err := exec.Command(GOFMT_BIN, "-w", dir).Run(); err != nil {
 		err = fmt.Errorf("gofmt failed: %w", err)
 		logTaskFail(taskName, err)
 		return
@@ -278,16 +348,16 @@ func NewRootCmd() *cobra.Command {
 	codegenCmd.Flags().StringP("out", "o", "./", "output directory")
 	codegenCmd.Flags().StringP("tables", "t", "./tables.json", "table schema")
 	codegenCmd.Flags().StringP("actions", "a", "./actions.json", "action schema")
-	codegenCmd.Flags().String("datamod", "", "datamod module")
 	codegenCmd.Flags().String("pkg", "model", "go package name")
 	codegenCmd.Flags().BoolP("verbose", "v", false, "verbose output")
+	codegenCmd.Flags().Bool("more-experimental", false, "enable experimental features")
 
 	viper.BindPFlag("out", codegenCmd.Flags().Lookup("out"))
 	viper.BindPFlag("tables", codegenCmd.Flags().Lookup("tables"))
 	viper.BindPFlag("actions", codegenCmd.Flags().Lookup("actions"))
-	viper.BindPFlag("datamod", codegenCmd.Flags().Lookup("datamod"))
 	viper.BindPFlag("pkg", codegenCmd.Flags().Lookup("pkg"))
 	viper.BindPFlag("verbose", codegenCmd.Flags().Lookup("verbose"))
+	viper.BindPFlag("more-experimental", codegenCmd.Flags().Lookup("more-experimental"))
 
 	rootCmd.AddCommand(codegenCmd)
 
