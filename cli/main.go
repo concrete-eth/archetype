@@ -336,18 +336,18 @@ func runGofmt(dir string) {
 func NewRootCmd() *cobra.Command {
 	var cfgFile string
 	var rootCmd = &cobra.Command{
-		Use: "cli",
+		Use: "archetype",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			initConfig(cfgFile)
 		},
 	}
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.cli.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./arch.toml)")
 
-	codegenCmd := &cobra.Command{Use: "codegen", Short: "generate code", Run: runCodegen}
+	codegenCmd := &cobra.Command{Use: "codegen", Short: "Generate Golang definitions and Solidity interfaces for Archetype tables and actions from the given JSON specifications", Run: runCodegen}
 
-	codegenCmd.Flags().StringP("out", "o", "./", "output directory")
-	codegenCmd.Flags().StringP("tables", "t", "./tables.json", "table schema")
-	codegenCmd.Flags().StringP("actions", "a", "./actions.json", "action schema")
+	codegenCmd.Flags().StringP("out", "o", "./codegen", "output directory")
+	codegenCmd.Flags().StringP("tables", "t", "./tables.json", "table schema file")
+	codegenCmd.Flags().StringP("actions", "a", "./actions.json", "action schema file")
 	codegenCmd.Flags().String("pkg", "model", "go package name")
 	codegenCmd.Flags().BoolP("verbose", "v", false, "verbose output")
 	codegenCmd.Flags().Bool("more-experimental", false, "enable experimental features")
