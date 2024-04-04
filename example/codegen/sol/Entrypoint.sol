@@ -6,7 +6,7 @@ pragma solidity >=0.8.0;
 import "./IActions.sol";
 
 abstract contract Entrypoint is IActionExecutor {
-    function _executeMultipleActions(
+    function executeMultipleActions(
         uint8[] memory actionIds,
         uint8[] memory actionNumber,
         bytes[] memory actionData
@@ -21,7 +21,7 @@ abstract contract Entrypoint is IActionExecutor {
         }
     }
 
-    function _executeAction(uint8 actionId, bytes memory actionData) internal {
+    function _executeAction(uint8 actionId, bytes memory actionData) private {
         if (actionId == 0) {
             ActionData_Move memory action = abi.decode(
                 actionData,

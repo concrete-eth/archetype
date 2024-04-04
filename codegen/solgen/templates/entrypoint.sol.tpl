@@ -7,7 +7,7 @@ import "{{ . }}";
 {{- end }}
 
 abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {
-    function _executeMultipleActions(
+    function executeMultipleActions(
         uint8[] memory actionIds,
         uint8[] memory actionNumber,
         bytes[] memory actionData
@@ -22,7 +22,7 @@ abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ 
         }
     }
 
-    function _executeAction(uint8 actionId, bytes memory actionData) internal {
+    function _executeAction(uint8 actionId, bytes memory actionData) private {
         {{- range $index, $element := .Schemas }}
         if (actionId == {{ $index }}) {
             ActionData_{{.Name}} memory action = abi.decode(
