@@ -1,3 +1,9 @@
+Todo
+
+- Clean concrete CLI and more
+- Port from ark: evm, gas, rpc, headless, precompile, snapshot, kvstore, sol proxy and tick master, snapshot sidecar
+- Port lib from ark: ebiten renderer, decren, utils, simulated, web play
+
 # How it works
 
 # Cli
@@ -49,3 +55,9 @@ actions.json: Defines one or more actions e.g.,
 }
 ```
 
+Built in actions
+Tick
+
+Built in tables
+Tick config
+- TicksPerBlock

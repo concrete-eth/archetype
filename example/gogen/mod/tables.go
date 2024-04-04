@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 
-	"github.com/concrete-eth/archetype/example/codegen/datamod"
+	"github.com/concrete-eth/archetype/example/gogen/datamod"
 )
 
 var (
