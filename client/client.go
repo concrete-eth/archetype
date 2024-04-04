@@ -13,8 +13,10 @@ import (
 )
 
 var (
-	ErrBlockNumberMismatch = errors.New("block number mismatch")
-	ErrTickNotFirst        = errors.New("tick not first action")
+	ErrBlockNumberMismatch    = errors.New("block number mismatch")
+	ErrTickNotFirst           = errors.New("tick not first action")
+	ErrChannelClosed          = errors.New("channel closed")
+	ErrChannelBlockedOrClosed = errors.New("channel blocked or closed")
 )
 
 type BlockNumber uint64
@@ -131,11 +133,11 @@ func (c *Client) Simulate(f func(core Core)) {
 	c.Core.SetKV(c.kv)
 }
 
-func (c *Client) SendAction(action Action) {
-	c.SendActions([]Action{action})
+func (c *Client) SendAction(action Action) error {
+	return c.SendActions([]Action{action})
 }
 
-func (c *Client) SendActions(actions []Action) {
+func (c *Client) SendActions(actions []Action) error {
 	actionsToSend := make([]Action, 0)
 	c.Simulate(func(core Core) {
 		for _, action := range actions {
@@ -147,7 +149,12 @@ func (c *Client) SendActions(actions []Action) {
 		}
 	})
 
-	c.actionOutChan <- actionsToSend
+	select {
+	case c.actionOutChan <- actionsToSend:
+		return nil
+	default:
+		return ErrChannelBlockedOrClosed
+	}
 }
 
 func (c *Client) Sync() (didReceiveNewBatch bool, didTick bool, err error) {
@@ -171,7 +178,7 @@ func (c *Client) SyncUntil(blockNumber BlockNumber) error {
 		}
 		batch, ok := <-c.actionBatchInChan
 		if !ok {
-			return errors.New("channel closed")
+			return ErrChannelClosed
 		}
 		if _, err := c.applyBatchAndCommit(batch); err != nil {
 			return err
