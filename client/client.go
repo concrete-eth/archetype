@@ -53,8 +53,8 @@ type Client struct {
 
 	blockTime time.Duration
 
-	lastTickActionTime time.Time
-	ticksRunThisBlock  uint
+	lastNewBatchTime  time.Time
+	ticksRunThisBlock uint
 
 	lock sync.Mutex
 }
@@ -113,23 +113,21 @@ func (c *Client) applyBatchAndCommit(batch ActionBatch) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if tickActionInBatch {
-		c.lastTickActionTime = time.Now()
-	}
 	c.kv.Commit()
+	c.lastNewBatchTime = time.Now()
 	c.Core.SetBlockNumber(batch.BlockNumber + 1)
 	return tickActionInBatch, nil
 }
 
 // Runs the given function and then reverts all the changes to the key-value store
-func (c *Client) Simulate(f func()) {
+func (c *Client) Simulate(f func(core Core)) {
 	// Put another stage on top of the current key-value store that will never be committed
 	// and will be discarded after the function is executed
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	simKv := kvstore.NewStagedKeyValueStore(c.kv)
 	c.Core.SetKV(simKv)
-	f()
+	f(c.Core)
 	c.Core.SetKV(c.kv)
 }
 
@@ -138,13 +136,10 @@ func (c *Client) SendAction(action Action) {
 }
 
 func (c *Client) SendActions(actions []Action) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
 	actionsToSend := make([]Action, 0)
-	c.Simulate(func() {
+	c.Simulate(func(core Core) {
 		for _, action := range actions {
-			if err := c.Core.ExecuteAction(action); err != nil {
+			if err := core.ExecuteAction(action); err != nil {
 				c.error("failed to execute action", "err", err)
 				continue
 			}
@@ -155,55 +150,65 @@ func (c *Client) SendActions(actions []Action) {
 	c.actionOutChan <- actionsToSend
 }
 
-func (c *Client) Sync() (bool, error) {
+func (c *Client) Sync() (didReceiveNewBatch bool, didTick bool, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	select {
 	case batch := <-c.actionBatchInChan:
-		return c.applyBatchAndCommit(batch)
+		didTick, err := c.applyBatchAndCommit(batch)
+		return true, didTick, err
 	default:
-		return false, nil
+		return false, false, nil
 	}
 }
 
 func (c *Client) SyncUntil(blockNumber BlockNumber) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	for batch := range c.actionBatchInChan {
-		if _, err := c.applyBatchAndCommit(batch); err != nil {
-			return err
-		}
+	for {
 		if c.Core.BlockNumber() >= blockNumber {
 			break
+		}
+		batch, ok := <-c.actionBatchInChan
+		if !ok {
+			return errors.New("channel closed")
+		}
+		if _, err := c.applyBatchAndCommit(batch); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (c *Client) InterpolatedSync() (bool, error) {
+func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err error) {
 	if !c.Core.ExpectTick() {
 		return c.Sync()
 	}
 	select {
-	case actionBatch := <-c.actionBatchInChan:
+	case batch := <-c.actionBatchInChan:
 		// Received a new batch of actions
 		// Revert any tick anticipation and apply batch normally
+		didReceiveNewBatch = true
 		c.kv.Revert()
-		return c.applyBatchAndCommit(actionBatch)
+		didTick, err := c.applyBatchAndCommit(batch)
+		c.ticksRunThisBlock = 0
+		return didReceiveNewBatch, didTick, err
 	default:
 		// No new batch of actions received
 		// Anticipate ticks corresponding to the expected tick action in the next block
+		didReceiveNewBatch = false
+
 		var (
 			ticksPerBlock = c.Core.TicksPerBlock()
 			tickPeriod    = c.blockTime / time.Duration(ticksPerBlock)
 		)
 
-		targetTicks := uint(time.Since(c.lastTickActionTime)/tickPeriod) + 1
+		targetTicks := uint(time.Since(c.lastNewBatchTime)/tickPeriod) + 1
 		targetTicks = utils.Min(targetTicks, ticksPerBlock) // Cap index to ticksPerBlock
 
 		if c.ticksRunThisBlock >= targetTicks {
 			// Already up to date
-			return false, nil
+			return didReceiveNewBatch, false, nil
 		}
 
 		c.lock.Lock()
@@ -214,6 +219,6 @@ func (c *Client) InterpolatedSync() (bool, error) {
 			c.Core.RunSingleTick()
 			c.ticksRunThisBlock++
 		}
-		return true, nil
+		return didReceiveNewBatch, true, nil
 	}
 }
