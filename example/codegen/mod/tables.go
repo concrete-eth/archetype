@@ -62,8 +62,8 @@ type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex in
 
 type State struct {
 	datastore  lib.Datastore
-	config     *datamod.ConfigWithHooks
-	players    *datamod.PlayersWithHooks
+	config     *datamod.Config
+	players    *datamod.Players
 	OnSetTable TableUpdateHandler
 }
 
@@ -77,26 +77,16 @@ func (s *State) SetTableUpdateHandler(handler TableUpdateHandler) {
 	s.OnSetTable = handler
 }
 
-func (s *State) Config() *datamod.ConfigWithHooks {
-	if s.config == nil || (s.config.OnSetRow == nil && s.OnSetTable != nil) {
-		s.config = datamod.NewConfigWithHooks(datamod.NewConfig(s.datastore))
-		s.config.OnSetRow = func(rowKey []interface{}, columnIndex int, value []byte) {
-			if s.OnSetTable != nil {
-				s.OnSetTable(TableId_Config, rowKey, columnIndex, value)
-			}
-		}
+func (s *State) Config() *datamod.Config {
+	if s.config == nil {
+		s.config = datamod.NewConfig(s.datastore)
 	}
 	return s.config
 }
 
-func (s *State) Players() *datamod.PlayersWithHooks {
-	if s.players == nil || (s.players.OnSetRow == nil && s.OnSetTable != nil) {
-		s.players = datamod.NewPlayersWithHooks(datamod.NewPlayers(s.datastore))
-		s.players.OnSetRow = func(rowKey []interface{}, columnIndex int, value []byte) {
-			if s.OnSetTable != nil {
-				s.OnSetTable(TableId_Players, rowKey, columnIndex, value)
-			}
-		}
+func (s *State) Players() *datamod.Players {
+	if s.players == nil {
+		s.players = datamod.NewPlayers(s.datastore)
 	}
 	return s.players
 }

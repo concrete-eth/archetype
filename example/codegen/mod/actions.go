@@ -14,8 +14,7 @@ var (
 )
 
 const (
-	ActionId_Tick uint8 = iota
-	ActionId_Move
+	ActionId_Move uint8 = iota
 )
 
 var Actions = map[uint8]struct {
@@ -23,11 +22,6 @@ var Actions = map[uint8]struct {
 	Name       string
 	MethodName string
 }{
-	ActionId_Tick: {
-		Id:         ActionId_Tick,
-		Name:       "Tick",
-		MethodName: "tick",
-	},
 	ActionId_Move: {
 		Id:         ActionId_Move,
 		Name:       "Move",
@@ -36,11 +30,7 @@ var Actions = map[uint8]struct {
 }
 
 var ActionIdsByMethodName = map[string]uint8{
-	"tick": ActionId_Tick,
 	"move": ActionId_Move,
-}
-
-type ActionData_Tick struct {
 }
 
 type ActionData_Move struct {
@@ -58,8 +48,6 @@ func (action *ActionData_Move) GetDirection() uint8 {
 
 func ActionIdFromAction(action interface{}) (uint8, bool) {
 	switch action.(type) {
-	case *ActionData_Tick:
-		return ActionId_Tick, true
 	case *ActionData_Move:
 		return ActionId_Move, true
 	default:
@@ -97,8 +85,6 @@ func ConvertStruct(src interface{}, dest interface{}) error {
 func AnonToCanon(actionId uint8, action interface{}) (interface{}, error) {
 	var canon interface{}
 	switch actionId {
-	case ActionId_Tick:
-		canon = &ActionData_Tick{}
 	case ActionId_Move:
 		canon = &ActionData_Move{}
 	default:

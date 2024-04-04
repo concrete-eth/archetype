@@ -1,7 +1,4 @@
 {
-    "tick": {
-        "schema": {}
-    },
     "move": {
         "schema": {
             "playerId": "uint8",
