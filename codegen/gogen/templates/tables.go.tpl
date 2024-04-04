@@ -6,20 +6,20 @@ import (
     "github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/concrete/lib"
     "github.com/ethereum/go-ethereum/common"
-	{{- range .Imports }}
+	{{ range .Imports }}
 	"{{.}}"
-	{{- end }}
+	{{ end }}
 )
 
 var (
 	_ = common.Big1
 )
 
-{{ if .Comment -}}
+{{ if .Comment }}
 /*
 {{ .Comment }}
 */
-{{- end }}
+{{ end }}
 
 {{ if .Schemas }}
 const (
@@ -27,7 +27,7 @@ const (
     TableId_{{.Name}}{{ if eq $index 0 }} uint8 = iota{{ end }}
     {{- end }}
 )
-{{ end -}}
+{{ end }}
 
 var Tables = map[uint8]struct{
     Id uint8
@@ -64,7 +64,7 @@ type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex in
 type State struct {
 	datastore  lib.Datastore
     {{- range .Schemas }}
-    {{_lowerFirstChar .Name}} *datamod.{{.Name}}{{if $.Experimental}}WithHooks{{end}}
+    {{_lowerFirstChar .Name}} *datamod.{{.Name}}{{if $.Experimental}}WithHooks{{ end }}
     {{- end }}
 	OnSetTable TableUpdateHandler
 }
@@ -137,7 +137,7 @@ func GetData(datastore lib.Datastore, method *abi.Method, args []interface{}) (i
 			{{.PascalCase}}: row.Get{{.PascalCase}}(),
 			{{- end }}
 		}, true
-	{{ end }}
+	{{- end }}
 	}
 	return nil, false
 }

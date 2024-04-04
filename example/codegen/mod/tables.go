@@ -3,10 +3,11 @@
 package model
 
 import (
-	"github.com/concrete-eth/archetype/example/codegen/datamod"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/lib"
+
+	"github.com/concrete-eth/archetype/example/codegen/datamod"
 )
 
 var (
@@ -122,7 +123,6 @@ func GetData(datastore lib.Datastore, method *abi.Method, args []interface{}) (i
 			StartBlock: row.GetStartBlock(),
 			MaxPlayers: row.GetMaxPlayers(),
 		}, true
-
 	case "getPlayersRow":
 		row := datamod.NewPlayers(datastore).Get(
 			args[0].(uint8),
@@ -132,7 +132,6 @@ func GetData(datastore lib.Datastore, method *abi.Method, args []interface{}) (i
 			Y:      row.GetY(),
 			Health: row.GetHealth(),
 		}, true
-
 	}
 	return nil, false
 }

@@ -6,7 +6,7 @@ pragma solidity >=0.8.0;
 enum ActionId {
 {{- $length := len .Schemas }}
 {{- range $index, $element := .Schemas }}
-    {{.Name}}{{if lt $index (_sub $length 1)}},{{end}}
+    {{.Name}}{{if lt $index (_sub $length 1)}},{{ end }}
 {{- end }}
 }
 {{ range .Schemas }}
@@ -19,7 +19,6 @@ struct ActionData_{{.Name}} {
 {{ end }}
 {{- end }}
 interface {{.Name}} {
-
     event ActionExecuted(uint8 actionId, bytes data);
 {{ range .Schemas }}
     {{- if .Values }}
@@ -27,5 +26,5 @@ interface {{.Name}} {
     {{- else }}
     function {{_lowerFirstChar .Name}}() external;
     {{- end }}
-{{ end }}
+{{- end }}
 }

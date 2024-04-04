@@ -13,9 +13,7 @@ struct ActionData_Move {
 }
 
 interface IActionExecutor {
-
     event ActionExecuted(uint8 actionId, bytes data);
 
     function move(ActionData_Move memory action) external;
-
 }

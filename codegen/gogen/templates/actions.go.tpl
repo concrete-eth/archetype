@@ -7,9 +7,9 @@ import (
     "reflect"
 
     "github.com/ethereum/go-ethereum/common"
-	{{- range .Imports }}
+	{{ range .Imports }}
 	"{{.}}"
-	{{- end }}
+	{{ end }}
 )
 
 var (
@@ -22,7 +22,7 @@ const (
     ActionId_{{.Name}}{{ if eq $index 0 }} uint8 = iota{{ end }}
     {{- end }}
 )
-{{ end -}}
+{{ end }}
 
 var Actions = map[uint8]struct{
     Id uint8

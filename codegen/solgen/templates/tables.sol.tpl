@@ -6,7 +6,7 @@ pragma solidity >=0.8.0;
 enum TableId {
 {{- $length := len .Schemas }}
 {{- range $index, $element := .Schemas }}
-    {{.Name}}{{if lt $index (_sub $length 1)}},{{end}}
+    {{.Name}}{{if lt $index (_sub $length 1)}},{{ end }}
 {{- end }}
 }
 {{ range .Schemas }}
@@ -21,10 +21,10 @@ struct RowData_{{.Name}} {
 interface {{.Name}} {
 {{- range .Schemas }}
     function get{{.Name}}Row(
-        {{- $length := len .Keys }}
-        {{- range $index, $element := .Keys }}
-        {{.Type.SolType}} {{.Name}}{{if lt $index (_sub $length 1)}},{{end}}
-        {{- end }}
+        {{- $length := len .Keys -}}
+        {{- range $index, $element := .Keys -}}
+        {{- .Type.SolType }} {{.Name}}{{if lt $index (_sub $length 1)}},{{ end -}}
+        {{- end -}}
     ) external view returns (RowData_{{.Name}} memory);
-{{ end }}
+{{- end }}
 }
