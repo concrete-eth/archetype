@@ -57,7 +57,6 @@ func (action *ActionData_{{$schema.Name}}) Get{{.PascalCase}}() {{.Type.GoType}}
 {{ end }}
 {{ end }}
 
-/*
 func ActionIdFromAction(action interface{}) (uint8, bool) {
 	switch action.(type) {
     {{- range .Schemas }}
@@ -68,4 +67,3 @@ func ActionIdFromAction(action interface{}) (uint8, bool) {
         return 0, false
     }
 }
-*/

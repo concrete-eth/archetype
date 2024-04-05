@@ -30,6 +30,68 @@ var (
 	HeaderChanSize         = 4               // Size of the header channel
 )
 
+func getBlockNumber(ethcli EthCli) (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	return ethcli.BlockNumber(ctx)
+}
+
+func getPendingNonce(ethcli EthCli, addr common.Address) (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	return ethcli.PendingNonceAt(ctx, addr)
+}
+
+func suggestGasTipCap(ethcli EthCli) (*big.Int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	return ethcli.SuggestGasTipCap(ctx)
+}
+
+func getHeadHeader(ethcli EthCli) (*types.Header, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	return ethcli.HeaderByNumber(ctx, nil)
+}
+
+func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
+	errChan := make(chan error, 2)
+	headerChan := make(chan *types.Header, 1)
+	gasTipCapChan := make(chan *big.Int, 1)
+
+	go func() {
+		header, err := getHeadHeader(ethcli)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		headerChan <- header
+	}()
+
+	go func() {
+		gasTipCap, err := suggestGasTipCap(ethcli)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		gasTipCapChan <- gasTipCap
+	}()
+
+	// Wait for both goroutines to send a value or an error
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errChan:
+			return nil, nil, err
+		case header := <-headerChan:
+			gasFeeCap = new(big.Int).Add(header.BaseFee, <-gasTipCapChan)
+		case gasTipCap = <-gasTipCapChan:
+			// Wait to calculate gasFeeCap until header is received
+		}
+	}
+
+	return gasFeeCap, gasTipCap, nil
+}
+
 type ActionBatchSubscription struct {
 	ethcli          EthCli
 	actionMap       archtypes.ActionMap
@@ -105,12 +167,6 @@ func (s *ActionBatchSubscription) runSubscription(startingBlock uint64) {
 	}
 }
 
-func (s *ActionBatchSubscription) getHeadBlockNumber() (uint64, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
-	defer cancel()
-	return s.ethcli.BlockNumber(ctx)
-}
-
 func (s *ActionBatchSubscription) getLogs(fromBlock, toBlock uint64) ([]types.Log, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
 	defer cancel()
@@ -143,7 +199,7 @@ func (s *ActionBatchSubscription) syncToHead(startingBlock uint64) (uint64, erro
 		return startingBlock, nil
 	}
 	oldestUnsyncedBN := startingBlock
-	headBN, err := s.getHeadBlockNumber()
+	headBN, err := getBlockNumber(s.ethcli)
 	if err != nil {
 		return startingBlock, err
 	}
@@ -159,7 +215,7 @@ func (s *ActionBatchSubscription) syncToHead(startingBlock uint64) (uint64, erro
 			fromBN = oldestUnsyncedBN
 			toBN = oldestUnsyncedBN + BlockQueryLimit
 			if toBN > headBN {
-				headBN, err := s.getHeadBlockNumber()
+				headBN, err := getBlockNumber(s.ethcli)
 				if err != nil {
 					return oldestUnsyncedBN, err
 				}
@@ -315,3 +371,174 @@ func (s *ActionBatchSubscription) Err() <-chan error {
 }
 
 var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
+
+type ActionSender struct {
+	ethcli             EthCli
+	actionMap          archtypes.ActionMap
+	actionsAbi         abi.ABI
+	actionIdFromAction func(action interface{}) (uint8, bool)
+	coreAddress        common.Address
+	gasEstimator       ethereum.GasEstimator
+
+	from  common.Address
+	nonce uint64
+}
+
+func (a *ActionSender) encodeAction(action archtypes.Action) (uint8, []byte, error) {
+	actionId, ok := a.actionIdFromAction(action)
+	if !ok {
+		return 0, nil, errors.New("unknown action ID")
+	}
+	actionMetadata := a.actionMap[actionId]
+	method := a.actionsAbi.Methods[actionMetadata.MethodName]
+	data, err := method.Inputs.Pack(action)
+	if err != nil {
+		return 0, nil, err
+	}
+	return actionId, data, nil
+}
+
+func (a *ActionSender) packActionCall(action archtypes.Action) ([]byte, error) {
+	actionId, ok := a.actionIdFromAction(action)
+	if !ok {
+		return nil, errors.New("unknown action ID")
+	}
+	actionMetadata := a.actionMap[actionId]
+	data, err := a.actionsAbi.Pack(actionMetadata.MethodName, action)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, error) {
+	var (
+		actionIds   = make([]uint8, 0)
+		actionCount = make([]uint8, 0)
+		actionData  = make([]interface{}, 0, len(actions))
+	)
+	if len(actions) == 0 {
+		return a.actionsAbi.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
+	}
+
+	firstActionId, firstData, err := a.encodeAction(actions[0])
+	if err != nil {
+		return nil, err
+	}
+	actionIds = append(actionIds, firstActionId)
+	actionCount = append(actionCount, 1)
+	actionData = append(actionData, firstData)
+
+	for _, action := range actions[1:] {
+		actionId, data, err := a.encodeAction(action)
+		if err != nil {
+			return nil, err
+		}
+		actionData = append(actionData, data)
+		if actionId == actionIds[len(actionIds)-1] {
+			actionCount[len(actionCount)-1]++
+		} else {
+			actionIds = append(actionIds, actionId)
+			actionCount = append(actionCount, 1)
+		}
+	}
+
+	return a.actionsAbi.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
+}
+
+func (a *ActionSender) sendData(data []byte) error {
+	gasFeeCap, gasTipCap, err := getGasPrice(a.ethcli)
+	if err != nil {
+		return err
+	}
+
+	msg := ethereum.CallMsg{
+		From:      a.from,
+		To:        &a.coreAddress,
+		Value:     common.Big0,
+		GasFeeCap: gasFeeCap,
+		GasTipCap: gasTipCap,
+		Data:      data,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	estimatedGas, err := a.gasEstimator.EstimateGas(ctx, msg)
+	if err != nil {
+		return err
+	}
+	gasLimit := estimatedGas + estimatedGas/4
+
+	tx := types.NewTx(&types.DynamicFeeTx{
+		Nonce:     a.nonce,
+		GasTipCap: gasTipCap,
+		GasFeeCap: gasFeeCap,
+		Gas:       gasLimit,
+		To:        &a.coreAddress,
+		Value:     common.Big0,
+		Data:      data,
+	})
+
+	// Sign transaction
+	// ...
+
+	// Send transaction
+	ctx, cancel = context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	err = a.ethcli.SendTransaction(ctx, tx)
+	if err != nil {
+		// Handle nonce too low error
+		return err
+	}
+
+	// Increment nonce
+	a.nonce++
+
+	return nil
+}
+
+func (s *ActionSender) SendAction(action archtypes.Action) error {
+	data, err := s.packActionCall(action)
+	if err != nil {
+		return err
+	}
+	return s.sendData(data)
+}
+
+func (s *ActionSender) SendActions(actionBatch []archtypes.Action) error {
+	if len(actionBatch) == 0 {
+		return nil
+	} else if len(actionBatch) == 1 {
+		return s.SendAction(actionBatch[0])
+	} else {
+		data, err := s.packMultiActionCall(actionBatch)
+		if err != nil {
+			return err
+		}
+		return s.sendData(data)
+	}
+}
+
+func (s *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action) (<-chan error, func()) {
+	stopChan := make(chan struct{})
+	errChan := make(chan error, 1)
+	go func() {
+		for {
+			select {
+			case <-stopChan:
+				return
+			case actions := <-actionsChan:
+				if err := s.SendActions(actions); err != nil {
+					select {
+					case errChan <- err:
+					default:
+					}
+				}
+			}
+		}
+	}()
+	cancel := func() {
+		close(stopChan)
+	}
+	return errChan, cancel
+}

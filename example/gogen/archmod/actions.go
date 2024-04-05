@@ -45,13 +45,11 @@ func (action *ActionData_Move) GetDirection() uint8 {
 	return action.Direction
 }
 
-/*
 func ActionIdFromAction(action interface{}) (uint8, bool) {
 	switch action.(type) {
-    case *ActionData_Move:
-        return ActionId_Move, true
-    default:
-        return 0, false
-    }
+	case *ActionData_Move:
+		return ActionId_Move, true
+	default:
+		return 0, false
+	}
 }
-*/
