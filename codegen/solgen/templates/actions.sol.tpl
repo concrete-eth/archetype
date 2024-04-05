@@ -19,7 +19,7 @@ struct ActionData_{{.Name}} {
 {{ end }}
 {{- end }}
 interface {{.Name}} {
-    event ActionExecuted(uint8 actionId, bytes data);
+    event {{.ArchParams.ActionExecutedEventName}}(uint8 actionId, bytes data);
 {{ range .Schemas }}
     {{- if .Values }}
     function {{_lowerFirstChar .Name}}(ActionData_{{.Name}} memory action) external;

@@ -10,6 +10,7 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/concrete-eth/archetype/params"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 )
 
@@ -98,6 +99,8 @@ func ExecuteTemplate(tplStr string, jsonSchemaPath, outPath string, data map[str
 		data["Schemas"] = schemas
 		data["Comment"] = GenerateSchemaDescriptionString(schemas)
 	}
+
+	data["ArchParams"] = params.Params
 
 	// Set funcMap
 	if funcMap == nil {

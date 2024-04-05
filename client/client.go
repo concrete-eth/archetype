@@ -10,7 +10,10 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/concrete-eth/archetype/kvstore"
+	archtypes "github.com/concrete-eth/archetype/types"
 )
+
+type BlockNumber = archtypes.BlockNumber
 
 var (
 	ErrBlockNumberMismatch    = errors.New("block number mismatch")
@@ -19,39 +22,25 @@ var (
 	ErrChannelBlockedOrClosed = errors.New("channel blocked or closed")
 )
 
-type BlockNumber uint64
-
-func (b BlockNumber) Uint64() uint64 { return uint64(b) }
-
 type Core interface {
-	SetKV(kv lib.KeyValueStore) error // Set the key-value store
-	ExecuteAction(Action) error       // Execute the given action
-	SetBlockNumber(BlockNumber)       // Set the block number
-	BlockNumber() BlockNumber         // Get the block number
-	RunSingleTick()                   // Run a single tick
-	RunBlockTicks()                   // Run all ticks in a block
-	TicksPerBlock() uint              // Get the number of ticks per block
-	ExpectTick() bool                 // Check if a tick is expected
-	SetInBlockTickIndex(uint)         // Set the in-block tick index
-	InBlockTickIndex() uint           // Get the in-block tick index
-}
-
-type Action interface{}
-
-type CanonicalTickAction struct{}
-
-// Holds all the actions included to a specific core in a specific block
-type ActionBatch struct {
-	BlockNumber BlockNumber
-	Actions     []Action
+	SetKV(kv lib.KeyValueStore) error     // Set the key-value store
+	ExecuteAction(archtypes.Action) error // Execute the given action
+	SetBlockNumber(BlockNumber)           // Set the block number
+	BlockNumber() BlockNumber             // Get the block number
+	RunSingleTick()                       // Run a single tick
+	RunBlockTicks()                       // Run all ticks in a block
+	TicksPerBlock() uint                  // Get the number of ticks per block
+	ExpectTick() bool                     // Check if a tick is expected
+	SetInBlockTickIndex(uint)             // Set the in-block tick index
+	InBlockTickIndex() uint               // Get the in-block tick index
 }
 
 type Client struct {
 	Core Core
 	kv   *kvstore.StagedKeyValueStore
 
-	actionBatchInChan <-chan ActionBatch
-	actionOutChan     chan<- []Action
+	actionBatchInChan <-chan archtypes.ActionBatch
+	actionOutChan     chan<- []archtypes.Action
 
 	blockTime time.Duration
 
@@ -61,7 +50,7 @@ type Client struct {
 	lock sync.Mutex
 }
 
-func New(core Core, kv lib.KeyValueStore, actionBatchInChan <-chan ActionBatch, actionOutChan chan<- []Action, blockTime time.Duration, blockNumber BlockNumber) (*Client, error) {
+func New(core Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber BlockNumber) (*Client, error) {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	if err := core.SetKV(stagedKv); err != nil {
 		return nil, err
@@ -90,7 +79,7 @@ func (c *Client) error(msg string, ctx ...interface{}) {
 
 // Applies the given action batch to the core and returns whether a tick action was included in the batch
 // If a tick action is included, it must be the first action in the batch
-func (c *Client) applyBatch(batch ActionBatch) (bool, error) {
+func (c *Client) applyBatch(batch archtypes.ActionBatch) (bool, error) {
 	if c.Core.BlockNumber() != batch.BlockNumber {
 		return false, ErrBlockNumberMismatch
 	}
@@ -99,7 +88,7 @@ func (c *Client) applyBatch(batch ActionBatch) (bool, error) {
 		if err := c.Core.ExecuteAction(action); err != nil {
 			c.error("failed to execute action", "err", err)
 		}
-		if _, ok := action.(*CanonicalTickAction); ok {
+		if _, ok := action.(*archtypes.CanonicalTickAction); ok {
 			if ii != 0 {
 				return false, ErrTickNotFirst
 			}
@@ -110,14 +99,14 @@ func (c *Client) applyBatch(batch ActionBatch) (bool, error) {
 }
 
 // Applies the given action batch to the core, commits the changes to the key-value store, and updates the core block number
-func (c *Client) applyBatchAndCommit(batch ActionBatch) (bool, error) {
+func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) {
 	tickActionInBatch, err := c.applyBatch(batch)
 	if err != nil {
 		return false, err
 	}
 	c.kv.Commit()
 	c.lastNewBatchTime = time.Now()
-	c.Core.SetBlockNumber(batch.BlockNumber + 1)
+	c.Core.SetBlockNumber(batch.BlockNumber.AddUint64(1))
 	return tickActionInBatch, nil
 }
 
@@ -133,12 +122,12 @@ func (c *Client) Simulate(f func(core Core)) {
 	c.Core.SetKV(c.kv)
 }
 
-func (c *Client) SendAction(action Action) error {
-	return c.SendActions([]Action{action})
+func (c *Client) SendAction(action archtypes.Action) error {
+	return c.SendActions([]archtypes.Action{action})
 }
 
-func (c *Client) SendActions(actions []Action) error {
-	actionsToSend := make([]Action, 0)
+func (c *Client) SendActions(actions []archtypes.Action) error {
+	actionsToSend := make([]archtypes.Action, 0)
 	c.Simulate(func(core Core) {
 		for _, action := range actions {
 			if err := core.ExecuteAction(action); err != nil {
@@ -176,7 +165,7 @@ func (c *Client) SyncUntil(blockNumber BlockNumber) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for {
-		if c.Core.BlockNumber() >= blockNumber {
+		if c.Core.BlockNumber().Uint64() >= blockNumber.Uint64() {
 			break
 		}
 		batch, ok := <-c.actionBatchInChan

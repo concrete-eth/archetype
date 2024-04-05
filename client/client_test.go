@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/concrete-eth/archetype/kvstore"
+	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/concrete-eth/archetype/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/lib"
@@ -52,9 +53,9 @@ func (c *testCore) SetKV(kv lib.KeyValueStore) error {
 	return nil
 }
 
-func (c *testCore) ExecuteAction(action Action) error {
+func (c *testCore) ExecuteAction(action archtypes.Action) error {
 	switch action.(type) {
-	case *CanonicalTickAction:
+	case *archtypes.CanonicalTickAction:
 		c.RunBlockTicks()
 	case *testAction:
 		c.inc()
@@ -98,14 +99,14 @@ func (c *testCore) InBlockTickIndex() uint {
 	return c.tickIndex
 }
 
-func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan ActionBatch, chan []Action) {
+func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.ActionBatch, chan []archtypes.Action) {
 	var (
 		core              = &testCore{}
 		kv                = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan = make(chan ActionBatch)
-		actionOutChan     = make(chan []Action)
+		actionBatchInChan = make(chan archtypes.ActionBatch)
+		actionOutChan     = make(chan []archtypes.Action)
 		blockTime         = 10 * time.Millisecond
-		blockNumber       = BlockNumber(0)
+		blockNumber       = archtypes.NewBlockNumber(0)
 	)
 	client, err := New(core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
 	if err != nil {
@@ -130,7 +131,7 @@ func TestSimulate(t *testing.T) {
 
 func TestSendActions(t *testing.T) {
 	client, _, _, actionOutChan := newTestClient(t)
-	actionsIn := []Action{&testAction{}, &testAction{}}
+	actionsIn := []archtypes.Action{&testAction{}, &testAction{}}
 	go client.SendActions(actionsIn)
 	select {
 	case <-time.After(20 * time.Millisecond):
@@ -160,15 +161,15 @@ func TestSendAction(t *testing.T) {
 }
 
 var testData = []struct {
-	batch                     ActionBatch
+	batch                     archtypes.ActionBatch
 	expectedTickActionInBatch bool
 	expectedCoreVal           uint64
 }{
 	{
-		ActionBatch{
-			BlockNumber: 0,
-			Actions: []Action{
-				&CanonicalTickAction{},
+		archtypes.ActionBatch{
+			BlockNumber: archtypes.NewBlockNumber(0),
+			Actions: []archtypes.Action{
+				&archtypes.CanonicalTickAction{},
 				&testAction{},
 			},
 		},
@@ -176,19 +177,19 @@ var testData = []struct {
 		1,
 	},
 	{
-		ActionBatch{
-			BlockNumber: 1,
-			Actions: []Action{
-				&CanonicalTickAction{},
+		archtypes.ActionBatch{
+			BlockNumber: archtypes.NewBlockNumber(1),
+			Actions: []archtypes.Action{
+				&archtypes.CanonicalTickAction{},
 			},
 		},
 		true,
 		4,
 	},
 	{
-		ActionBatch{
-			BlockNumber: 2,
-			Actions: []Action{
+		archtypes.ActionBatch{
+			BlockNumber: archtypes.NewBlockNumber(2),
+			Actions: []archtypes.Action{
 				&testAction{},
 			},
 		},
@@ -196,18 +197,20 @@ var testData = []struct {
 		5,
 	},
 	{
-		ActionBatch{
-			BlockNumber: 3,
-			Actions:     []Action{},
+		archtypes.ActionBatch{
+			BlockNumber: archtypes.NewBlockNumber(3),
+			Actions:     []archtypes.Action{},
 		},
 		false,
 		5,
 	},
 }
 
+// TODO: use uint64 for block number
+
 func init() {
 	for i, data := range testData {
-		if data.batch.BlockNumber != BlockNumber(i) {
+		if data.batch.BlockNumber != archtypes.NewBlockNumber(uint64(i)) {
 			panic("unexpected block number")
 		}
 	}
@@ -215,7 +218,7 @@ func init() {
 
 func TestSync(t *testing.T) {
 	client, _, _, _ := newTestClient(t)
-	actionBatchInChan := make(chan ActionBatch, 1)
+	actionBatchInChan := make(chan archtypes.ActionBatch, 1)
 	client.actionBatchInChan = actionBatchInChan
 
 	_, tickActionInBatch, err := client.Sync() // TODO
@@ -225,7 +228,7 @@ func TestSync(t *testing.T) {
 	if tickActionInBatch {
 		t.Fatal("expected no tick action")
 	}
-	if client.Core.BlockNumber() != 0 {
+	if client.Core.BlockNumber().Uint64() != 0 {
 		t.Fatal("unexpected block number")
 	}
 	if client.Core.(*testCore).getVal() != 0 {
@@ -241,7 +244,7 @@ func TestSync(t *testing.T) {
 		if tickActionInBatch != actionBatch.expectedTickActionInBatch {
 			t.Fatal("unexpected tick action")
 		}
-		if client.Core.BlockNumber() != actionBatch.batch.BlockNumber+1 {
+		if client.Core.BlockNumber().Uint64() != actionBatch.batch.BlockNumber.AddUint64(1).Uint64() {
 			t.Fatal("unexpected block number")
 		}
 		if client.Core.(*testCore).getVal() != actionBatch.expectedCoreVal {
@@ -253,7 +256,7 @@ func TestSync(t *testing.T) {
 func TestSyncUntil(t *testing.T) {
 	client, _, actionBatchInChan, _ := newTestClient(t)
 
-	err := client.SyncUntil(0)
+	err := client.SyncUntil(archtypes.NewBlockNumber(0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,12 +267,12 @@ func TestSyncUntil(t *testing.T) {
 		}
 	}()
 
-	for _, blockToSyncTo := range []BlockNumber{2, 4} {
-		err := client.SyncUntil(blockToSyncTo)
+	for _, blockToSyncTo := range []uint64{2, 4} {
+		err := client.SyncUntil(archtypes.NewBlockNumber(blockToSyncTo))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if client.Core.BlockNumber() != blockToSyncTo {
+		if client.Core.BlockNumber().Uint64() != blockToSyncTo {
 			t.Fatal("unexpected block number")
 		}
 		if client.Core.(*testCore).getVal() != testData[blockToSyncTo-1].expectedCoreVal {
@@ -314,10 +317,10 @@ func TestInterpolatedSync(t *testing.T) {
 			t.Fatal(err)
 		}
 		var expectedCoreVal uint64
-		if client.Core.BlockNumber() == 0 {
+		if client.Core.BlockNumber().Uint64() == 0 {
 			expectedCoreVal = 0
 		} else {
-			expectedCoreVal = testData[client.Core.BlockNumber()-1].expectedCoreVal
+			expectedCoreVal = testData[client.Core.BlockNumber().Uint64()-1].expectedCoreVal
 		}
 		if !didReceiveNewBatch {
 			// Adjust expectedCoreVal for interpolated ticks
@@ -328,7 +331,7 @@ func TestInterpolatedSync(t *testing.T) {
 		if client.Core.(*testCore).getVal() != expectedCoreVal {
 			t.Fatal("unexpected value")
 		}
-		if int(client.Core.BlockNumber()) >= len(testData) {
+		if int(client.Core.BlockNumber().Uint64()) >= len(testData) {
 			break
 		}
 	}
