@@ -22,28 +22,41 @@ import (
 )
 
 const (
-	GO_BIN       = "go"
-	CONCRETE_BIN = "concrete"
-	GOFMT_BIN    = "gofmt"
+	GO_BIN              = "go"
+	CONCRETE_BIN        = "concrete"
+	GOFMT_BIN           = "gofmt"
+	NODE_EXEC_BIN       = "npx"
+	PRETTIER_BIN        = "prettier"
+	PRETTIER_SOL_PLUGIN = "prettier-plugin-solidity"
+)
+
+var (
+	green  = color.New(color.FgGreen)
+	red    = color.New(color.FgRed)
+	gray   = color.New(color.FgHiBlack)
+	yellow = color.New(color.FgYellow)
+	bold   = color.New(color.Bold)
 )
 
 /* Logging */
 
-func logTaskSuccess(name string) {
-	green := color.New(color.FgGreen)
+func logTaskSuccess(name string, more ...any) {
 	green.Print("[DONE] ")
-	fmt.Println(name)
+	fmt.Print(name)
+	if len(more) > 0 {
+		gray.Print(": ")
+		gray.Print(more...)
+	}
+	fmt.Println()
 }
 
 func logTaskFail(name string, err error) {
-	red := color.New(color.FgRed)
 	red.Print("[FAIL] ")
 	fmt.Print(name)
 	if err != nil {
-		fmt.Println(":", err)
-	} else {
-		fmt.Println()
+		fmt.Print(":", err)
 	}
+	fmt.Println()
 }
 
 func logInfo(a ...any) {
@@ -51,18 +64,15 @@ func logInfo(a ...any) {
 }
 
 func logDebug(a ...any) {
-	gray := color.New(color.FgHiBlack)
 	gray.Println(a...)
 }
 
 func logWarning(warning string) {
-	yellow := color.New(color.FgYellow)
 	yellow.Println("\nWarning:")
 	fmt.Println(warning)
 }
 
 func logError(err error) {
-	red := color.New(color.FgRed)
 	fmt.Println("\nError:")
 	red.Println(err)
 	fmt.Println("\nContext:")
@@ -96,10 +106,11 @@ func ensureDir(dir string) error {
 }
 
 // isInstalled checks if a command is installed by attempting to run it with a help flag (-h, --help, help).
-func isInstalled(cmd string) bool {
+func isInstalled(name string, args ...string) bool {
 	// Attempt to run the command with a help flag
 	for _, flag := range []string{"-h", "--help", "help"} {
-		if err := exec.Command(cmd, flag).Run(); err == nil {
+		args := append(args, flag)
+		if err := exec.Command(name, args...).Run(); err == nil {
 			// If the command runs without error, it is installed
 			return true
 		}
@@ -160,14 +171,9 @@ func loadSchemaFromFile(filePath string) ([]datamod.TableSchema, error) {
 
 // printSchemaDescription prints a description of a table schema.
 func printSchemaDescription(title string, schema []datamod.TableSchema) {
-	var (
-		description = codegen.GenerateSchemaDescriptionString(schema)
-		clrVal      = color.FgWhite
-		clr         = color.New(clrVal)
-		bold        = color.New(clrVal, color.Bold)
-	)
+	description := codegen.GenerateSchemaDescriptionString(schema)
 	bold.Println(title)
-	clr.Println(description)
+	fmt.Println(description)
 }
 
 /* Codegen */
@@ -324,6 +330,24 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		logWarning(fmt.Sprintf("gofmt is not installed (gofmt_bin=%s). Install it to format the generated go code.", GOFMT_BIN))
 	}
 
+	var missing string
+	if isInstalled(NODE_EXEC_BIN) {
+		if isInstalled(NODE_EXEC_BIN, PRETTIER_BIN) {
+			if isInstalled(NODE_EXEC_BIN, PRETTIER_BIN, "--plugin="+PRETTIER_SOL_PLUGIN) {
+				runPrettier(solgenConfig.Out + "/**/*.sol")
+			} else {
+				missing = PRETTIER_SOL_PLUGIN
+			}
+		} else {
+			missing = PRETTIER_BIN
+		}
+	} else {
+		missing = NODE_EXEC_BIN
+	}
+	if missing != "" {
+		logWarning(fmt.Sprintf("%s is not installed. Install it to format the generated solidity code.", missing))
+	}
+
 	// Done
 	logInfo("\nCode generation completed successfully.")
 	logInfo("Files written to: " + gogenConfig.Out + ", " + solgenConfig.Out)
@@ -335,11 +359,11 @@ func runCodegen(cmd *cobra.Command, args []string) {
 func runDatamod(outDir, tables, pkg string, experimental bool) {
 	taskName := "Concrete datamod"
 
-	cmdArgs := []string{"datamod", tables, "--pkg", pkg, "--out", outDir}
+	args := []string{"datamod", tables, "--pkg", pkg, "--out", outDir}
 	if experimental {
-		cmdArgs = append(cmdArgs, "--more-experimental")
+		args = append(args, "--more-experimental")
 	}
-	cmd := exec.Command(CONCRETE_BIN, cmdArgs...)
+	cmd := exec.Command(CONCRETE_BIN, args...)
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -351,7 +375,12 @@ func runDatamod(outDir, tables, pkg string, experimental bool) {
 		logFatal(err)
 		return
 	}
-	logTaskSuccess(taskName)
+
+	if viper.GetBool("verbose") {
+		logTaskSuccess(taskName, strings.Join(cmd.Args, " "))
+	} else {
+		logTaskSuccess(taskName)
+	}
 }
 
 // Run gogen codegen
@@ -383,13 +412,50 @@ func runSolgen(config solgen.Config) {
 // runGofmt runs gofmt on the given directory.
 func runGofmt(dirs ...string) {
 	taskName := "gofmt"
+
 	args := append([]string{"-w"}, dirs...)
-	if err := exec.Command(GOFMT_BIN, args...).Run(); err != nil {
+	cmd := exec.Command(GOFMT_BIN, args...)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("gofmt failed: %w", err)
+		logDebug(">", strings.Join(cmd.Args, " "))
+		logDebug(out.String())
 		logTaskFail(taskName, err)
 		return
 	}
-	logTaskSuccess(taskName)
+
+	if viper.GetBool("verbose") {
+		logTaskSuccess(taskName, strings.Join(cmd.Args, " "))
+	} else {
+		logTaskSuccess(taskName)
+	}
+}
+
+// runPrettier runs prettier on the given directory.
+func runPrettier(patterns ...string) {
+	taskName := "prettier"
+
+	args := []string{PRETTIER_BIN, "--plugin=" + PRETTIER_SOL_PLUGIN, "--write"}
+	args = append(args, patterns...)
+	cmd := exec.Command(NODE_EXEC_BIN, args...)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		err = fmt.Errorf("prettier failed: %w", err)
+		logDebug(">", strings.Join(cmd.Args, " "))
+		logDebug(out.String())
+		logTaskFail(taskName, err)
+		return
+	}
+
+	if viper.GetBool("verbose") {
+		logTaskSuccess(taskName, strings.Join(cmd.Args, " "))
+	} else {
+		logTaskSuccess(taskName)
+	}
 }
 
 /* CLI */

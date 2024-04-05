@@ -32,6 +32,6 @@ abstract contract Entrypoint is IActionExecutor {
             revert("Entrypoint: Invalid action ID");
         }
     }
-
+    
     function move(ActionData_Move memory action) public virtual;
 }
