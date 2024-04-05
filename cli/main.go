@@ -370,7 +370,7 @@ func runDatamod(outDir, tables, pkg string, experimental bool) {
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("concrete datamod failed: %w", err)
 		logTaskFail(taskName, nil)
-		logDebug(">", strings.Join(cmd.Args, " "))
+		logDebug(strings.Join(cmd.Args, " "))
 		logDebug(out.String())
 		logFatal(err)
 		return
@@ -420,7 +420,7 @@ func runGofmt(dirs ...string) {
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("gofmt failed: %w", err)
-		logDebug(">", strings.Join(cmd.Args, " "))
+		logDebug(strings.Join(cmd.Args, " "))
 		logDebug(out.String())
 		logTaskFail(taskName, err)
 		return
@@ -445,7 +445,7 @@ func runPrettier(patterns ...string) {
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("prettier failed: %w", err)
-		logDebug(">", strings.Join(cmd.Args, " "))
+		logDebug(strings.Join(cmd.Args, " "))
 		logDebug(out.String())
 		logTaskFail(taskName, err)
 		return
