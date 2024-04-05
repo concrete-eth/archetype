@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// KeyValueStore is an in-memory key-value store.
 type MemoryKeyValueStore struct {
 	data map[common.Hash]common.Hash
 }
@@ -47,6 +48,7 @@ func (kv *MemoryKeyValueStore) ForEach(forEach func(key, value common.Hash) bool
 	}
 }
 
+// HashedMemoryKeyValueStore is an in-memory key-value store that hashes keys before storing them.
 type HashedMemoryKeyValueStore struct {
 	data map[common.Hash]common.Hash
 }
@@ -109,7 +111,7 @@ func (kv *HashedMemoryKeyValueStore) ForEach(forEach func(keyHash, value common.
 	}
 }
 
-// Implements a cached key-value store that caches all reads.
+// CachedKeyValueStore is a key-value that all reads from the underlying store.
 type CachedKeyValueStore struct {
 	kv    lib.KeyValueStore
 	cache map[common.Hash]common.Hash
@@ -140,7 +142,7 @@ func (c *CachedKeyValueStore) Get(key common.Hash) common.Hash {
 	return v
 }
 
-// Implements a staged key-value store that allows for atomic commits and rollbacks.
+// StagedKeyValueStore is a key-value store that stages writes to the underlying store until commit is called.
 type StagedKeyValueStore struct {
 	kv     lib.KeyValueStore
 	staged map[common.Hash]common.Hash
@@ -148,7 +150,6 @@ type StagedKeyValueStore struct {
 
 var _ lib.KeyValueStore = (*StagedKeyValueStore)(nil)
 
-// Creates a new staged key-value store.
 func NewStagedKeyValueStore(kv lib.KeyValueStore) *StagedKeyValueStore {
 	return &StagedKeyValueStore{
 		kv:     kv,

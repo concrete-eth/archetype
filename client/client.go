@@ -75,8 +75,8 @@ func (c *Client) error(msg string, ctx ...interface{}) {
 	log.Error(msg, ctx...)
 }
 
-// Applies the given action batch to the core and returns whether a tick action was included in the batch
-// If a tick action is included, it must be the first action in the batch
+// applyBatch Applies the given action batch to the core and returns whether a tick action was included in the batch.
+// If a tick action is included, it must be the first action in the batch.
 func (c *Client) applyBatch(batch archtypes.ActionBatch) (bool, error) {
 	if c.Core.BlockNumber() != batch.BlockNumber {
 		return false, ErrBlockNumberMismatch
@@ -96,7 +96,7 @@ func (c *Client) applyBatch(batch archtypes.ActionBatch) (bool, error) {
 	return tickActionInBatch, nil
 }
 
-// Applies the given action batch to the core, commits the changes to the key-value store, and updates the core block number
+// applyBatchAndCommit applies the given action batch to the core, commits the changes to the key-value store, and updates the core block number.
 func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) {
 	tickActionInBatch, err := c.applyBatch(batch)
 	if err != nil {
@@ -108,7 +108,7 @@ func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) 
 	return tickActionInBatch, nil
 }
 
-// Runs the given function and then reverts all the changes to the key-value store
+// Simulate runs the given function and then reverts all the changes to the key-value store.
 func (c *Client) Simulate(f func(core Core)) {
 	// Put another stage on top of the current key-value store that will never be committed
 	// and will be discarded after the function is executed
