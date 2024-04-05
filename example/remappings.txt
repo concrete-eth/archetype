@@ -1,2 +1,2 @@
-openzeppelin/=./lib/openzeppelin-contracts/contracts/
-arch/=./archetype-sol/src/
+openzeppelin/=lib/openzeppelin-contracts/contracts/
+arch/=lib/archetype-sol/src/
