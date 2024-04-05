@@ -59,14 +59,18 @@ var TableIdsByMethodName = map[string]uint8{
     {{- end }}
 }
 
+{{ if .Experimental }}
 type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex int, value []byte)
+{{ end }}
 
 type State struct {
 	datastore  lib.Datastore
     {{- range .Schemas }}
     {{_lowerFirstChar .Name}} *datamod.{{.Name}}{{if $.Experimental}}WithHooks{{ end }}
     {{- end }}
+    {{- if .Experimental }}
 	OnSetTable TableUpdateHandler
+    {{- end }}
 }
 
 func NewState(datastore lib.Datastore) *State {
@@ -75,9 +79,11 @@ func NewState(datastore lib.Datastore) *State {
 	}
 }
 
+{{ if .Experimental }}
 func (s *State) SetTableUpdateHandler(handler TableUpdateHandler) {
 	s.OnSetTable = handler
 }
+{{ end }}
 {{ range .Schemas }}
 {{ if $.Experimental }}
 func (s *State) {{.Name}}() *datamod.{{.Name}}WithHooks {

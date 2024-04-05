@@ -59,23 +59,16 @@ var TableIdsByMethodName = map[string]uint8{
 	"getPlayersRow": TableId_Players,
 }
 
-type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex int, value []byte)
-
 type State struct {
-	datastore  lib.Datastore
-	config     *datamod.Config
-	players    *datamod.Players
-	OnSetTable TableUpdateHandler
+	datastore lib.Datastore
+	config    *datamod.Config
+	players   *datamod.Players
 }
 
 func NewState(datastore lib.Datastore) *State {
 	return &State{
 		datastore: datastore,
 	}
-}
-
-func (s *State) SetTableUpdateHandler(handler TableUpdateHandler) {
-	s.OnSetTable = handler
 }
 
 func (s *State) Config() *datamod.Config {
