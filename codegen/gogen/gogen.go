@@ -36,7 +36,7 @@ func (c Config) Validate() error {
 
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
-	data["Package"] = "model"
+	data["Package"] = config.Package
 	data["Experimental"] = config.Experimental
 	outPath := filepath.Join(config.Out, "actions.go")
 	return codegen.ExecuteTemplate(actionsTpl, config.Actions, outPath, data, nil)
@@ -44,7 +44,7 @@ func GenerateActions(config Config) error {
 
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
-	data["Package"] = "model"
+	data["Package"] = config.Package
 	data["Imports"] = []string{config.Datamod}
 	data["Experimental"] = config.Experimental
 	outPath := filepath.Join(config.Out, "tables.go")

@@ -77,11 +77,12 @@ func logFatal(err error) {
 
 /* Environment utils */
 
-func ensureDir(dirName string) error {
-	info, err := os.Stat(dirName)
+// ensureDir creates a directory if it does not exist.
+func ensureDir(dir string) error {
+	info, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err := os.MkdirAll(dirName, 0755)
+			err := os.MkdirAll(dir, 0755)
 			if err != nil {
 				return err
 			}
@@ -89,12 +90,12 @@ func ensureDir(dirName string) error {
 			return err
 		}
 	} else if !info.IsDir() {
-		return fmt.Errorf("path exists but is not a directory: %s", dirName)
+		return fmt.Errorf("path exists but is not a directory: %s", dir)
 	}
 	return nil
 }
 
-// Check if a command is installed
+// isInstalled checks if a command is installed by attempting to run it with a help flag (-h, --help, help).
 func isInstalled(cmd string) bool {
 	// Attempt to run the command with a help flag
 	for _, flag := range []string{"-h", "--help", "help"} {
@@ -106,6 +107,7 @@ func isInstalled(cmd string) bool {
 	return false
 }
 
+// isInGoModule checks if the current directory is in a go module.
 func isInGoModule() bool {
 	cmd := exec.Command(GO_BIN, "env", "GOMOD")
 	var out bytes.Buffer
@@ -117,6 +119,7 @@ func isInGoModule() bool {
 	return gomod != "" && gomod != "/dev/null"
 }
 
+// getGoModule returns the name of the go module in the current directory.
 func getGoModule() (string, error) {
 	if !isInGoModule() {
 		return "", fmt.Errorf("not in a go module")
@@ -130,8 +133,23 @@ func getGoModule() (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+// getGoModulePath returns the root path of the go module in the current directory.
+func getGoModulePath() (string, error) {
+	if !isInGoModule() {
+		return "", fmt.Errorf("not in a go module")
+	}
+	cmd := exec.Command(GO_BIN, "list", "-m", "-f", "{{.Dir}}")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 /* Verbose */
 
+// loadSchemaFromFile loads a table schema from a json file.
 func loadSchemaFromFile(filePath string) ([]datamod.TableSchema, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -140,6 +158,7 @@ func loadSchemaFromFile(filePath string) ([]datamod.TableSchema, error) {
 	return datamod.UnmarshalTableSchemas(data, false)
 }
 
+// printSchemaDescription prints a description of a table schema.
 func printSchemaDescription(title string, schema []datamod.TableSchema) {
 	var (
 		description = codegen.GenerateSchemaDescriptionString(schema)
@@ -153,17 +172,79 @@ func printSchemaDescription(title string, schema []datamod.TableSchema) {
 
 /* Codegen */
 
-func getConfig(cmd *cobra.Command) codegen.Config {
-	return codegen.Config{
-		Actions: viper.GetString("actions"),
-		Tables:  viper.GetString("tables"),
-		Out:     viper.GetString("out"),
+// getGogenConfig returns a gogen config from viper settings.
+func getGogenConfig() (gogen.Config, error) {
+	var (
+		actions = viper.GetString("actions")
+		tables  = viper.GetString("tables")
+		goOut   = viper.GetString("go-out")
+		pkg     = viper.GetString("pkg")
+		exp     = viper.GetBool("more-experimental")
+	)
+
+	var err error
+
+	gogenOut := filepath.Join(goOut, "archmod") // <go-out>/archmod
+	datamodOut := getDatamodOut()               // <go-out>/datamod
+	datamodOutAbs, err := filepath.Abs(datamodOut)
+	if err != nil {
+		return gogen.Config{}, err
 	}
+
+	// Craft the import path for datamod e.g. github.com/user/repo/codegen/datamod
+	var modName, modPath, relDatamodPath string
+	if modName, err = getGoModule(); err != nil {
+		return gogen.Config{}, err
+	}
+	if modPath, err = getGoModulePath(); err != nil {
+		return gogen.Config{}, err
+	}
+	if relDatamodPath, err = filepath.Rel(modPath, datamodOutAbs); err != nil {
+		return gogen.Config{}, err
+	}
+	datamodPkg := filepath.Join(modName, relDatamodPath)
+
+	config := gogen.Config{
+		Config: codegen.Config{
+			Actions: actions,
+			Tables:  tables,
+			Out:     gogenOut,
+		},
+		Package:      pkg,
+		Datamod:      datamodPkg,
+		Experimental: exp,
+	}
+
+	return config, nil
 }
 
+// getDatamodOut returns the output directory for the datamod package.
+func getDatamodOut() string {
+	goOut := viper.GetString("go-out")
+	datamodOut := filepath.Join(goOut, "datamod") // <go-out>/datamod
+	return datamodOut
+}
+
+// getSolgenConfig returns a solgen config from viper settings.
+func getSolgenConfig() solgen.Config {
+	var (
+		actions = viper.GetString("actions")
+		tables  = viper.GetString("tables")
+		solOut  = viper.GetString("sol-out")
+	)
+	config := solgen.Config{
+		Config: codegen.Config{
+			Actions: actions,
+			Tables:  tables,
+			Out:     solOut,
+		},
+	}
+	return config
+}
+
+// runCodegen runs the full code generation process.
 func runCodegen(cmd *cobra.Command, args []string) {
 	startTime := time.Now()
-
 	verbose := viper.GetBool("verbose")
 
 	if verbose {
@@ -176,22 +257,34 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		logDebug(string(settingsToml))
 	}
 
-	// Get basic config
-	config := getConfig(cmd)
-	if err := ensureDir(config.Out); err != nil {
+	// Get and validate codegen configs
+	// Go codegen config
+	gogenConfig, err := getGogenConfig()
+	if err != nil {
 		logFatal(err)
 	}
-	if err := config.Validate(); err != nil {
+	if err := ensureDir(gogenConfig.Out); err != nil {
+		logFatal(err)
+	}
+	if err := gogenConfig.Validate(); err != nil {
+		logFatal(err)
+	}
+	// Solidity codegen config
+	solgenConfig := getSolgenConfig()
+	if err := ensureDir(solgenConfig.Out); err != nil {
+		logFatal(err)
+	}
+	if err := solgenConfig.Validate(); err != nil {
 		logFatal(err)
 	}
 
 	if verbose {
 		// Print schema descriptions
-		actionsSchema, err := loadSchemaFromFile(config.Actions)
+		actionsSchema, err := loadSchemaFromFile(gogenConfig.Actions)
 		if err != nil {
 			logFatal(err)
 		}
-		tablesSchema, err := loadSchemaFromFile(config.Tables)
+		tablesSchema, err := loadSchemaFromFile(gogenConfig.Tables)
 		if err != nil {
 			logFatal(err)
 		}
@@ -208,101 +301,39 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	if !isInGoModule() {
 		logFatal(fmt.Errorf("not in a go module"))
 	}
-
-	// Run concrete datamod
-	if isInstalled(CONCRETE_BIN) {
-		var (
-			_outDir = filepath.Join(config.Out, "datamod")
-			_tables = config.Tables
-			_pkg    = "datamod" // todo
-			_exp    = viper.GetBool("more-experimental")
-		)
-		runConcrete(_outDir, _tables, _pkg, _exp)
-	} else {
+	if !isInstalled(CONCRETE_BIN) {
 		logFatal(fmt.Errorf("concrete cli is not installed (concrete_bin=%s)", CONCRETE_BIN))
 	}
 
+	// Run concrete datamod
+	datamodPkg := "datamod"
+	datamodOut := getDatamodOut()
+	if err := ensureDir(datamodOut); err != nil {
+		logFatal(err)
+	}
+	runDatamod(datamodOut, gogenConfig.Tables, datamodPkg, gogenConfig.Experimental)
+
 	// Run go and solidity codegen
-	runGogen(cmd, args)
-	runSolgen(cmd, args)
+	runGogen(gogenConfig)
+	runSolgen(solgenConfig)
 
 	// Run gofmt
 	if isInstalled(GOFMT_BIN) {
-		runGofmt(config.Out)
+		runGofmt(datamodOut, gogenConfig.Out)
 	} else {
 		logWarning(fmt.Sprintf("gofmt is not installed (gofmt_bin=%s). Install it to format the generated go code.", GOFMT_BIN))
 	}
 
 	// Done
 	logInfo("\nCode generation completed successfully.")
-	logInfo("Files written to:", config.Out)
+	logInfo("Files written to: " + gogenConfig.Out + ", " + solgenConfig.Out)
 	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
 }
 
-func runGogen(cmd *cobra.Command, args []string) (err error) {
-	taskName := "Go"
-	defer func() {
-		if err == nil {
-			logTaskSuccess(taskName)
-		} else {
-			logTaskFail(taskName, err)
-			logFatal(err)
-		}
-	}()
-
-	codegenConfig := getConfig(cmd)
-	rootOutDir := codegenConfig.Out
-	codegenConfig.Out = filepath.Join(codegenConfig.Out, "mod")
-	if err := ensureDir(codegenConfig.Out); err != nil {
-		return err
-	}
-
-	var modName, relDatamodPath string
-	if modName, err = getGoModule(); err != nil {
-		return err
-	}
-	if relDatamodPath, err = filepath.Rel(".", filepath.Join(rootOutDir, "datamod")); err != nil {
-		return err
-	}
-	datamodPkg := filepath.Join(modName, relDatamodPath)
-
-	config := gogen.Config{
-		Config:       codegenConfig,
-		Package:      viper.GetString("pkg"),
-		Datamod:      datamodPkg,
-		Experimental: viper.GetBool("more-experimental"),
-	}
-	if err := gogen.Codegen(config); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func runSolgen(cmd *cobra.Command, args []string) {
-	taskName := "Solidity"
-	codegenConfig := getConfig(cmd)
-	codegenConfig.Out = filepath.Join(codegenConfig.Out, "sol")
-	if err := ensureDir(codegenConfig.Out); err != nil {
-		logTaskFail(taskName, nil)
-		logFatal(err)
-	}
-	config := solgen.Config{
-		Config: codegenConfig,
-	}
-	if err := solgen.Codegen(config); err != nil {
-		logTaskFail(taskName, nil)
-		logFatal(err)
-	}
-	logTaskSuccess(taskName)
-}
-
-func runConcrete(outDir, tables, pkg string, experimental bool) {
+// Run concrete datamod.
+// Datamod generates type safe go wrappers for datastore structures from a JSON specification.
+func runDatamod(outDir, tables, pkg string, experimental bool) {
 	taskName := "Concrete datamod"
-	if err := ensureDir(outDir); err != nil {
-		logTaskFail(taskName, nil)
-		logFatal(err)
-	}
 
 	cmdArgs := []string{"datamod", tables, "--pkg", pkg, "--out", outDir}
 	if experimental {
@@ -323,9 +354,37 @@ func runConcrete(outDir, tables, pkg string, experimental bool) {
 	logTaskSuccess(taskName)
 }
 
-func runGofmt(dir string) {
+// Run gogen codegen
+// config is assumed to be valid.
+func runGogen(config gogen.Config) {
+	taskName := "Go"
+	if err := gogen.Codegen(config); err != nil {
+		err = fmt.Errorf("gogen failed: %w", err)
+		logTaskFail(taskName, nil)
+		logFatal(err)
+		return
+	}
+	logTaskSuccess(taskName)
+}
+
+// Run solgen codegen
+// config is assumed to be valid
+func runSolgen(config solgen.Config) {
+	taskName := "Solidity"
+	if err := solgen.Codegen(config); err != nil {
+		err = fmt.Errorf("solgen failed: %w", err)
+		logTaskFail(taskName, nil)
+		logFatal(err)
+		return
+	}
+	logTaskSuccess(taskName)
+}
+
+// runGofmt runs gofmt on the given directory.
+func runGofmt(dirs ...string) {
 	taskName := "gofmt"
-	if err := exec.Command(GOFMT_BIN, "-w", dir).Run(); err != nil {
+	args := append([]string{"-w"}, dirs...)
+	if err := exec.Command(GOFMT_BIN, args...).Run(); err != nil {
 		err = fmt.Errorf("gofmt failed: %w", err)
 		logTaskFail(taskName, err)
 		return
@@ -333,7 +392,11 @@ func runGofmt(dir string) {
 	logTaskSuccess(taskName)
 }
 
+/* CLI */
+
+// NewRootCmd creates the root command for the CLI.
 func NewRootCmd() *cobra.Command {
+	// Root command
 	var cfgFile string
 	var rootCmd = &cobra.Command{
 		Use: "archetype",
@@ -343,16 +406,21 @@ func NewRootCmd() *cobra.Command {
 	}
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is ./arch.toml)")
 
+	// Codegen command
 	codegenCmd := &cobra.Command{Use: "codegen", Short: "Generate Golang definitions and Solidity interfaces for Archetype tables and actions from the given JSON specifications", Run: runCodegen}
 
-	codegenCmd.Flags().StringP("out", "o", "./codegen", "output directory")
+	// Codegen flags
+	codegenCmd.Flags().StringP("go-out", "g", "./codegen", "output directory")
+	codegenCmd.Flags().StringP("sol-out", "s", "./codegen/sol", "output directory")
 	codegenCmd.Flags().StringP("tables", "t", "./tables.json", "table schema file")
 	codegenCmd.Flags().StringP("actions", "a", "./actions.json", "action schema file")
-	codegenCmd.Flags().String("pkg", "model", "go package name")
+	codegenCmd.Flags().String("pkg", "archmod", "go package name")
 	codegenCmd.Flags().BoolP("verbose", "v", false, "verbose output")
 	codegenCmd.Flags().Bool("more-experimental", false, "enable experimental features")
 
-	viper.BindPFlag("out", codegenCmd.Flags().Lookup("out"))
+	// Bind flags to viper
+	viper.BindPFlag("go-out", codegenCmd.Flags().Lookup("go-out"))
+	viper.BindPFlag("sol-out", codegenCmd.Flags().Lookup("sol-out"))
 	viper.BindPFlag("tables", codegenCmd.Flags().Lookup("tables"))
 	viper.BindPFlag("actions", codegenCmd.Flags().Lookup("actions"))
 	viper.BindPFlag("pkg", codegenCmd.Flags().Lookup("pkg"))
@@ -364,6 +432,8 @@ func NewRootCmd() *cobra.Command {
 	return rootCmd
 }
 
+// initConfig loads the viper configuration from the given or default file and the environment.
+// See https://github.com/spf13/viper?tab=readme-ov-file#why-viper for precedence order.
 func initConfig(cfgFile string) {
 	// Get config from file
 	if cfgFile != "" {
@@ -381,7 +451,25 @@ func initConfig(cfgFile string) {
 
 	// Read config
 	if err := viper.ReadInConfig(); err == nil {
-		logDebug("Using config file:", viper.ConfigFileUsed())
+		// Log the config file used
+		configFileAbsPath := viper.ConfigFileUsed()
+		wd, err := os.Getwd()
+		if err != nil {
+			logFatal(err)
+		}
+		configFileRelPath, err := filepath.Rel(wd, configFileAbsPath)
+		if err != nil {
+			logFatal(err)
+		}
+		var configFilePathToPrint string
+		if strings.HasPrefix(configFileRelPath, "..") {
+			// If the config file is outside the working directory, print the absolute path
+			configFilePathToPrint = configFileAbsPath
+		} else {
+			// Otherwise, print the relative path
+			configFilePathToPrint = "./" + configFileRelPath
+		}
+		logDebug("Using config file:", configFilePathToPrint)
 		fmt.Println("")
 	} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 		logError(err)
@@ -389,6 +477,7 @@ func initConfig(cfgFile string) {
 	}
 }
 
+// Execute runs the CLI.
 func Execute() {
 	rootCmd := NewRootCmd()
 	if err := rootCmd.Execute(); err != nil {

@@ -1,0 +1,2 @@
+sol-out = "sol/solgen"
+go-out = "gogen"

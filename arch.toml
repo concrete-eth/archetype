@@ -1,6 +1,0 @@
-out = "example/codegen"
-pkg = "model"
-actions = "example/actions.json"
-tables = "example/tables.json"
-verbose = false
-more-experimental = false
