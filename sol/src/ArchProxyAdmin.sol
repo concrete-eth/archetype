@@ -2,7 +2,7 @@
 pragma solidity >=0.8.0;
 
 import {ArchProxy} from "./ArchProxy.sol";
-import {CallUtils} from "./lib/CallUtils.sol";
+import {CallUtils} from "./utils/CallUtils.sol";
 
 contract ArchProxyAdmin {
     ArchProxy public proxy;

@@ -3,8 +3,8 @@ pragma solidity >=0.8.0;
 
 import {ERC1967Utils} from "openzeppelin/proxy/ERC1967/ERC1967Utils.sol";
 
-import {ERC1967PrecompileProxy} from "./lib/ERC1967PrecompileProxy.sol";
-import {CallUtils} from "./lib/CallUtils.sol";
+import {ERC1967PrecompileProxy} from "./utils/ERC1967PrecompileProxy.sol";
+import {CallUtils} from "./utils/CallUtils.sol";
 
 contract ArchProxy is ERC1967PrecompileProxy {
     constructor(
