@@ -12,6 +12,15 @@ type ActionMetadata = struct {
 	Type       reflect.Type
 }
 
+type TableMetadata = struct {
+	Id         uint8
+	Name       string
+	MethodName string
+	Keys       []string
+	Columns    []string
+	Type       reflect.Type
+}
+
 type ActionMap = map[uint8]ActionMetadata
 
 type Action interface{}

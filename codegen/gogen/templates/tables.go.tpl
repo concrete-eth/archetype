@@ -3,10 +3,15 @@
 package {{.Package}}
 
 import (
+    "reflect"
+
     "github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/concrete/lib"
     "github.com/ethereum/go-ethereum/common"
-	{{ range .Imports }}
+
+    archtypes "github.com/concrete-eth/archetype/types"
+	
+    {{ range .Imports }}
 	"{{.}}"
 	{{ end }}
 )
@@ -29,16 +34,12 @@ const (
 )
 {{ end }}
 
-var Tables = map[uint8]struct{
-    Id uint8
-    Name string
-    Keys []string
-    Columns []string
-}{
+var Tables = map[uint8]archtypes.TableMetadata{
     {{- range .Schemas }}
     TableId_{{.Name}}: {
         Id: TableId_{{.Name}},
         Name: "{{.Name}}",
+        MethodName: "get{{.Name}}Row",
         Keys: []string{
             {{- range .Keys }}
             "{{.Name}}",
@@ -49,15 +50,18 @@ var Tables = map[uint8]struct{
             "{{.Name}}",
             {{- end }}
         },
+        Type: reflect.TypeOf(RowData_{{.Name}}{}),
     },
     {{- end }}
 }
 
+/*
 var TableIdsByMethodName = map[string]uint8{
     {{- range .Schemas }}
     "get{{.Name}}Row": TableId_{{.Name}},
     {{- end }}
 }
+ */
 
 {{ if .Experimental }}
 type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex int, value []byte)
@@ -84,6 +88,7 @@ func (s *State) SetTableUpdateHandler(handler TableUpdateHandler) {
 	s.OnSetTable = handler
 }
 {{ end }}
+
 {{ range .Schemas }}
 {{ if $.Experimental }}
 func (s *State) {{.Name}}() *datamod.{{.Name}}WithHooks {
@@ -122,13 +127,20 @@ func (s *State) Get{{.Name}}Row(
     )
 }
 {{ end }}
-{{ range .Schemas }}
+
+{{ range $schema := .Schemas }}
 type RowData_{{.Name}} struct{
     {{- range .Values }}
     {{.PascalCase}} {{.Type.GoType}} `json:"{{.Name}}"`
     {{- end }}
 }
+{{ range .Values }}
+func (row *RowData_{{$schema.Name}}) Get{{.PascalCase}}() {{.Type.GoType}} {
+    return row.{{.PascalCase}}
+}
 {{ end }}
+{{ end }}
+
 func GetData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {
 	switch method.Name {
 	{{- range .Schemas }}

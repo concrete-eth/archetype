@@ -3,9 +3,13 @@
 package archmod
 
 import (
+	"reflect"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/lib"
+
+	archtypes "github.com/concrete-eth/archetype/types"
 
 	"github.com/concrete-eth/archetype/example/gogen/datamod"
 )
@@ -25,24 +29,22 @@ const (
 	TableId_Players
 )
 
-var Tables = map[uint8]struct {
-	Id      uint8
-	Name    string
-	Keys    []string
-	Columns []string
-}{
+var Tables = map[uint8]archtypes.TableMetadata{
 	TableId_Config: {
-		Id:   TableId_Config,
-		Name: "Config",
-		Keys: []string{},
+		Id:         TableId_Config,
+		Name:       "Config",
+		MethodName: "getConfigRow",
+		Keys:       []string{},
 		Columns: []string{
 			"startBlock",
 			"maxPlayers",
 		},
+		Type: reflect.TypeOf(RowData_Config{}),
 	},
 	TableId_Players: {
-		Id:   TableId_Players,
-		Name: "Players",
+		Id:         TableId_Players,
+		Name:       "Players",
+		MethodName: "getPlayersRow",
 		Keys: []string{
 			"playerId",
 		},
@@ -51,13 +53,16 @@ var Tables = map[uint8]struct {
 			"y",
 			"health",
 		},
+		Type: reflect.TypeOf(RowData_Players{}),
 	},
 }
 
+/*
 var TableIdsByMethodName = map[string]uint8{
-	"getConfigRow":  TableId_Config,
-	"getPlayersRow": TableId_Players,
+    "getConfigRow": TableId_Config,
+    "getPlayersRow": TableId_Players,
 }
+*/
 
 type State struct {
 	datastore lib.Datastore
@@ -102,10 +107,30 @@ type RowData_Config struct {
 	MaxPlayers uint8  `json:"maxPlayers"`
 }
 
+func (row *RowData_Config) GetStartBlock() uint64 {
+	return row.StartBlock
+}
+
+func (row *RowData_Config) GetMaxPlayers() uint8 {
+	return row.MaxPlayers
+}
+
 type RowData_Players struct {
 	X      int16 `json:"x"`
 	Y      int16 `json:"y"`
 	Health uint8 `json:"health"`
+}
+
+func (row *RowData_Players) GetX() int16 {
+	return row.X
+}
+
+func (row *RowData_Players) GetY() int16 {
+	return row.Y
+}
+
+func (row *RowData_Players) GetHealth() uint8 {
+	return row.Health
 }
 
 func GetData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {

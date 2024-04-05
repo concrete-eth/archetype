@@ -5,8 +5,8 @@ package {{.Package}}
 import (
     "reflect"
 
-    "github.com/ethereum/go-ethereum/common"
     archtypes "github.com/concrete-eth/archetype/types"
+    "github.com/ethereum/go-ethereum/common"
 
 	{{ range .Imports }}
 	"{{.}}"
