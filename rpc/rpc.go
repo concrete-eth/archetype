@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"math"
 	"math/big"
 	"reflect"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/concrete-eth/archetype/utils"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -377,11 +379,35 @@ type ActionSender struct {
 	actionMap          archtypes.ActionMap
 	actionsAbi         abi.ABI
 	actionIdFromAction func(action interface{}) (uint8, bool)
-	coreAddress        common.Address
 	gasEstimator       ethereum.GasEstimator
+	coreAddress        common.Address
+	from               common.Address
+	nonce              uint64
+	signerFn           bind.SignerFn
+}
 
-	from  common.Address
-	nonce uint64
+func NewActionSender(
+	ethcli EthCli,
+	actionMap archtypes.ActionMap,
+	actionsAbi abi.ABI,
+	actionIdFromAction func(action interface{}) (uint8, bool),
+	gasEstimator ethereum.GasEstimator,
+	coreAddress common.Address,
+	from common.Address,
+	nonce uint64,
+	signerFn bind.SignerFn,
+) *ActionSender {
+	return &ActionSender{
+		ethcli:             ethcli,
+		actionMap:          actionMap,
+		actionsAbi:         actionsAbi,
+		actionIdFromAction: actionIdFromAction,
+		gasEstimator:       gasEstimator,
+		coreAddress:        coreAddress,
+		from:               from,
+		nonce:              nonce,
+		signerFn:           signerFn,
+	}
 }
 
 func (a *ActionSender) encodeAction(action archtypes.Action) (uint8, []byte, error) {
@@ -447,20 +473,33 @@ func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, 
 }
 
 func (a *ActionSender) sendData(data []byte) error {
-	gasFeeCap, gasTipCap, err := getGasPrice(a.ethcli)
-	if err != nil {
-		return err
-	}
+	gasPriceChan := make(chan [2]*big.Int, 1)
+	gasPriceErrChan := make(chan error, 1)
+
+	// Get gas price concurrently
+	go func() {
+		gasFeeCap, gasTipCap, err := getGasPrice(a.ethcli)
+		if err != nil {
+			gasPriceErrChan <- err
+			return
+		}
+		gasPriceChan <- [2]*big.Int{gasFeeCap, gasTipCap}
+	}()
+
+	// Use provisional gas price to estimate gas
+	gasEstGasFeeCap := new(big.Int).SetUint64(math.MaxUint64)
+	gasEstTipCap := common.Big0
 
 	msg := ethereum.CallMsg{
 		From:      a.from,
 		To:        &a.coreAddress,
 		Value:     common.Big0,
-		GasFeeCap: gasFeeCap,
-		GasTipCap: gasTipCap,
+		GasFeeCap: gasEstGasFeeCap,
+		GasTipCap: gasEstTipCap,
 		Data:      data,
 	}
 
+	// Estimate gas
 	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
 	defer cancel()
 	estimatedGas, err := a.gasEstimator.EstimateGas(ctx, msg)
@@ -469,7 +508,21 @@ func (a *ActionSender) sendData(data []byte) error {
 	}
 	gasLimit := estimatedGas + estimatedGas/4
 
-	tx := types.NewTx(&types.DynamicFeeTx{
+	// Wait for gas price response
+	var gasFeeCap, gasTipCap *big.Int
+	select {
+	case err := <-gasPriceErrChan:
+		return err
+	case gasPrices := <-gasPriceChan:
+		gasFeeCap, gasTipCap = gasPrices[0], gasPrices[1]
+	}
+
+	// Set gas price
+	msg.GasFeeCap = gasFeeCap
+	msg.GasTipCap = gasTipCap
+
+	// Send transaction
+	txData := &types.DynamicFeeTx{
 		Nonce:     a.nonce,
 		GasTipCap: gasTipCap,
 		GasFeeCap: gasFeeCap,
@@ -477,49 +530,67 @@ func (a *ActionSender) sendData(data []byte) error {
 		To:        &a.coreAddress,
 		Value:     common.Big0,
 		Data:      data,
-	})
+	}
+	err = a.signAndSend(txData)
 
-	// Sign transaction
-	// ...
-
-	// Send transaction
-	ctx, cancel = context.WithTimeout(context.Background(), StandardTimeout)
-	defer cancel()
-	err = a.ethcli.SendTransaction(ctx, tx)
-	if err != nil {
-		// Handle nonce too low error
-		return err
+	// Retry if nonce too low or too high
+	if err.Error() == "nonce too low" || err.Error() == "nonce too high" {
+		a.nonce, err = getPendingNonce(a.ethcli, a.from)
+		if err != nil {
+			return err
+		}
+		txData.Nonce = a.nonce
+		err = a.signAndSend(txData)
 	}
 
 	// Increment nonce
 	a.nonce++
 
-	return nil
+	return err
 }
 
-func (s *ActionSender) SendAction(action archtypes.Action) error {
-	data, err := s.packActionCall(action)
+func (a *ActionSender) signAndSend(txData types.TxData) error {
+	tx := types.NewTx(txData)
+
+	// Sign transaction
+	signedTx, err := a.signerFn(a.from, tx)
 	if err != nil {
 		return err
 	}
-	return s.sendData(data)
+
+	// Send transaction
+	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	if err := a.ethcli.SendTransaction(ctx, signedTx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (s *ActionSender) SendActions(actionBatch []archtypes.Action) error {
+func (a *ActionSender) SendAction(action archtypes.Action) error {
+	data, err := a.packActionCall(action)
+	if err != nil {
+		return err
+	}
+	return a.sendData(data)
+}
+
+func (a *ActionSender) SendActions(actionBatch []archtypes.Action) error {
 	if len(actionBatch) == 0 {
 		return nil
 	} else if len(actionBatch) == 1 {
-		return s.SendAction(actionBatch[0])
+		return a.SendAction(actionBatch[0])
 	} else {
-		data, err := s.packMultiActionCall(actionBatch)
+		data, err := a.packMultiActionCall(actionBatch)
 		if err != nil {
 			return err
 		}
-		return s.sendData(data)
+		return a.sendData(data)
 	}
 }
 
-func (s *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action) (<-chan error, func()) {
+func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
 	go func() {
@@ -528,7 +599,7 @@ func (s *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action
 			case <-stopChan:
 				return
 			case actions := <-actionsChan:
-				if err := s.SendActions(actions); err != nil {
+				if err := a.SendActions(actions); err != nil {
 					select {
 					case errChan <- err:
 					default:
