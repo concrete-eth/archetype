@@ -42,7 +42,15 @@ type ActionBatchSubscription struct {
 	unsubscribed    bool
 }
 
-func NewActionBatchSubscription(ethcli EthCli, actionMap archtypes.ActionMap, actionsAbi abi.ABI, coreAddress common.Address, startingBlockNumber uint64, actionBatchesChan chan<- archtypes.ActionBatch) *ActionBatchSubscription {
+// SubscribeActionBatches subscribes to action batches emitted by the core contract at coreAddress.
+func SubscribeActionBatches(
+	ethcli EthCli,
+	actionMap archtypes.ActionMap,
+	actionsAbi abi.ABI,
+	coreAddress common.Address,
+	startingBlockNumber uint64,
+	actionBatchesChan chan<- archtypes.ActionBatch,
+) *ActionBatchSubscription {
 	sub := &ActionBatchSubscription{
 		ethcli:          ethcli,
 		actionMap:       actionMap,
@@ -50,9 +58,9 @@ func NewActionBatchSubscription(ethcli EthCli, actionMap archtypes.ActionMap, ac
 		coreAddress:     coreAddress,
 		actionBatchChan: actionBatchesChan,
 		unsubChan:       make(chan struct{}),
-		errChan:         make(chan error),
+		errChan:         make(chan error, 1),
 	}
-	go sub.run(startingBlockNumber)
+	go sub.runSubscription(startingBlockNumber)
 	return sub
 }
 
@@ -89,6 +97,13 @@ func (s *ActionBatchSubscription) sendErr(err error) {
 	s.tryCloseErr()
 }
 
+func (s *ActionBatchSubscription) runSubscription(startingBlock uint64) {
+	if _, err := s.sync(startingBlock); err != nil {
+		s.sendErr(err)
+		return
+	}
+}
+
 func (s *ActionBatchSubscription) getHeadBlockNumber() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
 	defer cancel()
@@ -107,15 +122,9 @@ func (s *ActionBatchSubscription) getLogs(fromBlock, toBlock uint64) ([]types.Lo
 	return s.ethcli.FilterLogs(ctx, query)
 }
 
-func (s *ActionBatchSubscription) run(startingBlock uint64) {
-	defer s.tryCloseUnsub()
-	defer s.tryCloseErr()
-	if _, err := s.sync(startingBlock); err != nil {
-		s.sendErr(err)
-		return
-	}
-}
-
+// sync sends an action batch for every block from startingBlock to the head block.
+// When the head block is reached, a new batch is sent for every new block.
+// sync will only return when the subscription is unsubscribed or an error occurs.
 func (s *ActionBatchSubscription) sync(startingBlock uint64) (uint64, error) {
 	var oldestUnsyncedBN uint64
 	var err error
@@ -182,46 +191,50 @@ func (s *ActionBatchSubscription) syncAtHead(startingBlock uint64) (uint64, erro
 	}
 	defer headersSub.Unsubscribe()
 
-	for header := range headerChan {
-		if s.hasUnsubscribed() {
-			return oldestUnsyncedBN, nil
-		}
-		if header.Number.Uint64() <= oldestUnsyncedBN {
-			continue
-		}
-		// Fetch logs from oldestUnsyncedBN to head
-		logs, err := s.getLogs(oldestUnsyncedBN, header.Number.Uint64())
-		if err != nil {
+	for {
+		select {
+		case err := <-headersSub.Err():
 			return oldestUnsyncedBN, err
-		}
-		// Process logs
-		if oldestUnsyncedBN, err = s.processLogs(logs, oldestUnsyncedBN, header.Number.Uint64()); err != nil {
-			return oldestUnsyncedBN, err
+		case header := <-headerChan:
+			if s.hasUnsubscribed() {
+				return oldestUnsyncedBN, nil
+			}
+			if header.Number.Uint64() < oldestUnsyncedBN {
+				continue
+			}
+			// Fetch logs from oldestUnsyncedBN to head
+			logs, err := s.getLogs(oldestUnsyncedBN, header.Number.Uint64())
+			if err != nil {
+				return oldestUnsyncedBN, err
+			}
+			// Process logs
+			if oldestUnsyncedBN, err = s.processLogs(logs, oldestUnsyncedBN, header.Number.Uint64()); err != nil {
+				return oldestUnsyncedBN, err
+			}
 		}
 	}
-	return oldestUnsyncedBN, nil
 }
 
 func (s *ActionBatchSubscription) processLogs(logs []types.Log, from, to uint64) (uint64, error) {
 	oldestUnsyncedBN := from
 	logBatch := make([]types.Log, 0)
 	for _, log := range logs {
-		if log.BlockNumber > oldestUnsyncedBN {
-			for oldestUnsyncedBN < log.BlockNumber {
-				if err := s.sendLogBatch(oldestUnsyncedBN, logBatch); err != nil {
-					return oldestUnsyncedBN, err
-				}
-				logBatch = make([]types.Log, 0)
-				oldestUnsyncedBN++
-			}
+		for oldestUnsyncedBN < log.BlockNumber {
 			if s.hasUnsubscribed() {
 				return oldestUnsyncedBN, nil
 			}
+			if err := s.sendLogBatch(oldestUnsyncedBN, logBatch); err != nil {
+				return oldestUnsyncedBN, err
+			}
+			logBatch = make([]types.Log, 0)
+			oldestUnsyncedBN++
 		}
 		logBatch = append(logBatch, log)
 	}
 	for oldestUnsyncedBN <= to {
-		s.sendLogBatch(oldestUnsyncedBN, logBatch)
+		if err := s.sendLogBatch(oldestUnsyncedBN, logBatch); err != nil {
+			return oldestUnsyncedBN, err
+		}
 		logBatch = make([]types.Log, 0)
 		oldestUnsyncedBN++
 	}
