@@ -16,7 +16,7 @@ import (
 
 type testCore struct {
 	kv          lib.KeyValueStore
-	blockNumber BlockNumber
+	blockNumber uint64
 	tickIndex   uint
 }
 
@@ -65,11 +65,11 @@ func (c *testCore) ExecuteAction(action archtypes.Action) error {
 	return nil
 }
 
-func (c *testCore) SetBlockNumber(blockNumber BlockNumber) {
+func (c *testCore) SetBlockNumber(blockNumber uint64) {
 	c.blockNumber = blockNumber
 }
 
-func (c *testCore) BlockNumber() BlockNumber {
+func (c *testCore) BlockNumber() uint64 {
 	return c.blockNumber
 }
 
@@ -101,12 +101,12 @@ func (c *testCore) InBlockTickIndex() uint {
 
 func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.ActionBatch, chan []archtypes.Action) {
 	var (
-		core              = &testCore{}
-		kv                = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan = make(chan archtypes.ActionBatch)
-		actionOutChan     = make(chan []archtypes.Action)
-		blockTime         = 10 * time.Millisecond
-		blockNumber       = archtypes.NewBlockNumber(0)
+		core                     = &testCore{}
+		kv                       = kvstore.NewMemoryKeyValueStore()
+		actionBatchInChan        = make(chan archtypes.ActionBatch)
+		actionOutChan            = make(chan []archtypes.Action)
+		blockTime                = 10 * time.Millisecond
+		blockNumber       uint64 = 0
 	)
 	client, err := New(core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
 	if err != nil {
@@ -167,7 +167,7 @@ var testData = []struct {
 }{
 	{
 		archtypes.ActionBatch{
-			BlockNumber: archtypes.NewBlockNumber(0),
+			BlockNumber: 0,
 			Actions: []archtypes.Action{
 				&archtypes.CanonicalTickAction{},
 				&testAction{},
@@ -178,7 +178,7 @@ var testData = []struct {
 	},
 	{
 		archtypes.ActionBatch{
-			BlockNumber: archtypes.NewBlockNumber(1),
+			BlockNumber: 1,
 			Actions: []archtypes.Action{
 				&archtypes.CanonicalTickAction{},
 			},
@@ -188,7 +188,7 @@ var testData = []struct {
 	},
 	{
 		archtypes.ActionBatch{
-			BlockNumber: archtypes.NewBlockNumber(2),
+			BlockNumber: 2,
 			Actions: []archtypes.Action{
 				&testAction{},
 			},
@@ -198,7 +198,7 @@ var testData = []struct {
 	},
 	{
 		archtypes.ActionBatch{
-			BlockNumber: archtypes.NewBlockNumber(3),
+			BlockNumber: 3,
 			Actions:     []archtypes.Action{},
 		},
 		false,
@@ -210,7 +210,7 @@ var testData = []struct {
 
 func init() {
 	for i, data := range testData {
-		if data.batch.BlockNumber != archtypes.NewBlockNumber(uint64(i)) {
+		if data.batch.BlockNumber != uint64(i) {
 			panic("unexpected block number")
 		}
 	}
@@ -228,7 +228,7 @@ func TestSync(t *testing.T) {
 	if tickActionInBatch {
 		t.Fatal("expected no tick action")
 	}
-	if client.Core.BlockNumber().Uint64() != 0 {
+	if client.Core.BlockNumber() != 0 {
 		t.Fatal("unexpected block number")
 	}
 	if client.Core.(*testCore).getVal() != 0 {
@@ -244,7 +244,7 @@ func TestSync(t *testing.T) {
 		if tickActionInBatch != actionBatch.expectedTickActionInBatch {
 			t.Fatal("unexpected tick action")
 		}
-		if client.Core.BlockNumber().Uint64() != actionBatch.batch.BlockNumber.AddUint64(1).Uint64() {
+		if client.Core.BlockNumber() != actionBatch.batch.BlockNumber+1 {
 			t.Fatal("unexpected block number")
 		}
 		if client.Core.(*testCore).getVal() != actionBatch.expectedCoreVal {
@@ -256,7 +256,7 @@ func TestSync(t *testing.T) {
 func TestSyncUntil(t *testing.T) {
 	client, _, actionBatchInChan, _ := newTestClient(t)
 
-	err := client.SyncUntil(archtypes.NewBlockNumber(0))
+	err := client.SyncUntil(0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,11 +268,11 @@ func TestSyncUntil(t *testing.T) {
 	}()
 
 	for _, blockToSyncTo := range []uint64{2, 4} {
-		err := client.SyncUntil(archtypes.NewBlockNumber(blockToSyncTo))
+		err := client.SyncUntil(blockToSyncTo)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if client.Core.BlockNumber().Uint64() != blockToSyncTo {
+		if client.Core.BlockNumber() != blockToSyncTo {
 			t.Fatal("unexpected block number")
 		}
 		if client.Core.(*testCore).getVal() != testData[blockToSyncTo-1].expectedCoreVal {
@@ -317,10 +317,10 @@ func TestInterpolatedSync(t *testing.T) {
 			t.Fatal(err)
 		}
 		var expectedCoreVal uint64
-		if client.Core.BlockNumber().Uint64() == 0 {
+		if client.Core.BlockNumber() == 0 {
 			expectedCoreVal = 0
 		} else {
-			expectedCoreVal = testData[client.Core.BlockNumber().Uint64()-1].expectedCoreVal
+			expectedCoreVal = testData[client.Core.BlockNumber()-1].expectedCoreVal
 		}
 		if !didReceiveNewBatch {
 			// Adjust expectedCoreVal for interpolated ticks
@@ -331,7 +331,7 @@ func TestInterpolatedSync(t *testing.T) {
 		if client.Core.(*testCore).getVal() != expectedCoreVal {
 			t.Fatal("unexpected value")
 		}
-		if int(client.Core.BlockNumber().Uint64()) >= len(testData) {
+		if int(client.Core.BlockNumber()) >= len(testData) {
 			break
 		}
 	}

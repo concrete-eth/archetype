@@ -42,7 +42,7 @@ type ActionBatchSubscription struct {
 	unsubscribed    bool
 }
 
-func NewActionBatchSubscription(ethcli EthCli, actionMap archtypes.ActionMap, actionsAbi abi.ABI, coreAddress common.Address, startingBlockNumber archtypes.BlockNumber, actionBatchesChan chan<- archtypes.ActionBatch) *ActionBatchSubscription {
+func NewActionBatchSubscription(ethcli EthCli, actionMap archtypes.ActionMap, actionsAbi abi.ABI, coreAddress common.Address, startingBlockNumber uint64, actionBatchesChan chan<- archtypes.ActionBatch) *ActionBatchSubscription {
 	sub := &ActionBatchSubscription{
 		ethcli:          ethcli,
 		actionMap:       actionMap,
@@ -89,14 +89,10 @@ func (s *ActionBatchSubscription) sendErr(err error) {
 	s.tryCloseErr()
 }
 
-func (s *ActionBatchSubscription) getHeadBlockNumber() (archtypes.BlockNumber, error) {
+func (s *ActionBatchSubscription) getHeadBlockNumber() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
 	defer cancel()
-	bn, err := s.ethcli.BlockNumber(ctx)
-	if err != nil {
-		return archtypes.NewBlockNumber(0), err
-	}
-	return archtypes.NewBlockNumber(bn), nil
+	return s.ethcli.BlockNumber(ctx)
 }
 
 func (s *ActionBatchSubscription) getLogs(fromBlock, toBlock uint64) ([]types.Log, error) {
@@ -111,7 +107,7 @@ func (s *ActionBatchSubscription) getLogs(fromBlock, toBlock uint64) ([]types.Lo
 	return s.ethcli.FilterLogs(ctx, query)
 }
 
-func (s *ActionBatchSubscription) run(startingBlock archtypes.BlockNumber) {
+func (s *ActionBatchSubscription) run(startingBlock uint64) {
 	defer s.tryCloseUnsub()
 	defer s.tryCloseErr()
 	if _, err := s.sync(startingBlock); err != nil {
@@ -120,9 +116,9 @@ func (s *ActionBatchSubscription) run(startingBlock archtypes.BlockNumber) {
 	}
 }
 
-func (s *ActionBatchSubscription) sync(startingBlock archtypes.BlockNumber) (archtypes.BlockNumber, error) {
+func (s *ActionBatchSubscription) sync(startingBlock uint64) (uint64, error) {
+	var oldestUnsyncedBN uint64
 	var err error
-	var oldestUnsyncedBN archtypes.BlockNumber
 	if oldestUnsyncedBN, err = s.syncToHead(startingBlock); err != nil {
 		return oldestUnsyncedBN, err
 	}
@@ -132,21 +128,19 @@ func (s *ActionBatchSubscription) sync(startingBlock archtypes.BlockNumber) (arc
 	return oldestUnsyncedBN, nil
 }
 
-func (s *ActionBatchSubscription) syncToHead(startingBlock archtypes.BlockNumber) (archtypes.BlockNumber, error) {
+func (s *ActionBatchSubscription) syncToHead(startingBlock uint64) (uint64, error) {
 	if s.hasUnsubscribed() {
 		return startingBlock, nil
 	}
-	_headBN, err := s.getHeadBlockNumber()
+	oldestUnsyncedBN := startingBlock
+	headBN, err := s.getHeadBlockNumber()
 	if err != nil {
 		return startingBlock, err
 	}
-	_oldestUnsyncedBN := startingBlock
-	headBN := _headBN.Uint64()
-	oldestUnsyncedBN := _oldestUnsyncedBN.Uint64()
 
 	for oldestUnsyncedBN < headBN {
 		if s.hasUnsubscribed() {
-			return archtypes.NewBlockNumber(oldestUnsyncedBN), nil
+			return oldestUnsyncedBN, nil
 		}
 		var fromBN, toBN uint64
 		{
@@ -155,44 +149,42 @@ func (s *ActionBatchSubscription) syncToHead(startingBlock archtypes.BlockNumber
 			fromBN = oldestUnsyncedBN
 			toBN = oldestUnsyncedBN + BlockQueryLimit
 			if toBN > headBN {
-				_headBN, err := s.getHeadBlockNumber()
+				headBN, err := s.getHeadBlockNumber()
 				if err != nil {
-					return archtypes.NewBlockNumber(oldestUnsyncedBN), err
+					return oldestUnsyncedBN, err
 				}
-				headBN = _headBN.Uint64()
 				toBN = utils.Min(headBN, toBN)
 			}
 		}
 		// Fetch logs from fromBN to toBN
 		logs, err := s.getLogs(fromBN, toBN)
 		if err != nil {
-			return archtypes.NewBlockNumber(oldestUnsyncedBN), err
+			return oldestUnsyncedBN, err
 		}
 		// Process logs
 		if oldestUnsyncedBN, err = s.processLogs(logs, oldestUnsyncedBN, toBN); err != nil {
-			return archtypes.NewBlockNumber(oldestUnsyncedBN), err
+			return oldestUnsyncedBN, err
 		}
 	}
-	return archtypes.NewBlockNumber(oldestUnsyncedBN), nil
+	return oldestUnsyncedBN, nil
 }
 
-func (s *ActionBatchSubscription) syncAtHead(startingBlock archtypes.BlockNumber) (archtypes.BlockNumber, error) {
+func (s *ActionBatchSubscription) syncAtHead(startingBlock uint64) (uint64, error) {
 	if s.hasUnsubscribed() {
 		return startingBlock, nil
 	}
-	_oldestUnsyncedBN := startingBlock
-	oldestUnsyncedBN := _oldestUnsyncedBN.Uint64()
+	oldestUnsyncedBN := startingBlock
 
 	headerChan := make(chan *types.Header, HeaderChanSize)
 	headersSub, err := s.ethcli.SubscribeNewHead(context.Background(), headerChan)
 	if err != nil {
-		return archtypes.NewBlockNumber(oldestUnsyncedBN), err
+		return oldestUnsyncedBN, err
 	}
 	defer headersSub.Unsubscribe()
 
 	for header := range headerChan {
 		if s.hasUnsubscribed() {
-			return archtypes.NewBlockNumber(oldestUnsyncedBN), nil
+			return oldestUnsyncedBN, nil
 		}
 		if header.Number.Uint64() <= oldestUnsyncedBN {
 			continue
@@ -200,14 +192,14 @@ func (s *ActionBatchSubscription) syncAtHead(startingBlock archtypes.BlockNumber
 		// Fetch logs from oldestUnsyncedBN to head
 		logs, err := s.getLogs(oldestUnsyncedBN, header.Number.Uint64())
 		if err != nil {
-			return archtypes.NewBlockNumber(oldestUnsyncedBN), err
+			return oldestUnsyncedBN, err
 		}
 		// Process logs
 		if oldestUnsyncedBN, err = s.processLogs(logs, oldestUnsyncedBN, header.Number.Uint64()); err != nil {
-			return archtypes.NewBlockNumber(oldestUnsyncedBN), err
+			return oldestUnsyncedBN, err
 		}
 	}
-	return archtypes.NewBlockNumber(oldestUnsyncedBN), nil
+	return oldestUnsyncedBN, nil
 }
 
 func (s *ActionBatchSubscription) processLogs(logs []types.Log, from, to uint64) (uint64, error) {
@@ -246,7 +238,7 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 		}
 		actions = append(actions, action)
 	}
-	actionBatch := archtypes.NewActionBatch(archtypes.NewBlockNumber(blockNumber), actions)
+	actionBatch := archtypes.NewActionBatch(blockNumber, actions)
 	s.actionBatchChan <- actionBatch
 	return nil
 }

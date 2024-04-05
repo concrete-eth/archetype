@@ -13,8 +13,6 @@ import (
 	archtypes "github.com/concrete-eth/archetype/types"
 )
 
-type BlockNumber = archtypes.BlockNumber
-
 var (
 	ErrBlockNumberMismatch    = errors.New("block number mismatch")
 	ErrTickNotFirst           = errors.New("tick not first action")
@@ -25,8 +23,8 @@ var (
 type Core interface {
 	SetKV(kv lib.KeyValueStore) error     // Set the key-value store
 	ExecuteAction(archtypes.Action) error // Execute the given action
-	SetBlockNumber(BlockNumber)           // Set the block number
-	BlockNumber() BlockNumber             // Get the block number
+	SetBlockNumber(uint64)                // Set the block number
+	BlockNumber() uint64                  // Get the block number
 	RunSingleTick()                       // Run a single tick
 	RunBlockTicks()                       // Run all ticks in a block
 	TicksPerBlock() uint                  // Get the number of ticks per block
@@ -50,7 +48,7 @@ type Client struct {
 	lock sync.Mutex
 }
 
-func New(core Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber BlockNumber) (*Client, error) {
+func New(core Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	if err := core.SetKV(stagedKv); err != nil {
 		return nil, err
@@ -106,7 +104,7 @@ func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) 
 	}
 	c.kv.Commit()
 	c.lastNewBatchTime = time.Now()
-	c.Core.SetBlockNumber(batch.BlockNumber.AddUint64(1))
+	c.Core.SetBlockNumber(batch.BlockNumber + 1)
 	return tickActionInBatch, nil
 }
 
@@ -161,11 +159,11 @@ func (c *Client) Sync() (didReceiveNewBatch bool, didTick bool, err error) {
 	}
 }
 
-func (c *Client) SyncUntil(blockNumber BlockNumber) error {
+func (c *Client) SyncUntil(blockNumber uint64) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for {
-		if c.Core.BlockNumber().Uint64() >= blockNumber.Uint64() {
+		if c.Core.BlockNumber() >= blockNumber {
 			break
 		}
 		batch, ok := <-c.actionBatchInChan
