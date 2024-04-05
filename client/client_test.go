@@ -206,8 +206,6 @@ var testData = []struct {
 	},
 }
 
-// TODO: use uint64 for block number
-
 func init() {
 	for i, data := range testData {
 		if data.batch.BlockNumber != uint64(i) {

@@ -3,10 +3,11 @@
 package {{.Package}}
 
 import (
-    "fmt"
     "reflect"
 
     "github.com/ethereum/go-ethereum/common"
+    archtypes "github.com/concrete-eth/archetype/types"
+
 	{{ range .Imports }}
 	"{{.}}"
 	{{ end }}
@@ -24,25 +25,25 @@ const (
 )
 {{ end }}
 
-var Actions = map[uint8]struct{
-    Id uint8
-    Name string
-    MethodName string
-}{
+var Actions = map[uint8]archtypes.ActionMetadata{
     {{- range .Schemas }}
     ActionId_{{.Name}}: {
         Id: ActionId_{{.Name}},
         Name: "{{.Name}}",
         MethodName: "{{_lowerFirstChar .Name}}",
+        Type: reflect.TypeOf(ActionData_{{.Name}}{}),
     },
     {{- end }}
 }
 
+/*
 var ActionIdsByMethodName = map[string]uint8{
     {{- range .Schemas }}
     "{{_lowerFirstChar .Name}}": ActionId_{{.Name}},
     {{- end }}
 }
+*/
+
 {{ range $schema := .Schemas }}
 type ActionData_{{.Name}} struct{
     {{- range .Values }}
@@ -56,6 +57,7 @@ func (action *ActionData_{{$schema.Name}}) Get{{.PascalCase}}() {{.Type.GoType}}
 {{ end }}
 {{ end }}
 
+/*
 func ActionIdFromAction(action interface{}) (uint8, bool) {
 	switch action.(type) {
     {{- range .Schemas }}
@@ -66,47 +68,4 @@ func ActionIdFromAction(action interface{}) (uint8, bool) {
         return 0, false
     }
 }
-
-// Sets all the fields of the destination struct that are present in the source struct.
-// Both structs need not be of the same type.
-func ConvertStruct(src interface{}, dest interface{}) error {
-	srcVal := reflect.ValueOf(src)
-	if srcVal.Kind() != reflect.Struct {
-		return fmt.Errorf("src is not a struct")
-	}
-
-	destVal := reflect.ValueOf(dest)
-	if destVal.Kind() != reflect.Ptr || destVal.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("dest is not a pointer to a struct")
-	}
-
-	destElem := destVal.Elem()
-
-	for i := 0; i < srcVal.NumField(); i++ {
-		srcField := srcVal.Field(i)
-		destField := destElem.FieldByName(srcVal.Type().Field(i).Name)
-
-		if destField.IsValid() && destField.CanSet() && srcField.Type() == destField.Type() {
-			destField.Set(srcField)
-		}
-	}
-
-	return nil
-}
-
-func AnonToCanon(actionId uint8, action interface{}) (interface{}, error) {
-	var canon interface{}
-	switch actionId {
-    {{- range .Schemas }}
-	case ActionId_{{.Name}}:
-		canon = &ActionData_{{.Name}}{}
-    {{- end }}
-	default:
-		return nil, fmt.Errorf("unknown action type %T", action)
-	}
-	err := ConvertStruct(action, canon)
-	if err != nil {
-		return nil, err
-	}
-	return canon, nil
-}
+*/

@@ -3,9 +3,9 @@
 package archmod
 
 import (
-	"fmt"
 	"reflect"
 
+	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -17,21 +17,20 @@ const (
 	ActionId_Move uint8 = iota
 )
 
-var Actions = map[uint8]struct {
-	Id         uint8
-	Name       string
-	MethodName string
-}{
+var Actions = map[uint8]archtypes.ActionMetadata{
 	ActionId_Move: {
 		Id:         ActionId_Move,
 		Name:       "Move",
 		MethodName: "move",
+		Type:       reflect.TypeOf(ActionData_Move{}),
 	},
 }
 
+/*
 var ActionIdsByMethodName = map[string]uint8{
-	"move": ActionId_Move,
+    "move": ActionId_Move,
 }
+*/
 
 type ActionData_Move struct {
 	PlayerId  uint8 `json:"playerId"`
@@ -46,53 +45,13 @@ func (action *ActionData_Move) GetDirection() uint8 {
 	return action.Direction
 }
 
+/*
 func ActionIdFromAction(action interface{}) (uint8, bool) {
 	switch action.(type) {
-	case *ActionData_Move:
-		return ActionId_Move, true
-	default:
-		return 0, false
-	}
+    case *ActionData_Move:
+        return ActionId_Move, true
+    default:
+        return 0, false
+    }
 }
-
-// Sets all the fields of the destination struct that are present in the source struct.
-// Both structs need not be of the same type.
-func ConvertStruct(src interface{}, dest interface{}) error {
-	srcVal := reflect.ValueOf(src)
-	if srcVal.Kind() != reflect.Struct {
-		return fmt.Errorf("src is not a struct")
-	}
-
-	destVal := reflect.ValueOf(dest)
-	if destVal.Kind() != reflect.Ptr || destVal.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("dest is not a pointer to a struct")
-	}
-
-	destElem := destVal.Elem()
-
-	for i := 0; i < srcVal.NumField(); i++ {
-		srcField := srcVal.Field(i)
-		destField := destElem.FieldByName(srcVal.Type().Field(i).Name)
-
-		if destField.IsValid() && destField.CanSet() && srcField.Type() == destField.Type() {
-			destField.Set(srcField)
-		}
-	}
-
-	return nil
-}
-
-func AnonToCanon(actionId uint8, action interface{}) (interface{}, error) {
-	var canon interface{}
-	switch actionId {
-	case ActionId_Move:
-		canon = &ActionData_Move{}
-	default:
-		return nil, fmt.Errorf("unknown action type %T", action)
-	}
-	err := ConvertStruct(action, canon)
-	if err != nil {
-		return nil, err
-	}
-	return canon, nil
-}
+*/

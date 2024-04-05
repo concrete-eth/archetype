@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"reflect"
 	"sync"
 	"time"
 
@@ -294,9 +295,15 @@ func (s *ActionBatchSubscription) logToAction(log types.Log) (archtypes.Action, 
 		anonAction = _action[0]
 	}
 
-	// TODO: anon to cannon
+	// Create action
+	action := reflect.New(actionMetadata.Type)
 
-	return anonAction, nil
+	// Copy action data to action
+	if err := archtypes.ConvertStruct(anonAction, action); err != nil {
+		return nil, err
+	}
+
+	return action, nil
 }
 
 func (s *ActionBatchSubscription) Unsubscribe() {
