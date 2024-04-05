@@ -161,7 +161,10 @@ func (c *Client) Sync() (didReceiveNewBatch bool, didTick bool, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	select {
-	case batch := <-c.actionBatchInChan:
+	case batch, ok := <-c.actionBatchInChan:
+		if !ok {
+			return false, false, ErrChannelClosed
+		}
 		didTick, err := c.applyBatchAndCommit(batch)
 		return true, didTick, err
 	default:
@@ -192,7 +195,10 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		return c.Sync()
 	}
 	select {
-	case batch := <-c.actionBatchInChan:
+	case batch, ok := <-c.actionBatchInChan:
+		if !ok {
+			return false, false, ErrChannelClosed
+		}
 		// Received a new batch of actions
 		// Revert any tick anticipation and apply batch normally
 		didReceiveNewBatch = true
