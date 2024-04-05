@@ -21,5 +21,7 @@ struct RowData_Players {
 
 interface ITableGetter {
     function getConfigRow() external view returns (RowData_Config memory);
-    function getPlayersRow(uint8 playerId) external view returns (RowData_Players memory);
+    function getPlayersRow(
+        uint8 playerId
+    ) external view returns (RowData_Players memory);
 }
