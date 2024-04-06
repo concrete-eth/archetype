@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	archlogs "github.com/concrete-eth/archetype/logs"
+	archcodec "github.com/concrete-eth/archetype/codec"
 	"github.com/concrete-eth/archetype/params"
 	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/concrete-eth/archetype/utils"
@@ -304,7 +304,7 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 	// Process logBatch into action batch and send
 	actions := make([]archtypes.Action, 0, len(logBatch))
 	for _, log := range logBatch {
-		action, err := archlogs.LogToAction(s.actionAbi, s.actionMap, log)
+		action, err := archcodec.LogToAction(s.actionAbi, s.actionMap, log)
 		if err != nil {
 			return err
 		}

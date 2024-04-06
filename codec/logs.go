@@ -1,4 +1,4 @@
-package logs
+package codec
 
 import (
 	"errors"
@@ -10,6 +10,30 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
+
+var (
+	ActionExecutedEvent *abi.Event
+)
+
+func ActionToLogWithMethod(method *abi.Method, actionId uint8, action archtypes.Action) (types.Log, error) {
+	// Encode action
+	actionData, err := method.Inputs.Pack(action)
+	if err != nil {
+		return types.Log{}, err
+	}
+
+	// Encode log data
+	data, err := ActionExecutedEvent.Inputs.PackValues([]interface{}{actionId, actionData})
+	if err != nil {
+		return types.Log{}, err
+	}
+
+	// Create log
+	return types.Log{
+		Topics: []common.Hash{ActionExecutedEvent.ID},
+		Data:   data,
+	}, nil
+}
 
 func LogToAction(actionAbi abi.ABI, actionMap archtypes.ActionMap, log types.Log) (interface{}, error) {
 	event := actionAbi.Events[params.ActionExecutedEventName]
@@ -58,28 +82,4 @@ func LogToAction(actionAbi abi.ABI, actionMap archtypes.ActionMap, log types.Log
 	}
 
 	return action, nil
-}
-
-func ActionToLog(actionAbi abi.ABI, actionMap archtypes.ActionMap, actionId uint8, action archtypes.Action) (types.Log, error) {
-	actionMetadata, ok := actionMap[actionId]
-	if !ok {
-		return types.Log{}, errors.New("unknown action ID")
-	}
-
-	method := actionAbi.Methods[actionMetadata.MethodName]
-	_actionData, err := method.Inputs.Pack(action)
-	if err != nil {
-		return types.Log{}, err
-	}
-
-	event := actionAbi.Events[params.ActionExecutedEventName]
-	data, err := event.Inputs.PackValues([]interface{}{actionId, _actionData})
-	if err != nil {
-		return types.Log{}, err
-	}
-
-	return types.Log{
-		Topics: []common.Hash{event.ID},
-		Data:   data,
-	}, nil
 }

@@ -3,6 +3,8 @@ package types
 import (
 	"errors"
 	"reflect"
+
+	"github.com/ethereum/go-ethereum/concrete/lib"
 )
 
 type ActionMetadata = struct {
@@ -61,4 +63,17 @@ func ConvertStruct(src interface{}, dest interface{}) error {
 	}
 
 	return nil
+}
+
+type Core interface {
+	SetKV(kv lib.KeyValueStore) error // Set the key-value store
+	ExecuteAction(Action) error       // Execute the given action
+	SetBlockNumber(uint64)            // Set the block number
+	BlockNumber() uint64              // Get the block number
+	RunSingleTick()                   // Run a single tick
+	RunBlockTicks()                   // Run all ticks in a block
+	TicksPerBlock() uint              // Get the number of ticks per block
+	ExpectTick() bool                 // Check if a tick is expected
+	SetInBlockTickIndex(uint)         // Set the in-block tick index
+	InBlockTickIndex() uint           // Get the in-block tick index
 }

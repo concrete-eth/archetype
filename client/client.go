@@ -20,21 +20,8 @@ var (
 	ErrChannelBlockedOrClosed = errors.New("channel blocked or closed")
 )
 
-type Core interface {
-	SetKV(kv lib.KeyValueStore) error     // Set the key-value store
-	ExecuteAction(archtypes.Action) error // Execute the given action
-	SetBlockNumber(uint64)                // Set the block number
-	BlockNumber() uint64                  // Get the block number
-	RunSingleTick()                       // Run a single tick
-	RunBlockTicks()                       // Run all ticks in a block
-	TicksPerBlock() uint                  // Get the number of ticks per block
-	ExpectTick() bool                     // Check if a tick is expected
-	SetInBlockTickIndex(uint)             // Set the in-block tick index
-	InBlockTickIndex() uint               // Get the in-block tick index
-}
-
 type Client struct {
-	Core Core
+	Core archtypes.Core
 	kv   *kvstore.StagedKeyValueStore
 
 	actionBatchInChan <-chan archtypes.ActionBatch
@@ -48,7 +35,7 @@ type Client struct {
 	lock sync.Mutex
 }
 
-func New(core Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
+func New(core archtypes.Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	if err := core.SetKV(stagedKv); err != nil {
 		return nil, err
@@ -109,7 +96,7 @@ func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) 
 }
 
 // Simulate runs the given function and then reverts all the changes to the key-value store.
-func (c *Client) Simulate(f func(core Core)) {
+func (c *Client) Simulate(f func(core archtypes.Core)) {
 	// Put another stage on top of the current key-value store that will never be committed
 	// and will be discarded after the function is executed
 	c.lock.Lock()
@@ -126,7 +113,7 @@ func (c *Client) SendAction(action archtypes.Action) error {
 
 func (c *Client) SendActions(actions []archtypes.Action) error {
 	actionsToSend := make([]archtypes.Action, 0)
-	c.Simulate(func(core Core) {
+	c.Simulate(func(core archtypes.Core) {
 		for _, action := range actions {
 			if err := core.ExecuteAction(action); err != nil {
 				c.error("failed to execute action", "err", err)
