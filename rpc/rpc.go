@@ -97,7 +97,7 @@ func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
 type ActionBatchSubscription struct {
 	ethcli          EthCli
 	actionMap       archtypes.ActionMap
-	actionsAbi      abi.ABI
+	actionAbi       abi.ABI
 	coreAddress     common.Address
 	actionBatchChan chan<- archtypes.ActionBatch
 	unsubChan       chan struct{}
@@ -111,7 +111,7 @@ type ActionBatchSubscription struct {
 func SubscribeActionBatches(
 	ethcli EthCli,
 	actionMap archtypes.ActionMap,
-	actionsAbi abi.ABI,
+	actionAbi abi.ABI,
 	coreAddress common.Address,
 	startingBlockNumber uint64,
 	actionBatchesChan chan<- archtypes.ActionBatch,
@@ -119,7 +119,7 @@ func SubscribeActionBatches(
 	sub := &ActionBatchSubscription{
 		ethcli:          ethcli,
 		actionMap:       actionMap,
-		actionsAbi:      actionsAbi,
+		actionAbi:       actionAbi,
 		coreAddress:     coreAddress,
 		actionBatchChan: actionBatchesChan,
 		unsubChan:       make(chan struct{}),
@@ -176,7 +176,7 @@ func (s *ActionBatchSubscription) getLogs(fromBlock, toBlock uint64) ([]types.Lo
 		FromBlock: new(big.Int).SetUint64(fromBlock),
 		ToBlock:   new(big.Int).SetUint64(toBlock),
 		Addresses: []common.Address{s.coreAddress},
-		Topics:    [][]common.Hash{{s.actionsAbi.Events[params.ActionExecutedEventName].ID}},
+		Topics:    [][]common.Hash{{s.actionAbi.Events[params.ActionExecutedEventName].ID}},
 	}
 	return s.ethcli.FilterLogs(ctx, query)
 }
@@ -316,7 +316,7 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 }
 
 func (s *ActionBatchSubscription) logToAction(log types.Log) (archtypes.Action, error) {
-	event := s.actionsAbi.Events[params.ActionExecutedEventName]
+	event := s.actionAbi.Events[params.ActionExecutedEventName]
 
 	// Check if log is an ActionExecuted event
 	if len(log.Topics) < 1 {
@@ -340,7 +340,7 @@ func (s *ActionBatchSubscription) logToAction(log types.Log) (archtypes.Action, 
 	}
 
 	// Get action data
-	method := s.actionsAbi.Methods[actionMetadata.MethodName]
+	method := s.actionAbi.Methods[actionMetadata.MethodName]
 	var anonAction interface{}
 	if len(method.Inputs) == 0 {
 		anonAction = struct{}{}
@@ -377,7 +377,7 @@ var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
 type ActionSender struct {
 	ethcli             EthCli
 	actionMap          archtypes.ActionMap
-	actionsAbi         abi.ABI
+	actionAbi          abi.ABI
 	actionIdFromAction func(action interface{}) (uint8, bool)
 	gasEstimator       ethereum.GasEstimator
 	coreAddress        common.Address
@@ -389,7 +389,7 @@ type ActionSender struct {
 func NewActionSender(
 	ethcli EthCli,
 	actionMap archtypes.ActionMap,
-	actionsAbi abi.ABI,
+	actionAbi abi.ABI,
 	actionIdFromAction func(action interface{}) (uint8, bool),
 	gasEstimator ethereum.GasEstimator,
 	coreAddress common.Address,
@@ -400,7 +400,7 @@ func NewActionSender(
 	return &ActionSender{
 		ethcli:             ethcli,
 		actionMap:          actionMap,
-		actionsAbi:         actionsAbi,
+		actionAbi:          actionAbi,
 		actionIdFromAction: actionIdFromAction,
 		gasEstimator:       gasEstimator,
 		coreAddress:        coreAddress,
@@ -416,7 +416,7 @@ func (a *ActionSender) encodeAction(action archtypes.Action) (uint8, []byte, err
 		return 0, nil, errors.New("unknown action ID")
 	}
 	actionMetadata := a.actionMap[actionId]
-	method := a.actionsAbi.Methods[actionMetadata.MethodName]
+	method := a.actionAbi.Methods[actionMetadata.MethodName]
 	data, err := method.Inputs.Pack(action)
 	if err != nil {
 		return 0, nil, err
@@ -430,7 +430,7 @@ func (a *ActionSender) packActionCall(action archtypes.Action) ([]byte, error) {
 		return nil, errors.New("unknown action ID")
 	}
 	actionMetadata := a.actionMap[actionId]
-	data, err := a.actionsAbi.Pack(actionMetadata.MethodName, action)
+	data, err := a.actionAbi.Pack(actionMetadata.MethodName, action)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +444,7 @@ func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, 
 		actionData  = make([]interface{}, 0, len(actions))
 	)
 	if len(actions) == 0 {
-		return a.actionsAbi.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
+		return a.actionAbi.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
 	}
 
 	firstActionId, firstData, err := a.encodeAction(actions[0])
@@ -469,7 +469,7 @@ func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, 
 		}
 	}
 
-	return a.actionsAbi.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
+	return a.actionAbi.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
 }
 
 func (a *ActionSender) sendData(data []byte) error {
