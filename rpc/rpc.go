@@ -5,10 +5,10 @@ import (
 	"errors"
 	"math"
 	"math/big"
-	"reflect"
 	"sync"
 	"time"
 
+	archlogs "github.com/concrete-eth/archetype/logs"
 	"github.com/concrete-eth/archetype/params"
 	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/concrete-eth/archetype/utils"
@@ -304,7 +304,7 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 	// Process logBatch into action batch and send
 	actions := make([]archtypes.Action, 0, len(logBatch))
 	for _, log := range logBatch {
-		action, err := s.logToAction(log)
+		action, err := archlogs.LogToAction(s.actionAbi, s.actionMap, log)
 		if err != nil {
 			return err
 		}
@@ -313,55 +313,6 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 	actionBatch := archtypes.NewActionBatch(blockNumber, actions)
 	s.actionBatchChan <- actionBatch
 	return nil
-}
-
-func (s *ActionBatchSubscription) logToAction(log types.Log) (archtypes.Action, error) {
-	event := s.actionAbi.Events[params.ActionExecutedEventName]
-
-	// Check if log is an ActionExecuted event
-	if len(log.Topics) < 1 {
-		return nil, errors.New("no topics in log")
-	}
-	if log.Topics[0] != event.ID {
-		return nil, errors.New("not an ActionExecuted event")
-	}
-
-	// Unpack log data
-	args, err := event.Inputs.Unpack(log.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get action ID
-	actionId := args[0].(uint8)
-	actionMetadata, ok := s.actionMap[actionId]
-	if !ok {
-		return nil, errors.New("unknown action ID")
-	}
-
-	// Get action data
-	method := s.actionAbi.Methods[actionMetadata.MethodName]
-	var anonAction interface{}
-	if len(method.Inputs) == 0 {
-		anonAction = struct{}{}
-	} else {
-		_actionData := args[1].([]byte)
-		_action, err := method.Inputs.Unpack(_actionData)
-		if err != nil {
-			return nil, err
-		}
-		anonAction = _action[0]
-	}
-
-	// Create action
-	action := reflect.New(actionMetadata.Type)
-
-	// Copy action data to action
-	if err := archtypes.ConvertStruct(anonAction, action); err != nil {
-		return nil, err
-	}
-
-	return action, nil
 }
 
 func (s *ActionBatchSubscription) Unsubscribe() {
