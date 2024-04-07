@@ -7,7 +7,7 @@ import "{{ . }}";
 {{- end }}
 
 abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {
-    function {{.Params.MultiActionMethodName}}(
+    function {{.ArchParams.MultiActionMethodName}}(
         uint8[] memory actionIds,
         uint8[] memory actionCount,
         bytes[] memory actionData

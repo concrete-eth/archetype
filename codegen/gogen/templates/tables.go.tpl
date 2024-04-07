@@ -34,7 +34,13 @@ const (
 )
 {{ end }}
 
-var Tables = map[uint8]archtypes.TableMetadata{
+var Tables = archtypes.TableSpecs{
+    Tables: tableMap,
+    ABI: nil,
+    GetData: getData,
+}
+
+var tableMap = archtypes.TableMap{
     {{- range .Schemas }}
     TableId_{{.Name}}: {
         Id: TableId_{{.Name}},
@@ -55,13 +61,24 @@ var Tables = map[uint8]archtypes.TableMetadata{
     {{- end }}
 }
 
-/*
-var TableIdsByMethodName = map[string]uint8{
-    {{- range .Schemas }}
-    "get{{.Name}}Row": TableId_{{.Name}},
-    {{- end }}
+func getData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {
+	switch method.Name {
+	{{- range .Schemas }}
+	case "get{{.Name}}Row":
+		row := datamod.New{{.Name}}(datastore).Get(
+			{{- range .Keys }}
+			args[{{.Index}}].({{.Type.GoType}}),
+			{{- end }}
+		)
+		return RowData_{{.Name}}{
+			{{- range .Values }}
+			{{.PascalCase}}: row.Get{{.PascalCase}}(),
+			{{- end }}
+		}, true
+	{{- end }}
+	}
+	return nil, false
 }
- */
 
 {{ if .Experimental }}
 type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex int, value []byte)
@@ -140,22 +157,3 @@ func (row *RowData_{{$schema.Name}}) Get{{.PascalCase}}() {{.Type.GoType}} {
 }
 {{ end }}
 {{ end }}
-
-func GetData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {
-	switch method.Name {
-	{{- range .Schemas }}
-	case "get{{.Name}}Row":
-		row := datamod.New{{.Name}}(datastore).Get(
-			{{- range .Keys }}
-			args[{{.Index}}].({{.Type.GoType}}),
-			{{- end }}
-		)
-		return RowData_{{.Name}}{
-			{{- range .Values }}
-			{{.PascalCase}}: row.Get{{.PascalCase}}(),
-			{{- end }}
-		}, true
-	{{- end }}
-	}
-	return nil, false
-}

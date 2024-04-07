@@ -29,7 +29,13 @@ const (
 	TableId_Players
 )
 
-var Tables = map[uint8]archtypes.TableMetadata{
+var Tables = archtypes.TableSpecs{
+	Tables:  tableMap,
+	ABI:     nil,
+	GetData: getData,
+}
+
+var tableMap = archtypes.TableMap{
 	TableId_Config: {
 		Id:         TableId_Config,
 		Name:       "Config",
@@ -57,12 +63,26 @@ var Tables = map[uint8]archtypes.TableMetadata{
 	},
 }
 
-/*
-var TableIdsByMethodName = map[string]uint8{
-    "getConfigRow": TableId_Config,
-    "getPlayersRow": TableId_Players,
+func getData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {
+	switch method.Name {
+	case "getConfigRow":
+		row := datamod.NewConfig(datastore).Get()
+		return RowData_Config{
+			StartBlock: row.GetStartBlock(),
+			MaxPlayers: row.GetMaxPlayers(),
+		}, true
+	case "getPlayersRow":
+		row := datamod.NewPlayers(datastore).Get(
+			args[0].(uint8),
+		)
+		return RowData_Players{
+			X:      row.GetX(),
+			Y:      row.GetY(),
+			Health: row.GetHealth(),
+		}, true
+	}
+	return nil, false
 }
-*/
 
 type State struct {
 	datastore lib.Datastore
@@ -131,25 +151,4 @@ func (row *RowData_Players) GetY() int16 {
 
 func (row *RowData_Players) GetHealth() uint8 {
 	return row.Health
-}
-
-func GetData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {
-	switch method.Name {
-	case "getConfigRow":
-		row := datamod.NewConfig(datastore).Get()
-		return RowData_Config{
-			StartBlock: row.GetStartBlock(),
-			MaxPlayers: row.GetMaxPlayers(),
-		}, true
-	case "getPlayersRow":
-		row := datamod.NewPlayers(datastore).Get(
-			args[0].(uint8),
-		)
-		return RowData_Players{
-			X:      row.GetX(),
-			Y:      row.GetY(),
-			Health: row.GetHealth(),
-		}, true
-	}
-	return nil, false
 }

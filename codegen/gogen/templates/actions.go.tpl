@@ -25,7 +25,12 @@ const (
 )
 {{ end }}
 
-var Actions = map[uint8]archtypes.ActionMetadata{
+var Actions = archtypes.ActionSpecs{
+    Actions: actionMap,
+    ABI: nil,
+}
+
+var actionMap = archtypes.ActionMap{
     {{- range .Schemas }}
     ActionId_{{.Name}}: {
         Id: ActionId_{{.Name}},
@@ -35,14 +40,6 @@ var Actions = map[uint8]archtypes.ActionMetadata{
     },
     {{- end }}
 }
-
-/*
-var ActionIdsByMethodName = map[string]uint8{
-    {{- range .Schemas }}
-    "{{_lowerFirstChar .Name}}": ActionId_{{.Name}},
-    {{- end }}
-}
-*/
 
 {{ range $schema := .Schemas }}
 type ActionData_{{.Name}} struct{
@@ -56,14 +53,3 @@ func (action *ActionData_{{$schema.Name}}) Get{{.PascalCase}}() {{.Type.GoType}}
 }
 {{ end }}
 {{ end }}
-
-func ActionIdFromAction(action interface{}) (uint8, bool) {
-	switch action.(type) {
-    {{- range .Schemas }}
-    case *ActionData_{{.Name}}:
-        return ActionId_{{.Name}}, true
-    {{- end }}
-    default:
-        return 0, false
-    }
-}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 )
 
@@ -12,6 +13,23 @@ type ActionMetadata = struct {
 	Name       string
 	MethodName string
 	Type       reflect.Type
+}
+
+type ActionMap = map[uint8]ActionMetadata
+
+type ActionSpecs struct {
+	Actions ActionMap
+	ABI     *abi.ABI
+}
+
+func (a ActionSpecs) ActionIdFromAction(action interface{}) (uint8, bool) {
+	actionType := reflect.TypeOf(action)
+	for id, metadata := range a.Actions {
+		if metadata.Type == actionType {
+			return id, true
+		}
+	}
+	return 0, false
 }
 
 type TableMetadata = struct {
@@ -23,7 +41,18 @@ type TableMetadata = struct {
 	Type       reflect.Type
 }
 
-type ActionMap = map[uint8]ActionMetadata
+type TableMap = map[uint8]TableMetadata
+
+type TableSpecs struct {
+	Tables  map[uint8]TableMetadata
+	ABI     *abi.ABI
+	GetData func(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool)
+}
+
+type ArchSpecs struct {
+	Actions ActionSpecs
+	Tables  TableSpecs
+}
 
 type Action interface{}
 

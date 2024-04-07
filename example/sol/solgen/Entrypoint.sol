@@ -8,12 +8,12 @@ import "./IActions.sol";
 abstract contract Entrypoint is IActionExecutor {
     function executeMultipleActions(
         uint8[] memory actionIds,
-        uint8[] memory actionNumber,
+        uint8[] memory actionCount,
         bytes[] memory actionData
     ) external {
         uint256 actionIdx = 0;
         for (uint256 i = 0; i < actionIds.length; i++) {
-            uint256 numActions = uint256(actionNumber[i]);
+            uint256 numActions = uint256(actionCount[i]);
             for (uint256 j = actionIdx; j < actionIdx + numActions; j++) {
                 _executeAction(actionIds[i], actionData[j]);
             }

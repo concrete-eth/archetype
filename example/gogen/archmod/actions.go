@@ -17,7 +17,12 @@ const (
 	ActionId_Move uint8 = iota
 )
 
-var Actions = map[uint8]archtypes.ActionMetadata{
+var Actions = archtypes.ActionSpecs{
+	Actions: actionMap,
+	ABI:     nil,
+}
+
+var actionMap = archtypes.ActionMap{
 	ActionId_Move: {
 		Id:         ActionId_Move,
 		Name:       "Move",
@@ -25,12 +30,6 @@ var Actions = map[uint8]archtypes.ActionMetadata{
 		Type:       reflect.TypeOf(ActionData_Move{}),
 	},
 }
-
-/*
-var ActionIdsByMethodName = map[string]uint8{
-    "move": ActionId_Move,
-}
-*/
 
 type ActionData_Move struct {
 	PlayerId  uint8 `json:"playerId"`
@@ -43,13 +42,4 @@ func (action *ActionData_Move) GetPlayerId() uint8 {
 
 func (action *ActionData_Move) GetDirection() uint8 {
 	return action.Direction
-}
-
-func ActionIdFromAction(action interface{}) (uint8, bool) {
-	switch action.(type) {
-	case *ActionData_Move:
-		return ActionId_Move, true
-	default:
-		return 0, false
-	}
 }
