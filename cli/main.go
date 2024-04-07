@@ -317,11 +317,16 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	if err := ensureDir(datamodOut); err != nil {
 		logFatal(err)
 	}
-	runDatamod(datamodOut, gogenConfig.Tables, datamodPkg, gogenConfig.Experimental)
-
+	if err := runDatamod(datamodOut, gogenConfig.Tables, datamodPkg, gogenConfig.Experimental); err != nil {
+		logFatal(err)
+	}
 	// Run go and solidity codegen
-	runGogen(gogenConfig)
-	runSolgen(solgenConfig)
+	if err := runGogen(gogenConfig); err != nil {
+		logFatal(err)
+	}
+	if err := runSolgen(solgenConfig); err != nil {
+		logFatal(err)
+	}
 
 	// Run gofmt
 	if isInstalled(GOFMT_BIN) {
@@ -354,108 +359,77 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
 }
 
+func runCommand(name string, cmd *exec.Cmd) error {
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		err = fmt.Errorf("%s failed: %w", name, err)
+		logTaskFail(name, err)
+		logDebug(strings.Join(cmd.Args, " "))
+		logDebug(out.String())
+		return err
+	}
+	if viper.GetBool("verbose") {
+		logTaskSuccess(name, strings.Join(cmd.Args, " "))
+	} else {
+		logTaskSuccess(name)
+	}
+	return nil
+}
+
 // Run concrete datamod.
 // Datamod generates type safe go wrappers for datastore structures from a JSON specification.
-func runDatamod(outDir, tables, pkg string, experimental bool) {
+func runDatamod(outDir, tables, pkg string, experimental bool) error {
 	taskName := "Concrete datamod"
-
 	args := []string{"datamod", tables, "--pkg", pkg, "--out", outDir}
 	if experimental {
 		args = append(args, "--more-experimental")
 	}
 	cmd := exec.Command(CONCRETE_BIN, args...)
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("concrete datamod failed: %w", err)
-		logTaskFail(taskName, nil)
-		logDebug(strings.Join(cmd.Args, " "))
-		logDebug(out.String())
-		logFatal(err)
-		return
-	}
-
-	if viper.GetBool("verbose") {
-		logTaskSuccess(taskName, strings.Join(cmd.Args, " "))
-	} else {
-		logTaskSuccess(taskName)
-	}
+	return runCommand(taskName, cmd)
 }
 
 // Run gogen codegen
 // config is assumed to be valid.
-func runGogen(config gogen.Config) {
+func runGogen(config gogen.Config) error {
 	taskName := "Go"
 	if err := gogen.Codegen(config); err != nil {
 		err = fmt.Errorf("gogen failed: %w", err)
 		logTaskFail(taskName, nil)
-		logFatal(err)
-		return
+		return err
 	}
 	logTaskSuccess(taskName)
+	return nil
 }
 
 // Run solgen codegen
 // config is assumed to be valid
-func runSolgen(config solgen.Config) {
+func runSolgen(config solgen.Config) error {
 	taskName := "Solidity"
 	if err := solgen.Codegen(config); err != nil {
 		err = fmt.Errorf("solgen failed: %w", err)
 		logTaskFail(taskName, nil)
-		logFatal(err)
-		return
+		return err
 	}
 	logTaskSuccess(taskName)
+	return nil
 }
 
 // runGofmt runs gofmt on the given directory.
-func runGofmt(dirs ...string) {
+func runGofmt(dirs ...string) error {
 	taskName := "gofmt"
-
 	args := append([]string{"-w"}, dirs...)
 	cmd := exec.Command(GOFMT_BIN, args...)
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("gofmt failed: %w", err)
-		logDebug(strings.Join(cmd.Args, " "))
-		logDebug(out.String())
-		logTaskFail(taskName, err)
-		return
-	}
-
-	if viper.GetBool("verbose") {
-		logTaskSuccess(taskName, strings.Join(cmd.Args, " "))
-	} else {
-		logTaskSuccess(taskName)
-	}
+	return runCommand(taskName, cmd)
 }
 
 // runPrettier runs prettier on the given directory.
-func runPrettier(patterns ...string) {
+func runPrettier(patterns ...string) error {
 	taskName := "prettier"
-
 	args := []string{PRETTIER_BIN, "--plugin=" + PRETTIER_SOL_PLUGIN, "--write"}
 	args = append(args, patterns...)
 	cmd := exec.Command(NODE_EXEC_BIN, args...)
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		err = fmt.Errorf("prettier failed: %w", err)
-		logDebug(strings.Join(cmd.Args, " "))
-		logDebug(out.String())
-		logTaskFail(taskName, err)
-		return
-	}
-
-	if viper.GetBool("verbose") {
-		logTaskSuccess(taskName, strings.Join(cmd.Args, " "))
-	} else {
-		logTaskSuccess(taskName)
-	}
+	return runCommand(taskName, cmd)
 }
 
 /* CLI */
