@@ -424,14 +424,15 @@ func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, 
 }
 
 func (a *ActionSender) sendData(data []byte) error {
+	errChan := make(chan error, 2)
 	gasPriceChan := make(chan [2]*big.Int, 1)
-	gasPriceErrChan := make(chan error, 1)
+	estGasCostChan := make(chan uint64, 1)
 
 	// Get gas price concurrently
 	go func() {
 		gasFeeCap, gasTipCap, err := getGasPrice(a.ethcli)
 		if err != nil {
-			gasPriceErrChan <- err
+			errChan <- err
 			return
 		}
 		gasPriceChan <- [2]*big.Int{gasFeeCap, gasTipCap}
@@ -450,39 +451,46 @@ func (a *ActionSender) sendData(data []byte) error {
 		Data:      data,
 	}
 
-	// Estimate gas
-	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
-	defer cancel()
-	estimatedGas, err := a.gasEstimator.EstimateGas(ctx, msg)
-	if err != nil {
-		return err
-	}
-	gasLimit := estimatedGas + estimatedGas/4
+	// Estimate gas concurrently
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+		defer cancel()
+		estimatedGas, err := a.gasEstimator.EstimateGas(ctx, msg)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		estGasCostChan <- estimatedGas
+	}()
 
 	// Wait for gas price response
 	var gasFeeCap, gasTipCap *big.Int
-	select {
-	case err := <-gasPriceErrChan:
-		return err
-	case gasPrices := <-gasPriceChan:
-		gasFeeCap, gasTipCap = gasPrices[0], gasPrices[1]
+	var estGasCost uint64
+
+	// Wait for both goroutines to send a value or an error
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errChan:
+			return err
+		case gasPrices := <-gasPriceChan:
+			gasFeeCap, gasTipCap = gasPrices[0], gasPrices[1]
+		case estGasCost = <-estGasCostChan:
+		}
 	}
 
-	// Set gas price
-	msg.GasFeeCap = gasFeeCap
-	msg.GasTipCap = gasTipCap
+	gasLimit := estGasCost + estGasCost/4
 
 	// Send transaction
 	txData := &types.DynamicFeeTx{
 		Nonce:     a.nonce,
-		GasTipCap: gasTipCap,
 		GasFeeCap: gasFeeCap,
+		GasTipCap: gasTipCap,
 		Gas:       gasLimit,
-		To:        &a.coreAddress,
-		Value:     common.Big0,
-		Data:      data,
+		To:        msg.To,
+		Value:     msg.Value,
+		Data:      msg.Data,
 	}
-	err = a.signAndSend(txData)
+	err := a.signAndSend(txData)
 
 	// Retry if nonce too low or too high
 	if err.Error() == "nonce too low" || err.Error() == "nonce too high" {
