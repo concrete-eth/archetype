@@ -33,7 +33,7 @@ var Actions = archtypes.ActionSpecs{
 var actionMap = archtypes.ActionMap{
     {{- range .Schemas }}
     ActionId_{{.Name}}: {
-        Id: ActionId_{{.Name}},
+        // RawId: ActionId_{{.Name}},
         Name: "{{.Name}}",
         MethodName: "{{_lowerFirstChar .Name}}",
         Type: reflect.TypeOf(ActionData_{{.Name}}{}),

@@ -8,32 +8,78 @@ import (
 	"github.com/ethereum/go-ethereum/concrete/lib"
 )
 
+type RawIdType = uint8
+
+type ValidId interface {
+	Raw() RawIdType
+}
+
+type validId struct {
+	id    RawIdType
+	valid bool
+}
+
+func (v validId) Raw() RawIdType {
+	if !v.valid {
+		panic("Invalid id")
+	}
+	return v.id
+}
+
+type ValidActionId struct {
+	ValidId
+}
+
+func newValidActionId(id RawIdType) ValidActionId {
+	return ValidActionId{
+		validId{id: id, valid: true},
+	}
+}
+
+var invalidActionId = ValidActionId{
+	validId{id: 0, valid: false},
+}
+
+type ValidTableId struct {
+	ValidId
+}
+
+func newValidTableId(id RawIdType) ValidTableId {
+	return ValidTableId{
+		validId{id: id, valid: true},
+	}
+}
+
+var invalidTableId = ValidTableId{
+	validId{id: 0, valid: false},
+}
+
 type ActionMetadata = struct {
-	Id         uint8
+	// RawId      RawIdType
 	Name       string
 	MethodName string
 	Type       reflect.Type
 }
 
-type ActionMap = map[uint8]ActionMetadata
+type ActionMap = map[RawIdType]ActionMetadata
 
 type ActionSpecs struct {
 	Actions ActionMap
 	ABI     *abi.ABI
 }
 
-func (a ActionSpecs) ActionIdFromAction(action interface{}) (uint8, bool) {
+func (a ActionSpecs) ActionIdFromAction(action interface{}) (ValidActionId, bool) {
 	actionType := reflect.TypeOf(action)
-	for id, metadata := range a.Actions {
+	for rawId, metadata := range a.Actions {
 		if metadata.Type == actionType {
-			return id, true
+			return newValidActionId(rawId), true
 		}
 	}
-	return 0, false
+	return invalidActionId, false
 }
 
 type TableMetadata = struct {
-	Id         uint8
+	// RawId      RawIdType
 	Name       string
 	MethodName string
 	Keys       []string
@@ -41,10 +87,10 @@ type TableMetadata = struct {
 	Type       reflect.Type
 }
 
-type TableMap = map[uint8]TableMetadata
+type TableMap = map[RawIdType]TableMetadata
 
 type TableSpecs struct {
-	Tables  map[uint8]TableMetadata
+	Tables  map[RawIdType]TableMetadata
 	ABI     *abi.ABI
 	GetData func(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool)
 }

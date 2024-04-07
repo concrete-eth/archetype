@@ -53,7 +53,7 @@ func LogToAction(actionAbi abi.ABI, actionMap archtypes.ActionMap, log types.Log
 	}
 
 	// Get action ID
-	actionId := args[0].(uint8)
+	actionId := args[0].(archtypes.RawIdType)
 	actionMetadata, ok := actionMap[actionId]
 	if !ok {
 		return nil, errors.New("unknown action ID")

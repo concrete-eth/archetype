@@ -14,7 +14,7 @@ var (
 )
 
 const (
-	ActionId_Move uint8 = iota
+	ActionId_Move archtypes.RawIdType = iota
 )
 
 var Actions = archtypes.ActionSpecs{
@@ -24,7 +24,7 @@ var Actions = archtypes.ActionSpecs{
 
 var actionMap = archtypes.ActionMap{
 	ActionId_Move: {
-		Id:         ActionId_Move,
+		// RawId: ActionId_Move,
 		Name:       "Move",
 		MethodName: "move",
 		Type:       reflect.TypeOf(ActionData_Move{}),

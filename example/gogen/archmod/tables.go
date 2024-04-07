@@ -25,7 +25,7 @@ Players  1        5
 */
 
 const (
-	TableId_Config uint8 = iota
+	TableId_Config archtypes.RawIdType = iota
 	TableId_Players
 )
 
@@ -37,7 +37,7 @@ var Tables = archtypes.TableSpecs{
 
 var tableMap = archtypes.TableMap{
 	TableId_Config: {
-		Id:         TableId_Config,
+		// RawId: TableId_Config,
 		Name:       "Config",
 		MethodName: "getConfigRow",
 		Keys:       []string{},
@@ -48,7 +48,7 @@ var tableMap = archtypes.TableMap{
 		Type: reflect.TypeOf(RowData_Config{}),
 	},
 	TableId_Players: {
-		Id:         TableId_Players,
+		// RawId: TableId_Players,
 		Name:       "Players",
 		MethodName: "getPlayersRow",
 		Keys: []string{

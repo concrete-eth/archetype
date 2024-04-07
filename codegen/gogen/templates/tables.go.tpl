@@ -43,7 +43,7 @@ var Tables = archtypes.TableSpecs{
 var tableMap = archtypes.TableMap{
     {{- range .Schemas }}
     TableId_{{.Name}}: {
-        Id: TableId_{{.Name}},
+        // RawId: TableId_{{.Name}},
         Name: "{{.Name}}",
         MethodName: "get{{.Name}}Row",
         Keys: []string{

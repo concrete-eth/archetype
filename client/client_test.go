@@ -22,7 +22,7 @@ type testCore struct {
 
 type testAction struct{}
 
-var _ Core = (*testCore)(nil)
+var _ archtypes.Core = (*testCore)(nil)
 
 func (c *testCore) setVal(val uint64) {
 	key := common.Hash{}
@@ -117,7 +117,7 @@ func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.Act
 
 func TestSimulate(t *testing.T) {
 	client, _, _, _ := newTestClient(t)
-	client.Simulate(func(_core Core) {
+	client.Simulate(func(_core archtypes.Core) {
 		core := _core.(*testCore)
 		core.inc()
 		if core.getVal() != 1 {

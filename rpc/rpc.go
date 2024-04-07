@@ -329,7 +329,7 @@ type ActionSender struct {
 	ethcli             EthCli
 	actionMap          archtypes.ActionMap
 	actionAbi          abi.ABI
-	actionIdFromAction func(action interface{}) (uint8, bool)
+	actionIdFromAction func(action interface{}) (archtypes.RawIdType, bool)
 	gasEstimator       ethereum.GasEstimator
 	coreAddress        common.Address
 	from               common.Address
@@ -341,7 +341,7 @@ func NewActionSender(
 	ethcli EthCli,
 	actionMap archtypes.ActionMap,
 	actionAbi abi.ABI,
-	actionIdFromAction func(action interface{}) (uint8, bool),
+	actionIdFromAction func(action interface{}) (archtypes.RawIdType, bool),
 	gasEstimator ethereum.GasEstimator,
 	coreAddress common.Address,
 	from common.Address,
@@ -361,7 +361,7 @@ func NewActionSender(
 	}
 }
 
-func (a *ActionSender) encodeAction(action archtypes.Action) (uint8, []byte, error) {
+func (a *ActionSender) encodeAction(action archtypes.Action) (archtypes.RawIdType, []byte, error) {
 	actionId, ok := a.actionIdFromAction(action)
 	if !ok {
 		return 0, nil, errors.New("unknown action ID")
@@ -390,7 +390,7 @@ func (a *ActionSender) packActionCall(action archtypes.Action) ([]byte, error) {
 
 func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, error) {
 	var (
-		actionIds   = make([]uint8, 0)
+		actionIds   = make([]archtypes.RawIdType, 0)
 		actionCount = make([]uint8, 0)
 		actionData  = make([]interface{}, 0, len(actions))
 	)
