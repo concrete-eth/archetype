@@ -349,7 +349,7 @@ func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, 
 	var (
 		actionIds   = make([]archtypes.RawIdType, 0)
 		actionCount = make([]uint8, 0)
-		actionData  = make([]interface{}, 0, len(actions))
+		actionData  = make([][]byte, 0, len(actions))
 	)
 	if len(actions) == 0 {
 		return a.actionSpecs.ABI().Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
