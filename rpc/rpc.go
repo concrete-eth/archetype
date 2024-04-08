@@ -313,20 +313,21 @@ func (s *ActionBatchSubscription) Err() <-chan error {
 var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
 
 type ActionSender struct {
-	ethcli             EthCli
-	actionSpecs        archtypes.ActionSpecs
-	actionIdFromAction func(action interface{}) (archtypes.RawIdType, bool)
-	gasEstimator       ethereum.GasEstimator
-	coreAddress        common.Address
-	from               common.Address
-	nonce              uint64
-	signerFn           bind.SignerFn
+	ethcli       EthCli
+	actionSpecs  archtypes.ActionSpecs
+	gasEstimator ethereum.GasEstimator
+	coreAddress  common.Address
+	from         common.Address
+	nonce        uint64
+	signerFn     bind.SignerFn
 }
+
+// TODO: Make these methods of action specs
+// TODO: Rename action specs to something more self-explanatory
 
 func NewActionSender(
 	ethcli EthCli,
 	actionSpecs archtypes.ActionSpecs,
-	actionIdFromAction func(action interface{}) (archtypes.RawIdType, bool),
 	gasEstimator ethereum.GasEstimator,
 	coreAddress common.Address,
 	from common.Address,
@@ -334,14 +335,13 @@ func NewActionSender(
 	signerFn bind.SignerFn,
 ) *ActionSender {
 	return &ActionSender{
-		ethcli:             ethcli,
-		actionSpecs:        actionSpecs,
-		actionIdFromAction: actionIdFromAction,
-		gasEstimator:       gasEstimator,
-		coreAddress:        coreAddress,
-		from:               from,
-		nonce:              nonce,
-		signerFn:           signerFn,
+		ethcli:       ethcli,
+		actionSpecs:  actionSpecs,
+		gasEstimator: gasEstimator,
+		coreAddress:  coreAddress,
+		from:         from,
+		nonce:        nonce,
+		signerFn:     signerFn,
 	}
 }
 
