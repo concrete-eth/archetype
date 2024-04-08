@@ -9,7 +9,7 @@ struct ActionData_Move {
 }
 
 interface IActions {
-    event ActionExecuted(uint8 actionId, bytes data); // TODO: param this further?
+    event ActionExecuted(bytes4 actionId, bytes data);
 
     function move(ActionData_Move memory action) external;
 }

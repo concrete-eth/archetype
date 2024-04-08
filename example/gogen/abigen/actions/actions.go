@@ -37,7 +37,7 @@ type ActionDataMove struct {
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"move\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_Move\",\"components\":[{\"name\":\"playerId\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"direction\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"uint8\",\"indexed\":false,\"internalType\":\"uint8\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"move\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_Move\",\"components\":[{\"name\":\"playerId\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"direction\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -276,14 +276,14 @@ func (it *ContractActionExecutedIterator) Close() error {
 
 // ContractActionExecuted represents a ActionExecuted event raised by the Contract contract.
 type ContractActionExecuted struct {
-	ActionId uint8
+	ActionId [4]byte
 	Data     []byte
 	Raw      types.Log // Blockchain specific contextual infos
 }
 
-// FilterActionExecuted is a free log retrieval operation binding the contract event 0x1222d9197a25cf43897c3a717465c69f8adf4ad539f5155923c554a866e2f239.
+// FilterActionExecuted is a free log retrieval operation binding the contract event 0x45065f461aede1b904079823f6d858e465fa8c25fcf1654bb4a89e6dee320a1a.
 //
-// Solidity: event ActionExecuted(uint8 actionId, bytes data)
+// Solidity: event ActionExecuted(bytes4 actionId, bytes data)
 func (_Contract *ContractFilterer) FilterActionExecuted(opts *bind.FilterOpts) (*ContractActionExecutedIterator, error) {
 
 	logs, sub, err := _Contract.contract.FilterLogs(opts, "ActionExecuted")
@@ -293,9 +293,9 @@ func (_Contract *ContractFilterer) FilterActionExecuted(opts *bind.FilterOpts) (
 	return &ContractActionExecutedIterator{contract: _Contract.contract, event: "ActionExecuted", logs: logs, sub: sub}, nil
 }
 
-// WatchActionExecuted is a free log subscription operation binding the contract event 0x1222d9197a25cf43897c3a717465c69f8adf4ad539f5155923c554a866e2f239.
+// WatchActionExecuted is a free log subscription operation binding the contract event 0x45065f461aede1b904079823f6d858e465fa8c25fcf1654bb4a89e6dee320a1a.
 //
-// Solidity: event ActionExecuted(uint8 actionId, bytes data)
+// Solidity: event ActionExecuted(bytes4 actionId, bytes data)
 func (_Contract *ContractFilterer) WatchActionExecuted(opts *bind.WatchOpts, sink chan<- *ContractActionExecuted) (event.Subscription, error) {
 
 	logs, sub, err := _Contract.contract.WatchLogs(opts, "ActionExecuted")
@@ -330,9 +330,9 @@ func (_Contract *ContractFilterer) WatchActionExecuted(opts *bind.WatchOpts, sin
 	}), nil
 }
 
-// ParseActionExecuted is a log parse operation binding the contract event 0x1222d9197a25cf43897c3a717465c69f8adf4ad539f5155923c554a866e2f239.
+// ParseActionExecuted is a log parse operation binding the contract event 0x45065f461aede1b904079823f6d858e465fa8c25fcf1654bb4a89e6dee320a1a.
 //
-// Solidity: event ActionExecuted(uint8 actionId, bytes data)
+// Solidity: event ActionExecuted(bytes4 actionId, bytes data)
 func (_Contract *ContractFilterer) ParseActionExecuted(log types.Log) (*ContractActionExecuted, error) {
 	event := new(ContractActionExecuted)
 	if err := _Contract.contract.UnpackLog(event, "ActionExecuted", log); err != nil {
