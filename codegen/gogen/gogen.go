@@ -3,9 +3,11 @@ package gogen
 import (
 	_ "embed"
 	"errors"
+	"html/template"
 	"path/filepath"
 
 	"github.com/concrete-eth/archetype/codegen"
+	"github.com/concrete-eth/archetype/params"
 )
 
 //go:embed templates/types.go.tpl
@@ -17,13 +19,14 @@ var actionsTpl string
 //go:embed templates/tables.go.tpl
 var tablesTpl string
 
-type importSpec struct {
+type importSpecs struct {
 	Name string
 	Path string
 }
 
 type Config struct {
 	codegen.Config
+	Contracts    string
 	Package      string
 	Datamod      string
 	Experimental bool
@@ -45,40 +48,40 @@ func (c Config) Validate() error {
 func GenerateActionTypes(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.Package
-	data["TypePrefix"] = "ActionData_"
+	funcMap := make(template.FuncMap)
+	funcMap["StructNameFn"] = params.ActionStructName
 	outPath := filepath.Join(config.Out, "action_types.go")
-	return codegen.ExecuteTemplate(typesTpl, config.Actions, outPath, data, nil)
+	return codegen.ExecuteTemplate(typesTpl, config.Actions, outPath, data, funcMap)
 }
 
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.Package
-	data["Imports"] = []importSpec{
-		{"contract", "github.com/concrete-eth/archetype/example/gogen/abigen/iactions"},
+	data["Imports"] = []importSpecs{
+		{"contract", filepath.Join(config.Contracts, params.IActionsContract.PackageName)},
 	}
 	data["Experimental"] = config.Experimental
 	outPath := filepath.Join(config.Out, "actions.go")
-	data["TypePrefix"] = "ActionData_"
 	return codegen.ExecuteTemplate(actionsTpl, config.Actions, outPath, data, nil)
 }
 
 func GenerateTableTypes(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.Package
-	data["TypePrefix"] = "RowData_"
+	funcMap := make(template.FuncMap)
+	funcMap["StructNameFn"] = params.TableStructName
 	outPath := filepath.Join(config.Out, "table_types.go")
-	return codegen.ExecuteTemplate(typesTpl, config.Tables, outPath, data, nil)
+	return codegen.ExecuteTemplate(typesTpl, config.Tables, outPath, data, funcMap)
 }
 
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.Package
-	data["Imports"] = []importSpec{
+	data["Imports"] = []importSpecs{
 		{"mod", config.Datamod},
-		{"contract", "github.com/concrete-eth/archetype/example/gogen/abigen/itables"},
+		{"contract", filepath.Join(config.Contracts, params.ITablesContract.PackageName)},
 	}
 	data["Experimental"] = config.Experimental
-	data["TypePrefix"] = "RowData_"
 	outPath := filepath.Join(config.Out, "tables.go")
 	return codegen.ExecuteTemplate(tablesTpl, config.Tables, outPath, data, nil)
 }

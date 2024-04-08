@@ -56,24 +56,29 @@ func TableStructName(name string) string {
 type ContractSpecs struct {
 	FileName     string
 	ContractName string
+	PackageName  string
 }
 
 var IActionsContract = ContractSpecs{
 	FileName:     "IActions.sol",
 	ContractName: "IActions",
+	PackageName:  "actions",
 }
 
 var ITablesContract = ContractSpecs{
 	FileName:     "ITables.sol",
 	ContractName: "ITables",
+	PackageName:  "tables",
 }
 
 var ICoreContract = ContractSpecs{
 	FileName:     "ICore.sol",
 	ContractName: "ICore",
+	PackageName:  "core",
 }
 
 var EntrypointContract = ContractSpecs{
 	FileName:     "Entrypoint.sol",
 	ContractName: "Entrypoint",
+	PackageName:  "entrypoint",
 }

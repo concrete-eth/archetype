@@ -12,7 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 
-	contract "github.com/concrete-eth/archetype/example/gogen/abigen/itables"
+	contract "github.com/concrete-eth/archetype/example/gogen/abigen/tables"
 	mod "github.com/concrete-eth/archetype/example/gogen/datamod"
 )
 

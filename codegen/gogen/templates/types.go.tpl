@@ -21,13 +21,13 @@ var (
 {{ end }}
 
 {{ range $schema := .Schemas }}
-type {{$.TypePrefix}}{{$schema.Name}} struct{
+type {{StructNameFn $schema.Name}} struct{
     {{- range $value := $schema.Values }}
     {{$value.PascalCase}} {{$value.Type.GoType}} `json:"{{$value.Name}}"`
     {{- end }}
 }
 {{ range $value := $schema.Values }}
-func (row *{{$.TypePrefix}}{{$schema.Name}}) Get{{$value.PascalCase}}() {{$value.Type.GoType}} {
+func (row *{{StructNameFn $schema.Name}}) Get{{$value.PascalCase}}() {{$value.Type.GoType}} {
     return row.{{$value.PascalCase}}
 }
 {{ end }}

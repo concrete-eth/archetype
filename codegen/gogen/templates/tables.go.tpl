@@ -29,7 +29,7 @@ var TableSpecs archtypes.TableSpecs
 func init() {
     types := map[string]reflect.Type{
         {{- range .Schemas }}
-        "{{.Name}}": reflect.TypeOf({{$.TypePrefix}}{{.Name}}{}),
+        "{{.Name}}": reflect.TypeOf({{TableStructNameFn .Name}}{}),
         {{- end }}
     }
     getters := map[string]archtypes.GetterFn{

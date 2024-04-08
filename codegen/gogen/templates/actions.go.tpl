@@ -26,7 +26,7 @@ var ActionSpecs archtypes.ActionSpecs
 func init() {
     types := map[string]reflect.Type{
         {{- range .Schemas }}
-        "{{.Name}}": reflect.TypeOf({{$.TypePrefix}}{{.Name}}{}),
+        "{{.Name}}": reflect.TypeOf({{ActionStructNameFn .Name}}{}),
         {{- end }}
     }
     var (

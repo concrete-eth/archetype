@@ -109,7 +109,7 @@ type ActionSpecs struct {
 	archSchemas
 }
 
-// TODO: Action schemas are table schemas without keys. Is there a better way to portray this []
+// TODO: Action schemas are table schemas without keys. Is there a better way to portray this [?]
 
 func NewActionSpecs(
 	abi *abi.ABI,

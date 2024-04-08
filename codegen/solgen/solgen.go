@@ -35,8 +35,6 @@ func (c Config) Validate() error {
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.IActionsContract.ContractName
-	data["Imports"] = []string{}
-	data["Interfaces"] = []string{}
 	outPath := filepath.Join(config.Out, params.IActionsContract.FileName)
 	return codegen.ExecuteTemplate(actionsTpl, config.Actions, outPath, data, nil)
 }
@@ -44,8 +42,6 @@ func GenerateActions(config Config) error {
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.ITablesContract.ContractName
-	data["Imports"] = []string{}
-	data["Interfaces"] = []string{}
 	outPath := filepath.Join(config.Out, params.ITablesContract.FileName)
 	return codegen.ExecuteTemplate(tablesTpl, config.Tables, outPath, data, nil)
 }

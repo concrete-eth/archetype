@@ -16,6 +16,7 @@ import (
 	"github.com/concrete-eth/archetype/codegen"
 	"github.com/concrete-eth/archetype/codegen/gogen"
 	"github.com/concrete-eth/archetype/codegen/solgen"
+	"github.com/concrete-eth/archetype/params"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -194,23 +195,15 @@ func getGogenConfig() (gogen.Config, error) {
 
 	gogenOut := filepath.Join(goOut, "archmod") // <go-out>/archmod
 	datamodOut := getDatamodOut()               // <go-out>/datamod
-	datamodOutAbs, err := filepath.Abs(datamodOut)
+
+	datamodImportPath, err := getPackageImportPath(datamodOut)
 	if err != nil {
 		return gogen.Config{}, err
 	}
-
-	// Craft the import path for datamod e.g. github.com/user/repo/codegen/datamod
-	var modName, modPath, relDatamodPath string
-	if modName, err = getGoModule(); err != nil {
+	contractImportPath, err := getPackageImportPath(getAbigenOut())
+	if err != nil {
 		return gogen.Config{}, err
 	}
-	if modPath, err = getGoModulePath(); err != nil {
-		return gogen.Config{}, err
-	}
-	if relDatamodPath, err = filepath.Rel(modPath, datamodOutAbs); err != nil {
-		return gogen.Config{}, err
-	}
-	datamodPkg := filepath.Join(modName, relDatamodPath)
 
 	config := gogen.Config{
 		Config: codegen.Config{
@@ -219,11 +212,31 @@ func getGogenConfig() (gogen.Config, error) {
 			Out:     gogenOut,
 		},
 		Package:      pkg,
-		Datamod:      datamodPkg,
+		Datamod:      datamodImportPath,
+		Contracts:    contractImportPath,
 		Experimental: exp,
 	}
 
 	return config, nil
+}
+
+func getPackageImportPath(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	// Craft the import path for datamod e.g. github.com/user/repo/codegen/datamod
+	var modName, modPath, relDatamodPath string
+	if modName, err = getGoModule(); err != nil {
+		return "", err
+	}
+	if modPath, err = getGoModulePath(); err != nil {
+		return "", err
+	}
+	if relDatamodPath, err = filepath.Rel(modPath, absPath); err != nil {
+		return "", err
+	}
+	return filepath.Join(modName, relDatamodPath), nil
 }
 
 // getDatamodOut returns the output directory for the datamod package.
@@ -380,18 +393,18 @@ func runCodegen(cmd *cobra.Command, args []string) {
 
 	// Abigen
 	abigenOut := getAbigenOut()
-	for _, contractName := range []string{"IActions", "ITables"} {
+	for _, contract := range []params.ContractSpecs{params.IActionsContract, params.ITablesContract} {
 		var (
-			inPath   = filepath.Join(forgeBuildOut, contractName+".sol")
-			dirName  = strings.ToLower(contractName)
-			fileName = dirName + ".go"
+			inPath   = filepath.Join(forgeBuildOut, contract.FileName)
+			dirName  = contract.PackageName
+			fileName = contract.PackageName + ".go"
 			outDir   = filepath.Join(abigenOut, dirName)
 			outPath  = filepath.Join(outDir, fileName)
 		)
 		if err := ensureDir(outDir); err != nil {
 			logFatal(err)
 		}
-		if err := runAbigen(contractName, inPath, outPath); err != nil {
+		if err := runAbigen(contract.ContractName, inPath, outPath); err != nil {
 			logFatal(err)
 		}
 	}

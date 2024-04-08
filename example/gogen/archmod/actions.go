@@ -11,7 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 
-	contract "github.com/concrete-eth/archetype/example/gogen/abigen/iactions"
+	contract "github.com/concrete-eth/archetype/example/gogen/abigen/actions"
 )
 
 var ActionsABIJson = contract.ContractABI
