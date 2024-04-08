@@ -29,7 +29,7 @@ abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ 
                 actionData,
                 (ActionData_{{.Name}})
             );
-            {{_lowerFirstChar .Name}}(action);
+            {{_actionMethodName .Name}}(action);
         } else {{- end }} {
             revert("Entrypoint: Invalid action ID");
         }
@@ -37,9 +37,9 @@ abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ 
 
     {{- range .Schemas }}
     {{ if .Values }}
-    function {{_lowerFirstChar .Name}}(ActionData_{{.Name}} memory action) public virtual;
+    function {{_actionMethodName .Name}}(ActionData_{{.Name}} memory action) public virtual;
     {{- else }}
-    function {{_lowerFirstChar .Name}}() public;
+    function {{_actionMethodName .Name}}() public;
     {{- end }}
     {{- end }}
 }

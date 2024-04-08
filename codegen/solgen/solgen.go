@@ -33,14 +33,14 @@ func (c Config) Validate() error {
 
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
-	data["Name"] = "IActionExecutor"
+	data["Name"] = "IActions"
 	outPath := filepath.Join(config.Out, "IActions.sol")
 	return codegen.ExecuteTemplate(actionsTpl, config.Actions, outPath, data, nil)
 }
 
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
-	data["Name"] = "ITableGetter"
+	data["Name"] = "ITables"
 	outPath := filepath.Join(config.Out, "ITables.sol")
 	return codegen.ExecuteTemplate(tablesTpl, config.Tables, outPath, data, nil)
 }
@@ -53,8 +53,8 @@ func GenerateCore(config Config) error {
 		"./IActions.sol",
 	}
 	data["Interfaces"] = []string{
-		"ITableGetter",
-		"IActionExecutor",
+		"ITables",
+		"IActions",
 	}
 	outPath := filepath.Join(config.Out, "ICore.sol")
 	return codegen.ExecuteTemplate(coreTpl, "", outPath, data, nil)
@@ -67,7 +67,7 @@ func GenerateEntrypoint(config Config) error {
 		"./IActions.sol",
 	}
 	data["Interfaces"] = []string{
-		"IActionExecutor",
+		"IActions",
 	}
 	outPath := filepath.Join(config.Out, "Entrypoint.sol")
 	return codegen.ExecuteTemplate(entrypointTpl, config.Actions, outPath, data, nil)

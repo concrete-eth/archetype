@@ -22,9 +22,9 @@ interface {{.Name}} {
     event {{.ArchParams.ActionExecutedEventName}}(uint8 actionId, bytes data);
 {{ range .Schemas }}
     {{- if .Values }}
-    function {{_lowerFirstChar .Name}}(ActionData_{{.Name}} memory action) external;
+    function {{_actionMethodName .Name}}(ActionData_{{.Name}} memory action) external;
     {{- else }}
-    function {{_lowerFirstChar .Name}}() external;
+    function {{_actionMethodName .Name}}() external;
     {{- end }}
 {{- end }}
 }

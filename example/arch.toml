@@ -1,2 +1,3 @@
-sol-out = "sol/solgen"
 go-out = "gogen"
+sol-out = "sol/solgen"
+forge-out = "out"

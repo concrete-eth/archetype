@@ -6,4 +6,4 @@ pragma solidity >=0.8.0;
 import "./ITables.sol";
 import "./IActions.sol";
 
-interface ICore is ITableGetter, IActionExecutor {}
+interface ICore is ITables, IActions {}

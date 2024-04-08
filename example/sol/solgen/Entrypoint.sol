@@ -5,7 +5,7 @@ pragma solidity >=0.8.0;
 
 import "./IActions.sol";
 
-abstract contract Entrypoint is IActionExecutor {
+abstract contract Entrypoint is IActions {
     function executeMultipleActions(
         uint8[] memory actionIds,
         uint8[] memory actionCount,

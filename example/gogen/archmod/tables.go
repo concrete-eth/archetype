@@ -4,151 +4,71 @@ package archmod
 
 import (
 	"reflect"
-
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/concrete/lib"
+	"strings"
 
 	archtypes "github.com/concrete-eth/archetype/types"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/concrete/lib"
 
-	"github.com/concrete-eth/archetype/example/gogen/datamod"
+	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
+
+	contract "github.com/concrete-eth/archetype/example/gogen/abigen/itables"
+	mod "github.com/concrete-eth/archetype/example/gogen/datamod"
 )
 
-var (
-	_ = common.Big1
-)
+var TablesABIJson = contract.ContractABI
 
-/*
-Table    KeySize  ValueSize
-Config   0        9
-Players  1        5
-*/
+var TablesSchemaJson = `{
+    "config": {
+        "schema": {
+            "startBlock": "uint64",
+            "maxPlayers": "uint8"
+        }
+    },
+    "players": {
+        "keySchema": {
+            "playerId": "uint8"
+        },
+        "schema": {
+            "x": "int16",
+            "y": "int16",
+            "health": "uint8"
+        }
+    }
+}`
 
-const (
-	TableId_Config archtypes.RawIdType = iota
-	TableId_Players
-)
+// TODO: base tempalte for actions and tables
 
-var Tables = archtypes.TableSpecs{
-	Tables:  tableMap,
-	ABI:     nil,
-	GetData: getData,
-}
+var TableSpecs archtypes.TableSpecs
 
-var tableMap = archtypes.TableMap{
-	TableId_Config: {
-		// RawId: TableId_Config,
-		Name:       "Config",
-		MethodName: "getConfigRow",
-		Keys:       []string{},
-		Columns: []string{
-			"startBlock",
-			"maxPlayers",
+func init() {
+	types := map[string]reflect.Type{
+		"Config":  reflect.TypeOf(RowData_Config{}),
+		"Players": reflect.TypeOf(RowData_Players{}),
+	}
+	getters := map[string]archtypes.GetterFn{
+		"Config": func(ds lib.Datastore) interface{} {
+			return mod.NewConfig(ds)
 		},
-		Type: reflect.TypeOf(RowData_Config{}),
-	},
-	TableId_Players: {
-		// RawId: TableId_Players,
-		Name:       "Players",
-		MethodName: "getPlayersRow",
-		Keys: []string{
-			"playerId",
+		"Players": func(ds lib.Datastore) interface{} {
+			return mod.NewPlayers(ds)
 		},
-		Columns: []string{
-			"x",
-			"y",
-			"health",
-		},
-		Type: reflect.TypeOf(RowData_Players{}),
-	},
-}
-
-func getData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {
-	switch method.Name {
-	case "getConfigRow":
-		row := datamod.NewConfig(datastore).Get()
-		return RowData_Config{
-			StartBlock: row.GetStartBlock(),
-			MaxPlayers: row.GetMaxPlayers(),
-		}, true
-	case "getPlayersRow":
-		row := datamod.NewPlayers(datastore).Get(
-			args[0].(uint8),
-		)
-		return RowData_Players{
-			X:      row.GetX(),
-			Y:      row.GetY(),
-			Health: row.GetHealth(),
-		}, true
 	}
-	return nil, false
-}
-
-type State struct {
-	datastore lib.Datastore
-	config    *datamod.Config
-	players   *datamod.Players
-}
-
-func NewState(datastore lib.Datastore) *State {
-	return &State{
-		datastore: datastore,
-	}
-}
-
-func (s *State) Config() *datamod.Config {
-	if s.config == nil {
-		s.config = datamod.NewConfig(s.datastore)
-	}
-	return s.config
-}
-
-func (s *State) Players() *datamod.Players {
-	if s.players == nil {
-		s.players = datamod.NewPlayers(s.datastore)
-	}
-	return s.players
-}
-
-func (s *State) GetConfigRow() *datamod.ConfigRow {
-	return s.Config().Get()
-}
-
-func (s *State) GetPlayersRow(
-	playerId uint8,
-) *datamod.PlayersRow {
-	return s.Players().Get(
-		playerId,
+	var (
+		ABI     abi.ABI
+		schemas []datamod.TableSchema
+		err     error
 	)
-}
-
-type RowData_Config struct {
-	StartBlock uint64 `json:"startBlock"`
-	MaxPlayers uint8  `json:"maxPlayers"`
-}
-
-func (row *RowData_Config) GetStartBlock() uint64 {
-	return row.StartBlock
-}
-
-func (row *RowData_Config) GetMaxPlayers() uint8 {
-	return row.MaxPlayers
-}
-
-type RowData_Players struct {
-	X      int16 `json:"x"`
-	Y      int16 `json:"y"`
-	Health uint8 `json:"health"`
-}
-
-func (row *RowData_Players) GetX() int16 {
-	return row.X
-}
-
-func (row *RowData_Players) GetY() int16 {
-	return row.Y
-}
-
-func (row *RowData_Players) GetHealth() uint8 {
-	return row.Health
+	// Load the contract ABI
+	if ABI, err = abi.JSON(strings.NewReader(TablesABIJson)); err != nil {
+		panic(err)
+	}
+	// Load the table schemas
+	if schemas, err = datamod.UnmarshalTableSchemas([]byte(TablesSchemaJson), false); err != nil {
+		panic(err)
+	}
+	// Create the specs
+	if TableSpecs, err = archtypes.NewTableSpecs(&ABI, schemas, types, getters); err != nil {
+		panic(err)
+	}
 }

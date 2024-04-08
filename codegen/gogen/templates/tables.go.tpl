@@ -4,156 +4,56 @@ package {{.Package}}
 
 import (
     "reflect"
+	"strings"
 
-    "github.com/ethereum/go-ethereum/accounts/abi"
+	archtypes "github.com/concrete-eth/archetype/types"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/concrete/lib"
-    "github.com/ethereum/go-ethereum/common"
 
-    archtypes "github.com/concrete-eth/archetype/types"
-	
-    {{ range .Imports }}
-	"{{.}}"
+	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
+
+	{{ range .Imports }}
+	{{- if .Name }}{{ .Name }} "{{ .Path }}"
+    {{- else }}"{{ .Path }}"{{ end }}
 	{{ end }}
 )
 
-var (
-	_ = common.Big1
-)
+var TablesABIJson = contract.ContractABI
 
-{{ if .Comment }}
-/*
-{{ .Comment }}
-*/
-{{ end }}
+var TablesSchemaJson = `{{.Json}}`
 
-{{ if .Schemas }}
-const (
-    {{- range $index, $element := .Schemas }}
-    TableId_{{.Name}}{{ if eq $index 0 }} uint8 = iota{{ end }}
-    {{- end }}
-)
-{{ end }}
+// TODO: base tempalte for actions and tables
 
-var Tables = archtypes.TableSpecs{
-    Tables: tableMap,
-    ABI: nil,
-    GetData: getData,
-}
+var TableSpecs archtypes.TableSpecs
 
-var tableMap = archtypes.TableMap{
-    {{- range .Schemas }}
-    TableId_{{.Name}}: {
-        // RawId: TableId_{{.Name}},
-        Name: "{{.Name}}",
-        MethodName: "get{{.Name}}Row",
-        Keys: []string{
-            {{- range .Keys }}
-            "{{.Name}}",
-            {{- end }}
-        },
-        Columns: []string{
-            {{- range .Values }}
-            "{{.Name}}",
-            {{- end }}
-        },
-        Type: reflect.TypeOf(RowData_{{.Name}}{}),
-    },
-    {{- end }}
-}
-
-func getData(datastore lib.Datastore, method *abi.Method, args []interface{}) (interface{}, bool) {
-	switch method.Name {
-	{{- range .Schemas }}
-	case "get{{.Name}}Row":
-		row := datamod.New{{.Name}}(datastore).Get(
-			{{- range .Keys }}
-			args[{{.Index}}].({{.Type.GoType}}),
-			{{- end }}
-		)
-		return RowData_{{.Name}}{
-			{{- range .Values }}
-			{{.PascalCase}}: row.Get{{.PascalCase}}(),
-			{{- end }}
-		}, true
-	{{- end }}
-	}
-	return nil, false
-}
-
-{{ if .Experimental }}
-type TableUpdateHandler func(tableId uint8, rowKey []interface{}, columnIndex int, value []byte)
-{{ end }}
-
-type State struct {
-	datastore  lib.Datastore
-    {{- range .Schemas }}
-    {{_lowerFirstChar .Name}} *datamod.{{.Name}}{{if $.Experimental}}WithHooks{{ end }}
-    {{- end }}
-    {{- if .Experimental }}
-	OnSetTable TableUpdateHandler
-    {{- end }}
-}
-
-func NewState(datastore lib.Datastore) *State {
-	return &State{
-		datastore: datastore,
-	}
-}
-
-{{ if .Experimental }}
-func (s *State) SetTableUpdateHandler(handler TableUpdateHandler) {
-	s.OnSetTable = handler
-}
-{{ end }}
-
-{{ range .Schemas }}
-{{ if $.Experimental }}
-func (s *State) {{.Name}}() *datamod.{{.Name}}WithHooks {
-    {{- $fieldName := _lowerFirstChar .Name}}
-    if s.{{$fieldName}} == nil || (s.{{$fieldName}}.OnSetRow == nil && s.OnSetTable != nil) {
-        s.{{$fieldName}} = datamod.New{{.Name}}WithHooks(datamod.New{{.Name}}(s.datastore))
-        s.{{$fieldName}}.OnSetRow = func(rowKey []interface{}, columnIndex int, value []byte) {
-            if s.OnSetTable != nil {
-                s.OnSetTable(TableId_{{.Name}}, rowKey, columnIndex, value)
-            }
-        }
-    }
-    return s.{{$fieldName}}
-}
-{{ else }}
-func (s *State) {{.Name}}() *datamod.{{.Name}} {
-    {{- $fieldName := _lowerFirstChar .Name}}
-    if s.{{$fieldName}} == nil {
-        s.{{$fieldName}} = datamod.New{{.Name}}(s.datastore)
-    }
-    return s.{{$fieldName}}
-}
-{{ end }}
-{{ end }}
-
-{{ range .Schemas }}
-func (s *State) Get{{.Name}}Row(
-    {{- range .Keys }}
-    {{.Name}} {{.Type.GoType}},
-    {{- end }}
-) *datamod.{{.Name}}Row {
-    return s.{{.Name}}().Get(
-        {{- range .Keys }}
-        {{.Name}},
+func init() {
+    types := map[string]reflect.Type{
+        {{- range .Schemas }}
+        "{{.Name}}": reflect.TypeOf({{$.TypePrefix}}{{.Name}}{}),
         {{- end }}
+    }
+    getters := map[string]archtypes.GetterFn{
+        {{- range .Schemas }}
+        "{{.Name}}": func(ds lib.Datastore) interface{} {
+            return mod.New{{.Name}}(ds)
+        },
+        {{- end }}
+    }
+    var (
+        ABI abi.ABI
+        schemas []datamod.TableSchema
+        err error
     )
+    // Load the contract ABI
+    if ABI, err = abi.JSON(strings.NewReader(TablesABIJson)); err != nil {
+        panic(err)
+    }
+    // Load the table schemas
+    if schemas, err = datamod.UnmarshalTableSchemas([]byte(TablesSchemaJson), false); err != nil {
+        panic(err)
+    }
+    // Create the specs
+    if TableSpecs, err = archtypes.NewTableSpecs(&ABI, schemas, types, getters); err != nil {
+        panic(err)
+    }
 }
-{{ end }}
-
-{{ range $schema := .Schemas }}
-type RowData_{{.Name}} struct{
-    {{- range .Values }}
-    {{.PascalCase}} {{.Type.GoType}} `json:"{{.Name}}"`
-    {{- end }}
-}
-{{ range .Values }}
-func (row *RowData_{{$schema.Name}}) Get{{.PascalCase}}() {{.Type.GoType}} {
-    return row.{{.PascalCase}}
-}
-{{ end }}
-{{ end }}

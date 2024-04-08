@@ -28,6 +28,8 @@ const (
 	NODE_EXEC_BIN       = "npx"
 	PRETTIER_BIN        = "prettier"
 	PRETTIER_SOL_PLUGIN = "prettier-plugin-solidity"
+	FORGE_BIN           = "forge"
+	ABIGEN_BIN          = "abigen"
 )
 
 var (
@@ -54,7 +56,7 @@ func logTaskFail(name string, err error) {
 	red.Print("[FAIL] ")
 	fmt.Print(name)
 	if err != nil {
-		fmt.Print(":", err)
+		fmt.Print(": ", err)
 	}
 	fmt.Println()
 }
@@ -231,6 +233,17 @@ func getDatamodOut() string {
 	return datamodOut
 }
 
+func getForgeBuildOut() string {
+	forgeOut := viper.GetString("forge-out")
+	return forgeOut
+}
+
+func getAbigenOut() string {
+	goOut := viper.GetString("go-out")
+	abigenOut := filepath.Join(goOut, "abigen") // <go-out>/abigen
+	return abigenOut
+}
+
 // getSolgenConfig returns a solgen config from viper settings.
 func getSolgenConfig() solgen.Config {
 	var (
@@ -310,6 +323,12 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	if !isInstalled(CONCRETE_BIN) {
 		logFatal(fmt.Errorf("concrete cli is not installed (concrete_bin=%s)", CONCRETE_BIN))
 	}
+	if !isInstalled(FORGE_BIN) {
+		logFatal(fmt.Errorf("forge cli is not installed (forge_bin=%s)", FORGE_BIN))
+	}
+	if !isInstalled(ABIGEN_BIN) {
+		logFatal(fmt.Errorf("abigen is not installed (abigen_bin=%s)", ABIGEN_BIN))
+	}
 
 	// Run concrete datamod
 	datamodPkg := "datamod"
@@ -353,6 +372,30 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		logWarning(fmt.Sprintf("%s is not installed. Install it to format the generated solidity code.", missing))
 	}
 
+	// Forge build
+	forgeBuildOut := getForgeBuildOut()
+	if err := runForgeBuild(solgenConfig.Out, forgeBuildOut); err != nil {
+		logFatal(err)
+	}
+
+	// Abigen
+	abigenOut := getAbigenOut()
+	for _, contractName := range []string{"IActions", "ITables"} {
+		var (
+			inPath   = filepath.Join(forgeBuildOut, contractName+".sol")
+			dirName  = strings.ToLower(contractName)
+			fileName = dirName + ".go"
+			outDir   = filepath.Join(abigenOut, dirName)
+			outPath  = filepath.Join(outDir, fileName)
+		)
+		if err := ensureDir(outDir); err != nil {
+			logFatal(err)
+		}
+		if err := runAbigen(contractName, inPath, outPath); err != nil {
+			logFatal(err)
+		}
+	}
+
 	// Done
 	logInfo("\nCode generation completed successfully.")
 	logInfo("Files written to: " + gogenConfig.Out + ", " + solgenConfig.Out)
@@ -360,13 +403,15 @@ func runCodegen(cmd *cobra.Command, args []string) {
 }
 
 func runCommand(name string, cmd *exec.Cmd) error {
-	var out bytes.Buffer
-	cmd.Stdout = &out
+	var stdOut bytes.Buffer
+	var stdErr bytes.Buffer
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("%s failed: %w", name, err)
 		logTaskFail(name, err)
 		logDebug(strings.Join(cmd.Args, " "))
-		logDebug(out.String())
+		logDebug(stdErr.String())
 		return err
 	}
 	if viper.GetBool("verbose") {
@@ -415,6 +460,28 @@ func runSolgen(config solgen.Config) error {
 	return nil
 }
 
+func runForgeBuild(inDir, outDir string) error {
+	taskName := "Forge build"
+	cmd := exec.Command(
+		FORGE_BIN, "build",
+		"--contracts", inDir,
+		"--out", outDir,
+		"--extra-output-files", "bin", "abi",
+	)
+	return runCommand(taskName, cmd)
+}
+
+func runAbigen(contractName, inPath, outPath string) error {
+	var (
+		pgk     = "contract"
+		binPath = filepath.Join(inPath, contractName+".bin")
+		abiDir  = filepath.Join(inPath, contractName+".abi.json")
+	)
+	taskName := "abigen: " + contractName
+	cmd := exec.Command(ABIGEN_BIN, "--bin", binPath, "--abi", abiDir, "--pkg", pgk, "--out", outPath)
+	return runCommand(taskName, cmd)
+}
+
 // runGofmt runs gofmt on the given directory.
 func runGofmt(dirs ...string) error {
 	taskName := "gofmt"
@@ -452,6 +519,7 @@ func NewRootCmd() *cobra.Command {
 	// Codegen flags
 	codegenCmd.Flags().StringP("go-out", "g", "./codegen", "output directory")
 	codegenCmd.Flags().StringP("sol-out", "s", "./codegen/sol", "output directory")
+	codegenCmd.Flags().StringP("forge-out", "f", "./out", "forge output directory")
 	codegenCmd.Flags().StringP("tables", "t", "./tables.json", "table schema file")
 	codegenCmd.Flags().StringP("actions", "a", "./actions.json", "action schema file")
 	codegenCmd.Flags().String("pkg", "archmod", "go package name")
@@ -461,6 +529,7 @@ func NewRootCmd() *cobra.Command {
 	// Bind flags to viper
 	viper.BindPFlag("go-out", codegenCmd.Flags().Lookup("go-out"))
 	viper.BindPFlag("sol-out", codegenCmd.Flags().Lookup("sol-out"))
+	viper.BindPFlag("forge-out", codegenCmd.Flags().Lookup("forge-out"))
 	viper.BindPFlag("tables", codegenCmd.Flags().Lookup("tables"))
 	viper.BindPFlag("actions", codegenCmd.Flags().Lookup("actions"))
 	viper.BindPFlag("pkg", codegenCmd.Flags().Lookup("pkg"))

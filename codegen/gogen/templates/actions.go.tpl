@@ -4,52 +4,46 @@ package {{.Package}}
 
 import (
     "reflect"
+	"strings"
 
-    archtypes "github.com/concrete-eth/archetype/types"
-    "github.com/ethereum/go-ethereum/common"
+	archtypes "github.com/concrete-eth/archetype/types"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+
+	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 
 	{{ range .Imports }}
-	"{{.}}"
+	{{- if .Name }}{{ .Name }} "{{ .Path }}"
+    {{- else }}"{{ .Path }}"{{ end }}
 	{{ end }}
 )
 
-var (
-	_ = common.Big1
-)
+var ActionsABIJson = contract.ContractABI
 
-{{ if .Schemas }}
-const (
-    {{- range $index, $element := .Schemas }}
-    ActionId_{{.Name}}{{ if eq $index 0 }} uint8 = iota{{ end }}
-    {{- end }}
-)
-{{ end }}
+var ActionsSchemaJson = `{{.Json}}`
 
-var Actions = archtypes.ActionSpecs{
-    Actions: actionMap,
-    ABI: nil,
-}
+var ActionSpecs archtypes.ActionSpecs
 
-var actionMap = archtypes.ActionMap{
-    {{- range .Schemas }}
-    ActionId_{{.Name}}: {
-        // RawId: ActionId_{{.Name}},
-        Name: "{{.Name}}",
-        MethodName: "{{_lowerFirstChar .Name}}",
-        Type: reflect.TypeOf(ActionData_{{.Name}}{}),
-    },
-    {{- end }}
+func init() {
+    types := map[string]reflect.Type{
+        {{- range .Schemas }}
+        "{{.Name}}": reflect.TypeOf({{$.TypePrefix}}{{.Name}}{}),
+        {{- end }}
+    }
+    var (
+        ABI abi.ABI
+        schemas []datamod.TableSchema
+        err error
+    )
+    // Load the contract ABI
+    if ABI, err = abi.JSON(strings.NewReader(ActionsABIJson)); err != nil {
+        panic(err)
+    }
+    // Load the table schemas
+    if schemas, err = datamod.UnmarshalTableSchemas([]byte(ActionsSchemaJson), false); err != nil {
+        panic(err)
+    }
+    // Create the specs
+    if ActionSpecs, err = archtypes.NewActionSpecs(&ABI, schemas, types); err != nil {
+        panic(err)
+    }
 }
-
-{{ range $schema := .Schemas }}
-type ActionData_{{.Name}} struct{
-    {{- range .Values }}
-    {{.PascalCase}} {{.Type.GoType}} `json:"{{.Name}}"`
-    {{- end }}
-}
-{{ range .Values }}
-func (action *ActionData_{{$schema.Name}}) Get{{.PascalCase}}() {{.Type.GoType}} {
-    return action.{{.PascalCase}}
-}
-{{ end }}
-{{ end }}

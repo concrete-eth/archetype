@@ -19,7 +19,7 @@ struct RowData_Players {
     uint8 health;
 }
 
-interface ITableGetter {
+interface ITables {
     function getConfigRow() external view returns (RowData_Config memory);
     function getPlayersRow(
         uint8 playerId

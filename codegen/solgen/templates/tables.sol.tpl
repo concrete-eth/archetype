@@ -20,7 +20,7 @@ struct RowData_{{.Name}} {
 {{- end }}
 interface {{.Name}} {
 {{- range .Schemas }}
-    function get{{.Name}}Row(
+    function {{ _tableMethodName .Name }}(
         {{- $length := len .Keys -}}
         {{- range $index, $element := .Keys -}}
         {{- .Type.SolType }} {{.Name}}{{if lt $index (_sub $length 1)}},{{ end -}}

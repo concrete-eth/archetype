@@ -12,7 +12,7 @@ struct ActionData_Move {
     uint8 direction;
 }
 
-interface IActionExecutor {
+interface IActions {
     event ActionExecuted(uint8 actionId, bytes data);
 
     function move(ActionData_Move memory action) external;
