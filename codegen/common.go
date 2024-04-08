@@ -10,7 +10,6 @@ import (
 	"text/template"
 
 	"github.com/concrete-eth/archetype/params"
-	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 )
 
@@ -69,20 +68,6 @@ func CheckDir(dirPath string) error {
 
 var DefaultFuncMap = template.FuncMap{
 	"_sub": func(a, b int) int { return a - b },
-	// "_upperFirstChar": func(s string) string {
-	// 	if s == "" {
-	// 		return ""
-	// 	}
-	// 	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
-	// },
-	// "_lowerFirstChar": func(s string) string {
-	// 	if s == "" {
-	// 		return ""
-	// 	}
-	// 	return string(unicode.ToLower(rune(s[0]))) + s[1:]
-	// },
-	"_actionMethodName": archtypes.ActionMethodName,
-	"_tableMethodName":  archtypes.TableMethodName,
 }
 
 // ExecuteTemplate executes a template with the given data and writes the output to a file.
@@ -103,20 +88,26 @@ func ExecuteTemplate(tplStr string, jsonSchemaPath, outPath string, data map[str
 		data["Comment"] = GenerateSchemaDescriptionString(schemas)
 	}
 
-	data["ArchParams"] = params.Params
+	data["ArchParams"] = params.ValueParams
 
 	// Set funcMap
 	if funcMap == nil {
 		// Use default functions
 		funcMap = DefaultFuncMap
-	} else {
-		// Add default functions without overriding existing ones
-		for key, value := range DefaultFuncMap {
-			if _, ok := funcMap[key]; ok {
-				continue
-			}
-			funcMap[key] = value
+	}
+	// Add param functions without overriding existing ones
+	for key, value := range params.FunctionParams {
+		if _, ok := funcMap[key]; ok {
+			continue
 		}
+		funcMap[key] = value
+	}
+	// Add default functions without overriding existing ones
+	for key, value := range DefaultFuncMap {
+		if _, ok := funcMap[key]; ok {
+			continue
+		}
+		funcMap[key] = value
 	}
 
 	// Parse template

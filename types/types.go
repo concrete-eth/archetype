@@ -4,16 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"unicode"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/core/types"
-)
 
-// TODO: consolidate nomenclature
+	"github.com/concrete-eth/archetype/params"
+)
 
 var (
 	ErrInvalidAction   = errors.New("invalid action")
@@ -36,28 +35,6 @@ func (v validId) Raw() RawIdType {
 		panic("Invalid id")
 	}
 	return v.id
-}
-
-func lowerFirstChar(s string) string {
-	if s == "" {
-		return ""
-	}
-	return string(unicode.ToLower(rune(s[0]))) + s[1:]
-}
-
-func upperFirstChar(s string) string {
-	if s == "" {
-		return ""
-	}
-	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
-}
-
-func ActionMethodName(name string) string {
-	return lowerFirstChar(name)
-}
-
-func TableMethodName(name string) string {
-	return "get" + upperFirstChar(name) + "Row"
 }
 
 /*
@@ -132,19 +109,14 @@ type ActionSpecs struct {
 	archSchemas
 }
 
-/*
-
-TODO:
-Action schemas are table schemas without keys. Is there a better way to portray this?
-
-*/
+// TODO: Action schemas are table schemas without keys. Is there a better way to portray this []
 
 func NewActionSpecs(
 	abi *abi.ABI,
 	schemas []datamod.TableSchema,
 	types map[string]reflect.Type,
 ) (ActionSpecs, error) {
-	s, err := newArchSchemas(abi, schemas, types, ActionMethodName)
+	s, err := newArchSchemas(abi, schemas, types, params.ActionMethodName)
 	if err != nil {
 		return ActionSpecs{}, err
 	}
@@ -170,10 +142,12 @@ func (a ActionSpecs) GetActionSchema(actionId ValidActionId) ActionSchema {
 	return ActionSchema{a.archSchemas.getSchema(actionId.validId)}
 }
 
+// TODO: error capitalization
+
 func (a *ActionSpecs) EncodeAction(action Action) (ValidActionId, []byte, error) {
 	actionId, ok := a.ActionIdFromAction(action)
 	if !ok {
-		return ValidActionId{}, nil, errors.New("invalid action") // TODO: error capitalization
+		return ValidActionId{}, nil, errors.New("invalid action")
 	}
 	schema := a.GetActionSchema(actionId)
 	data, err := schema.Method.Inputs.Pack(action)
@@ -307,7 +281,7 @@ func NewTableSpecs(
 	types map[string]reflect.Type,
 	getters map[string]GetterFn,
 ) (TableSpecs, error) {
-	s, err := newArchSchemas(abi, schemas, types, TableMethodName)
+	s, err := newArchSchemas(abi, schemas, types, params.TableMethodName)
 	if err != nil {
 		return TableSpecs{}, err
 	}

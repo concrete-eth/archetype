@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/concrete-eth/archetype/codegen"
+	"github.com/concrete-eth/archetype/params"
 )
 
 //go:embed templates/tables.sol.tpl
@@ -33,43 +34,43 @@ func (c Config) Validate() error {
 
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
-	data["Name"] = "IActions"
-	outPath := filepath.Join(config.Out, "IActions.sol")
+	data["Name"] = params.IActionsContract.ContractName
+	data["Imports"] = []string{}
+	data["Interfaces"] = []string{}
+	outPath := filepath.Join(config.Out, params.IActionsContract.FileName)
 	return codegen.ExecuteTemplate(actionsTpl, config.Actions, outPath, data, nil)
 }
 
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
-	data["Name"] = "ITables"
-	outPath := filepath.Join(config.Out, "ITables.sol")
+	data["Name"] = params.ITablesContract.ContractName
+	data["Imports"] = []string{}
+	data["Interfaces"] = []string{}
+	outPath := filepath.Join(config.Out, params.ITablesContract.FileName)
 	return codegen.ExecuteTemplate(tablesTpl, config.Tables, outPath, data, nil)
 }
 
 func GenerateCore(config Config) error {
 	data := make(map[string]interface{})
-	data["Name"] = "ICore"
+	data["Name"] = params.ICoreContract.ContractName
 	data["Imports"] = []string{
-		"./ITables.sol",
-		"./IActions.sol",
+		"./" + params.IActionsContract.FileName,
+		"./" + params.ITablesContract.FileName,
 	}
 	data["Interfaces"] = []string{
-		"ITables",
-		"IActions",
+		params.IActionsContract.ContractName,
+		params.ITablesContract.ContractName,
 	}
-	outPath := filepath.Join(config.Out, "ICore.sol")
+	outPath := filepath.Join(config.Out, params.ICoreContract.FileName)
 	return codegen.ExecuteTemplate(coreTpl, "", outPath, data, nil)
 }
 
 func GenerateEntrypoint(config Config) error {
 	data := make(map[string]interface{})
-	data["Name"] = "Entrypoint"
-	data["Imports"] = []string{
-		"./IActions.sol",
-	}
-	data["Interfaces"] = []string{
-		"IActions",
-	}
-	outPath := filepath.Join(config.Out, "Entrypoint.sol")
+	data["Name"] = params.EntrypointContract.ContractName
+	data["Imports"] = []string{"./" + params.IActionsContract.FileName}
+	data["Interfaces"] = []string{params.IActionsContract.ContractName}
+	outPath := filepath.Join(config.Out, params.EntrypointContract.FileName)
 	return codegen.ExecuteTemplate(entrypointTpl, config.Actions, outPath, data, nil)
 }
 

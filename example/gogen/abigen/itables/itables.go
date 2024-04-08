@@ -44,7 +44,7 @@ type RowDataPlayers struct {
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"getConfigRow\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Config\",\"components\":[{\"name\":\"startBlock\",\"type\":\"uint64\",\"internalType\":\"uint64\"},{\"name\":\"maxPlayers\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPlayersRow\",\"inputs\":[{\"name\":\"playerId\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Players\",\"components\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"health\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"getConfig\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Config\",\"components\":[{\"name\":\"startBlock\",\"type\":\"uint64\",\"internalType\":\"uint64\"},{\"name\":\"maxPlayers\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPlayers\",\"inputs\":[{\"name\":\"playerId\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Players\",\"components\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"health\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -193,12 +193,12 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
-// GetConfigRow is a free data retrieval call binding the contract method 0x0f9ef1fa.
+// GetConfig is a free data retrieval call binding the contract method 0xc3f909d4.
 //
-// Solidity: function getConfigRow() view returns((uint64,uint8))
-func (_Contract *ContractCaller) GetConfigRow(opts *bind.CallOpts) (RowDataConfig, error) {
+// Solidity: function getConfig() view returns((uint64,uint8))
+func (_Contract *ContractCaller) GetConfig(opts *bind.CallOpts) (RowDataConfig, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getConfigRow")
+	err := _Contract.contract.Call(opts, &out, "getConfig")
 
 	if err != nil {
 		return *new(RowDataConfig), err
@@ -210,26 +210,26 @@ func (_Contract *ContractCaller) GetConfigRow(opts *bind.CallOpts) (RowDataConfi
 
 }
 
-// GetConfigRow is a free data retrieval call binding the contract method 0x0f9ef1fa.
+// GetConfig is a free data retrieval call binding the contract method 0xc3f909d4.
 //
-// Solidity: function getConfigRow() view returns((uint64,uint8))
-func (_Contract *ContractSession) GetConfigRow() (RowDataConfig, error) {
-	return _Contract.Contract.GetConfigRow(&_Contract.CallOpts)
+// Solidity: function getConfig() view returns((uint64,uint8))
+func (_Contract *ContractSession) GetConfig() (RowDataConfig, error) {
+	return _Contract.Contract.GetConfig(&_Contract.CallOpts)
 }
 
-// GetConfigRow is a free data retrieval call binding the contract method 0x0f9ef1fa.
+// GetConfig is a free data retrieval call binding the contract method 0xc3f909d4.
 //
-// Solidity: function getConfigRow() view returns((uint64,uint8))
-func (_Contract *ContractCallerSession) GetConfigRow() (RowDataConfig, error) {
-	return _Contract.Contract.GetConfigRow(&_Contract.CallOpts)
+// Solidity: function getConfig() view returns((uint64,uint8))
+func (_Contract *ContractCallerSession) GetConfig() (RowDataConfig, error) {
+	return _Contract.Contract.GetConfig(&_Contract.CallOpts)
 }
 
-// GetPlayersRow is a free data retrieval call binding the contract method 0x051cfce4.
+// GetPlayers is a free data retrieval call binding the contract method 0xb18a02a4.
 //
-// Solidity: function getPlayersRow(uint8 playerId) view returns((int16,int16,uint8))
-func (_Contract *ContractCaller) GetPlayersRow(opts *bind.CallOpts, playerId uint8) (RowDataPlayers, error) {
+// Solidity: function getPlayers(uint8 playerId) view returns((int16,int16,uint8))
+func (_Contract *ContractCaller) GetPlayers(opts *bind.CallOpts, playerId uint8) (RowDataPlayers, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getPlayersRow", playerId)
+	err := _Contract.contract.Call(opts, &out, "getPlayers", playerId)
 
 	if err != nil {
 		return *new(RowDataPlayers), err
@@ -241,16 +241,16 @@ func (_Contract *ContractCaller) GetPlayersRow(opts *bind.CallOpts, playerId uin
 
 }
 
-// GetPlayersRow is a free data retrieval call binding the contract method 0x051cfce4.
+// GetPlayers is a free data retrieval call binding the contract method 0xb18a02a4.
 //
-// Solidity: function getPlayersRow(uint8 playerId) view returns((int16,int16,uint8))
-func (_Contract *ContractSession) GetPlayersRow(playerId uint8) (RowDataPlayers, error) {
-	return _Contract.Contract.GetPlayersRow(&_Contract.CallOpts, playerId)
+// Solidity: function getPlayers(uint8 playerId) view returns((int16,int16,uint8))
+func (_Contract *ContractSession) GetPlayers(playerId uint8) (RowDataPlayers, error) {
+	return _Contract.Contract.GetPlayers(&_Contract.CallOpts, playerId)
 }
 
-// GetPlayersRow is a free data retrieval call binding the contract method 0x051cfce4.
+// GetPlayers is a free data retrieval call binding the contract method 0xb18a02a4.
 //
-// Solidity: function getPlayersRow(uint8 playerId) view returns((int16,int16,uint8))
-func (_Contract *ContractCallerSession) GetPlayersRow(playerId uint8) (RowDataPlayers, error) {
-	return _Contract.Contract.GetPlayersRow(&_Contract.CallOpts, playerId)
+// Solidity: function getPlayers(uint8 playerId) view returns((int16,int16,uint8))
+func (_Contract *ContractCallerSession) GetPlayers(playerId uint8) (RowDataPlayers, error) {
+	return _Contract.Contract.GetPlayers(&_Contract.CallOpts, playerId)
 }
