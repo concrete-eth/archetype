@@ -1,5 +1,7 @@
 package types
 
+// TODO: rename package? how to not have to name imports?
+
 import (
 	"errors"
 	"fmt"

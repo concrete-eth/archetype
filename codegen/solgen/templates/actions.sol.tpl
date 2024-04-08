@@ -14,7 +14,7 @@ struct {{ActionStructNameFn $schema.Name}} {
 {{- end }}
 
 interface {{.Name}} {
-    event {{$.ArchParams.ActionExecutedEventName}}(uint8 actionId, bytes data); // TODO: param this further?
+    event {{$.ArchParams.ActionExecutedEventName}}(bytes4 actionId, bytes data);
 {{ range $schema := .Schemas }}
     {{- if $schema.Values }}
     function {{ActionMethodNameFn $schema.Name}}({{ActionStructNameFn $schema.Name}} memory action) external;

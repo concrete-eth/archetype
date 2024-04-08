@@ -8,9 +8,8 @@ import (
 
 	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/concrete/lib"
-
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
+	"github.com/ethereum/go-ethereum/concrete/lib"
 
 	{{ range .Imports }}
 	{{- if .Name }}{{ .Name }} "{{ .Path }}"
