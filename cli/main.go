@@ -134,6 +134,7 @@ func isInGoModule() bool {
 }
 
 // getGoModule returns the name of the go module in the current directory.
+// e.g. github.com/user/repo
 func getGoModule() (string, error) {
 	if !isInGoModule() {
 		return "", fmt.Errorf("not in a go module")
@@ -147,7 +148,8 @@ func getGoModule() (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-// getGoModulePath returns the root path of the go module in the current directory.
+// getGoModulePath returns the absolute root path of the go module in the current directory.
+// e.g. /Users/user/path/to/module
 func getGoModulePath() (string, error) {
 	if !isInGoModule() {
 		return "", fmt.Errorf("not in a go module")
@@ -159,6 +161,31 @@ func getGoModulePath() (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+// getPackageImportPath returns the import path for a package at the given path.
+// e.g. github.com/user/repo/path/to/package
+func getPackageImportPath(path string) (string, error) {
+	// Get the absolute path of the package
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	var modName, modPath, relDatamodPath string
+	// Get the module name
+	if modName, err = getGoModule(); err != nil {
+		return "", err
+	}
+	// Get the module absolute root path
+	if modPath, err = getGoModulePath(); err != nil {
+		return "", err
+	}
+	// Get the relative path of the package from the module root
+	if relDatamodPath, err = filepath.Rel(modPath, absPath); err != nil {
+		return "", err
+	}
+	// Compose and return the import path
+	return filepath.Join(modName, relDatamodPath), nil
 }
 
 /* Verbose */
@@ -220,44 +247,21 @@ func getGogenConfig() (gogen.Config, error) {
 	return config, nil
 }
 
-func getPackageImportPath(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	// Craft the import path for datamod e.g. github.com/user/repo/codegen/datamod
-	var modName, modPath, relDatamodPath string
-	if modName, err = getGoModule(); err != nil {
-		return "", err
-	}
-	if modPath, err = getGoModulePath(); err != nil {
-		return "", err
-	}
-	if relDatamodPath, err = filepath.Rel(modPath, absPath); err != nil {
-		return "", err
-	}
-	return filepath.Join(modName, relDatamodPath), nil
-}
-
-// getDatamodOut returns the output directory for the datamod package.
+// getDatamodOut returns the output directory for the datamod command.
 func getDatamodOut() string {
 	goOut := viper.GetString("go-out")
 	datamodOut := filepath.Join(goOut, "datamod") // <go-out>/datamod
 	return datamodOut
 }
 
-func getForgeBuildOut() string {
-	forgeOut := viper.GetString("forge-out")
-	return forgeOut
-}
-
+// getAbigenOut returns the output directory for the abigen command.
 func getAbigenOut() string {
 	goOut := viper.GetString("go-out")
 	abigenOut := filepath.Join(goOut, "abigen") // <go-out>/abigen
 	return abigenOut
 }
 
-// getSolgenConfig returns a solgen config from viper settings.
+// getSolgenConfig returns the solgen config from the viper settings.
 func getSolgenConfig() solgen.Config {
 	var (
 		actions = viper.GetString("actions")
@@ -272,6 +276,12 @@ func getSolgenConfig() solgen.Config {
 		},
 	}
 	return config
+}
+
+// getForgeBuildOut returns the output directory for the forge build command.
+func getForgeBuildOut() string {
+	forgeOut := viper.GetString("forge-out")
+	return forgeOut
 }
 
 // runCodegen runs the full code generation process.
@@ -367,6 +377,7 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		logWarning(fmt.Sprintf("gofmt is not installed (gofmt_bin=%s). Install it to format the generated go code.", GOFMT_BIN))
 	}
 
+	// Run prettier solidity plugin
 	var missing string
 	if isInstalled(NODE_EXEC_BIN) {
 		if isInstalled(NODE_EXEC_BIN, PRETTIER_BIN) {
@@ -385,13 +396,13 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		logWarning(fmt.Sprintf("%s is not installed. Install it to format the generated solidity code.", missing))
 	}
 
-	// Forge build
+	// Run forge build
 	forgeBuildOut := getForgeBuildOut()
 	if err := runForgeBuild(solgenConfig.Out, forgeBuildOut); err != nil {
 		logFatal(err)
 	}
 
-	// Abigen
+	// Run abigen on IActions and ITables
 	abigenOut := getAbigenOut()
 	for _, contract := range []params.ContractSpecs{params.IActionsContract, params.ITablesContract} {
 		var (
@@ -415,6 +426,7 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
 }
 
+// runCommand runs a command and logs it as a task, returning an error if the command fails.
 func runCommand(name string, cmd *exec.Cmd) error {
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
@@ -435,7 +447,7 @@ func runCommand(name string, cmd *exec.Cmd) error {
 	return nil
 }
 
-// Run concrete datamod.
+// runDatamod runs the concrete datamod command.
 // Datamod generates type safe go wrappers for datastore structures from a JSON specification.
 func runDatamod(outDir, tables, pkg string, experimental bool) error {
 	taskName := "Concrete datamod"
@@ -447,7 +459,7 @@ func runDatamod(outDir, tables, pkg string, experimental bool) error {
 	return runCommand(taskName, cmd)
 }
 
-// Run gogen codegen
+// runGogen runs the gogen codegen.
 // config is assumed to be valid.
 func runGogen(config gogen.Config) error {
 	taskName := "Go"
@@ -473,6 +485,7 @@ func runSolgen(config solgen.Config) error {
 	return nil
 }
 
+// runForgeBuild runs the forge build command.
 func runForgeBuild(inDir, outDir string) error {
 	taskName := "Forge build"
 	cmd := exec.Command(
@@ -484,6 +497,7 @@ func runForgeBuild(inDir, outDir string) error {
 	return runCommand(taskName, cmd)
 }
 
+// runAbigen runs the abigen command.
 func runAbigen(contractName, inPath, outPath string) error {
 	var (
 		pgk     = "contract"
@@ -495,7 +509,7 @@ func runAbigen(contractName, inPath, outPath string) error {
 	return runCommand(taskName, cmd)
 }
 
-// runGofmt runs gofmt on the given directory.
+// runGofmt runs gofmt on the given directories.
 func runGofmt(dirs ...string) error {
 	taskName := "gofmt"
 	args := append([]string{"-w"}, dirs...)
@@ -503,7 +517,7 @@ func runGofmt(dirs ...string) error {
 	return runCommand(taskName, cmd)
 }
 
-// runPrettier runs prettier on the given directory.
+// runPrettier runs prettier on the given patterns.
 func runPrettier(patterns ...string) error {
 	taskName := "prettier"
 	args := []string{PRETTIER_BIN, "--plugin=" + PRETTIER_SOL_PLUGIN, "--write"}

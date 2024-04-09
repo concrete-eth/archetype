@@ -35,6 +35,7 @@ type Client struct {
 	lock sync.Mutex
 }
 
+// New create a new client object.
 func New(core archtypes.Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	if err := core.SetKV(stagedKv); err != nil {
@@ -83,7 +84,8 @@ func (c *Client) applyBatch(batch archtypes.ActionBatch) (bool, error) {
 	return tickActionInBatch, nil
 }
 
-// applyBatchAndCommit applies the given action batch to the core, commits the changes to the key-value store, and updates the core block number.
+// applyBatchAndCommit applies the given action batch to the core, commits the changes to the key-value store,
+// and updates the core block number.
 func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) {
 	tickActionInBatch, err := c.applyBatch(batch)
 	if err != nil {
@@ -107,10 +109,13 @@ func (c *Client) Simulate(f func(core archtypes.Core)) {
 	c.Core.SetKV(c.kv)
 }
 
+// SendAction is a shorthand for sending a single action to the client.
+// See SendActions for more details.
 func (c *Client) SendAction(action archtypes.Action) error {
 	return c.SendActions([]archtypes.Action{action})
 }
 
+// SendActions sends a slice of actions to actionOutChan.
 func (c *Client) SendActions(actions []archtypes.Action) error {
 	actionsToSend := make([]archtypes.Action, 0)
 	c.Simulate(func(core archtypes.Core) {
@@ -131,6 +136,9 @@ func (c *Client) SendActions(actions []archtypes.Action) error {
 	}
 }
 
+// Sync apply all buffered action batches and commit the changes to the key-value store.
+// Returns whether a new batch of actions was received and whether a tick action was executed.
+// If no batches are available, it will do nothing and return false.
 func (c *Client) Sync() (didReceiveNewBatch bool, didTick bool, err error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -146,6 +154,8 @@ func (c *Client) Sync() (didReceiveNewBatch bool, didTick bool, err error) {
 	}
 }
 
+// SyncUntil applies action batches until the block number is reached.
+// It will only return when the block number is reached, the channel is closed, or an error occurs.
 func (c *Client) SyncUntil(blockNumber uint64) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -164,6 +174,8 @@ func (c *Client) SyncUntil(blockNumber uint64) error {
 	return nil
 }
 
+// InterpolatedSync applies an action batch if available, otherwise it anticipates the ticks expected in the next block.
+// When an action batch is received, it will revert any tick anticipation and apply the batch normally.
 func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err error) {
 	if !c.Core.ExpectTick() {
 		return c.Sync()
