@@ -1,6 +1,7 @@
 package types
 
 // TODO: rename package? how to not have to name imports?
+// TODO: error messages in types.go
 
 import (
 	"errors"
@@ -243,8 +244,6 @@ type ValidTableId struct {
 	validId
 }
 
-// TODO: make private when possible
-
 type GetterFn = func(lib.Datastore) interface{}
 
 type tableGetter struct {
@@ -412,8 +411,8 @@ func NewActionBatch(blockNumber uint64, actions []Action) ActionBatch {
 	return ActionBatch{BlockNumber: blockNumber, Actions: actions}
 }
 
-// TODO: do this based on the destination and error if fields are not set [?]
 // ConvertStruct copies the fields from src to dest if they have the same name and type.
+// All fields in dest must be set.
 func convertStruct(src interface{}, dest interface{}) error {
 	srcVal := reflect.ValueOf(src)
 	if !isStruct(srcVal.Type()) {
@@ -426,13 +425,22 @@ func convertStruct(src interface{}, dest interface{}) error {
 	}
 
 	destElem := destVal.Elem()
+	destType := destElem.Type()
 
-	for i := 0; i < srcVal.NumField(); i++ {
-		srcField := srcVal.Field(i)
-		destField := destElem.FieldByName(srcVal.Type().Field(i).Name)
-		if destField.IsValid() && destField.CanSet() && srcField.Type() == destField.Type() {
-			destField.Set(srcField)
+	for i := 0; i < destVal.NumField(); i++ {
+		destField := destVal.Field(i)
+		destFieldType := destType.Field(i)
+		if !destField.CanSet() {
+			return fmt.Errorf("field %s is not settable", destFieldType.Name)
 		}
+		srcField := srcVal.FieldByName(destFieldType.Name)
+		if !srcField.IsValid() {
+			return fmt.Errorf("field %s not found", destFieldType.Name)
+		}
+		if srcField.Type() != destField.Type() {
+			return fmt.Errorf("field %s has different type", destFieldType.Name)
+		}
+		destField.Set(srcField)
 	}
 
 	return nil
@@ -458,16 +466,19 @@ func populateStruct(src interface{}, dest interface{}) error {
 		if destField.CanSet() {
 			return fmt.Errorf("field %s is not settable", destTypeField.Name)
 		}
-		methodName := "Get" + destTypeField.Name
-		srcMethod := srcVal.MethodByName(methodName)
-		if !srcMethod.IsValid() {
-			return fmt.Errorf("method %s not found", methodName)
+		getMethodName := "Get" + destTypeField.Name
+		srcGetMethod := srcVal.MethodByName(getMethodName)
+		if !srcGetMethod.IsValid() {
+			return fmt.Errorf("method %s not found", getMethodName)
 		}
-		values := srcMethod.Call(nil)
+		values := srcGetMethod.Call(nil)
 		if len(values) != 1 {
 			return errors.New("method should return a single value")
 		}
 		value := values[0]
+		if value.Type() != destField.Type() {
+			return fmt.Errorf("field %s has different type", destTypeField.Name)
+		}
 		destField.Set(value)
 	}
 
