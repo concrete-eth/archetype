@@ -48,9 +48,8 @@ func (c *testCore) inc() {
 	c.setVal(v + 1)
 }
 
-func (c *testCore) SetKV(kv lib.KeyValueStore) error {
+func (c *testCore) SetKV(kv lib.KeyValueStore) {
 	c.kv = kv
-	return nil
 }
 
 func (c *testCore) ExecuteAction(action archtypes.Action) error {
@@ -134,7 +133,7 @@ func TestSendActions(t *testing.T) {
 	actionsIn := []archtypes.Action{&testAction{}, &testAction{}}
 	go client.SendActions(actionsIn)
 	select {
-	case <-time.After(20 * time.Millisecond):
+	case <-time.After(10 * time.Millisecond):
 		t.Fatal("timeout")
 	case actionsOut := <-actionOutChan:
 		if !reflect.DeepEqual(actionsIn, actionsOut) {
@@ -219,11 +218,14 @@ func TestSync(t *testing.T) {
 	actionBatchInChan := make(chan archtypes.ActionBatch, 1)
 	client.actionBatchInChan = actionBatchInChan
 
-	_, tickActionInBatch, err := client.Sync() // TODO
+	didReceiveNewBatch, didTick, err := client.Sync()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tickActionInBatch {
+	if didReceiveNewBatch {
+		t.Fatal("unexpected new batch")
+	}
+	if didTick {
 		t.Fatal("expected no tick action")
 	}
 	if client.Core.BlockNumber() != 0 {
@@ -235,11 +237,11 @@ func TestSync(t *testing.T) {
 
 	for _, actionBatch := range testData {
 		actionBatchInChan <- actionBatch.batch
-		_, tickActionInBatch, err = client.Sync()
+		_, didTick, err = client.Sync()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if tickActionInBatch != actionBatch.expectedTickActionInBatch {
+		if didTick != actionBatch.expectedTickActionInBatch {
 			t.Fatal("unexpected tick action")
 		}
 		if client.Core.BlockNumber() != actionBatch.batch.BlockNumber+1 {

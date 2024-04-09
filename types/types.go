@@ -445,14 +445,14 @@ func isStruct(t reflect.Type) bool {
 }
 
 type Core interface {
-	SetKV(kv lib.KeyValueStore) error // Set the key-value store
-	ExecuteAction(Action) error       // Execute the given action
-	SetBlockNumber(uint64)            // Set the block number
-	BlockNumber() uint64              // Get the block number
-	RunSingleTick()                   // Run a single tick
-	RunBlockTicks()                   // Run all ticks in a block
-	TicksPerBlock() uint              // Get the number of ticks per block
-	ExpectTick() bool                 // Check if a tick is expected
-	SetInBlockTickIndex(uint)         // Set the in-block tick index
-	InBlockTickIndex() uint           // Get the in-block tick index
+	SetKV(kv lib.KeyValueStore) // Set the key-value store
+	ExecuteAction(Action) error // Execute the given action
+	SetBlockNumber(uint64)      // Set the block number
+	BlockNumber() uint64        // Get the block number
+	RunSingleTick()             // Run a single tick
+	RunBlockTicks()             // Run all ticks in a block
+	TicksPerBlock() uint        // Get the number of ticks per block
+	ExpectTick() bool           // Check if a tick is expected
+	SetInBlockTickIndex(uint)   // Set the in-block tick index
+	InBlockTickIndex() uint     // Get the in-block tick index
 }

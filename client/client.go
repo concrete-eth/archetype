@@ -38,9 +38,7 @@ type Client struct {
 // New create a new client object.
 func New(core archtypes.Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
-	if err := core.SetKV(stagedKv); err != nil {
-		return nil, err
-	}
+	core.SetKV(stagedKv)
 	return &Client{
 		Core:              core,
 		kv:                stagedKv,
