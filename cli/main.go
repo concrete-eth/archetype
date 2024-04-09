@@ -234,14 +234,14 @@ func getGogenConfig() (gogen.Config, error) {
 
 	config := gogen.Config{
 		Config: codegen.Config{
-			Actions: actions,
-			Tables:  tables,
-			Out:     gogenOut,
+			ActionsJsonPath: actions,
+			TablesJsonPath:  tables,
+			Out:             gogenOut,
 		},
-		Package:      pkg,
-		Datamod:      datamodImportPath,
-		Contracts:    contractImportPath,
-		Experimental: exp,
+		PackageName:         pkg,
+		DatamodImportPath:   datamodImportPath,
+		ContractsImportPath: contractImportPath,
+		Experimental:        exp,
 	}
 
 	return config, nil
@@ -270,9 +270,9 @@ func getSolgenConfig() solgen.Config {
 	)
 	config := solgen.Config{
 		Config: codegen.Config{
-			Actions: actions,
-			Tables:  tables,
-			Out:     solOut,
+			ActionsJsonPath: actions,
+			TablesJsonPath:  tables,
+			Out:             solOut,
 		},
 	}
 	return config
@@ -322,11 +322,11 @@ func runCodegen(cmd *cobra.Command, args []string) {
 
 	if verbose {
 		// Print schema descriptions
-		actionsSchema, err := loadSchemaFromFile(gogenConfig.Actions)
+		actionsSchema, err := loadSchemaFromFile(gogenConfig.ActionsJsonPath)
 		if err != nil {
 			logFatal(err)
 		}
-		tablesSchema, err := loadSchemaFromFile(gogenConfig.Tables)
+		tablesSchema, err := loadSchemaFromFile(gogenConfig.TablesJsonPath)
 		if err != nil {
 			logFatal(err)
 		}
@@ -359,7 +359,7 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	if err := ensureDir(datamodOut); err != nil {
 		logFatal(err)
 	}
-	if err := runDatamod(datamodOut, gogenConfig.Tables, datamodPkg, gogenConfig.Experimental); err != nil {
+	if err := runDatamod(datamodOut, gogenConfig.TablesJsonPath, datamodPkg, gogenConfig.Experimental); err != nil {
 		logFatal(err)
 	}
 	// Run go and solidity codegen

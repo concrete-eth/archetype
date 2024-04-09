@@ -36,14 +36,14 @@ func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.IActionsContract.ContractName
 	outPath := filepath.Join(config.Out, params.IActionsContract.FileName)
-	return codegen.ExecuteTemplate(actionsTpl, config.Actions, outPath, data, nil)
+	return codegen.ExecuteTemplate(actionsTpl, config.ActionsJsonPath, outPath, data, nil)
 }
 
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.ITablesContract.ContractName
 	outPath := filepath.Join(config.Out, params.ITablesContract.FileName)
-	return codegen.ExecuteTemplate(tablesTpl, config.Tables, outPath, data, nil)
+	return codegen.ExecuteTemplate(tablesTpl, config.TablesJsonPath, outPath, data, nil)
 }
 
 func GenerateCore(config Config) error {
@@ -67,7 +67,7 @@ func GenerateEntrypoint(config Config) error {
 	data["Imports"] = []string{"./" + params.IActionsContract.FileName}
 	data["Interfaces"] = []string{params.IActionsContract.ContractName}
 	outPath := filepath.Join(config.Out, params.EntrypointContract.FileName)
-	return codegen.ExecuteTemplate(entrypointTpl, config.Actions, outPath, data, nil)
+	return codegen.ExecuteTemplate(entrypointTpl, config.ActionsJsonPath, outPath, data, nil)
 }
 
 func Codegen(config Config) error {

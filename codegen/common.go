@@ -14,23 +14,23 @@ import (
 )
 
 type Config struct {
-	Actions string
-	Tables  string
-	Out     string
+	ActionsJsonPath string
+	TablesJsonPath  string
+	Out             string
 }
 
 func (c Config) Validate() error {
-	if c.Actions == "" {
+	if c.ActionsJsonPath == "" {
 		return errors.New("actions schema is required")
 	}
-	if err := CheckFile(c.Actions); err != nil {
+	if err := CheckFile(c.ActionsJsonPath); err != nil {
 		return errors.New("error validating actions schema file: " + err.Error())
 	}
 
-	if c.Tables == "" {
+	if c.TablesJsonPath == "" {
 		return errors.New("tables schema is required")
 	}
-	if err := CheckFile(c.Tables); err != nil {
+	if err := CheckFile(c.TablesJsonPath); err != nil {
 		return errors.New("error validating tables schema file: " + err.Error())
 	}
 
