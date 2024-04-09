@@ -32,19 +32,21 @@ type Config struct {
 	Experimental        bool
 }
 
+// Validate checks if the configuration is valid.
 func (c Config) Validate() error {
 	if err := c.Config.Validate(); err != nil {
 		return err
 	}
 	if c.PackageName == "" {
-		return errors.New("package is required")
+		return errors.New("package name is required")
 	}
 	if c.DatamodImportPath == "" {
-		return errors.New("datamod is required")
+		return errors.New("datamod import path is required")
 	}
 	return nil
 }
 
+// GenerateActionTypes generates the go code for the action types.
 func GenerateActionTypes(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
@@ -54,6 +56,7 @@ func GenerateActionTypes(config Config) error {
 	return codegen.ExecuteTemplate(typesTpl, config.ActionsJsonPath, outPath, data, funcMap)
 }
 
+// GenerateActions generates the go code for the ActionSpecs.
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
@@ -65,6 +68,7 @@ func GenerateActions(config Config) error {
 	return codegen.ExecuteTemplate(actionsTpl, config.ActionsJsonPath, outPath, data, nil)
 }
 
+// GenerateTableTypes generates the go code for the table types.
 func GenerateTableTypes(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
@@ -74,6 +78,7 @@ func GenerateTableTypes(config Config) error {
 	return codegen.ExecuteTemplate(typesTpl, config.TablesJsonPath, outPath, data, funcMap)
 }
 
+// GenerateTables generates the go code for the TableSpecs.
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
@@ -86,6 +91,7 @@ func GenerateTables(config Config) error {
 	return codegen.ExecuteTemplate(tablesTpl, config.TablesJsonPath, outPath, data, nil)
 }
 
+// Codegen generates the go code for the action types, actions, table types and tables.
 func Codegen(config Config) error {
 	if err := config.Validate(); err != nil {
 		return errors.New("error validating config for go code generation: " + err.Error())
@@ -99,7 +105,6 @@ func Codegen(config Config) error {
 	if err := GenerateTableTypes(config); err != nil {
 		return errors.New("error generating go table types binding: " + err.Error())
 	}
-	// TODO: error messages
 	if err := GenerateTables(config); err != nil {
 		return errors.New("error generating go tables binding: " + err.Error())
 	}
