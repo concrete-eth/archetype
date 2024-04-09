@@ -5,8 +5,6 @@ pragma solidity >=0.8.0;
 
 import "./IActions.sol";
 
-// TODO: fix action ids, now byte[4]
-
 abstract contract Entrypoint is IActions {
     function executeMultipleActions(
         uint8[] memory actionIds,

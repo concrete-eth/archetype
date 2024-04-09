@@ -36,8 +36,6 @@ var TablesSchemaJson = `{
     }
 }`
 
-// TODO: base tempalte for actions and tables
-
 var TableSpecs archtypes.TableSpecs
 
 func init() {
