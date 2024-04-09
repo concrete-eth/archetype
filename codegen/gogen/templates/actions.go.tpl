@@ -4,11 +4,8 @@ package {{.Package}}
 
 import (
     "reflect"
-	"strings"
 
 	archtypes "github.com/concrete-eth/archetype/types"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
 
 	{{ range .Imports }}
 	{{- if .Name }}{{ .Name }} "{{ .Path }}"
@@ -28,21 +25,8 @@ func init() {
         "{{.Name}}": reflect.TypeOf({{ActionStructNameFn .Name}}{}),
         {{- end }}
     }
-    var (
-        ABI abi.ABI
-        schemas []datamod.TableSchema
-        err error
-    )
-    // Load the contract ABI
-    if ABI, err = abi.JSON(strings.NewReader(ActionsABIJson)); err != nil {
-        panic(err)
-    }
-    // Load the table schemas
-    if schemas, err = datamod.UnmarshalTableSchemas([]byte(ActionsSchemaJson), false); err != nil {
-        panic(err)
-    }
-    // Create the specs
-    if ActionSpecs, err = archtypes.NewActionSpecs(&ABI, schemas, types); err != nil {
-        panic(err)
-    }
+    var err error
+	if ActionSpecs, err = archtypes.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
+		panic(err)
+	}
 }

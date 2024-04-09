@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -123,6 +124,24 @@ func NewActionSpecs(
 		return ActionSpecs{}, err
 	}
 	return ActionSpecs{archSchemas: s}, nil
+}
+
+func NewActionSpecsFromRaw(
+	abiJson string,
+	schemasJson string,
+	types map[string]reflect.Type,
+) (ActionSpecs, error) {
+	// Load the contract ABI
+	ABI, err := abi.JSON(strings.NewReader(abiJson))
+	if err != nil {
+		return ActionSpecs{}, err
+	}
+	// Load the table schemas
+	schemas, err := datamod.UnmarshalTableSchemas([]byte(schemasJson), false)
+	if err != nil {
+		return ActionSpecs{}, err
+	}
+	return NewActionSpecs(&ABI, schemas, types)
 }
 
 func (a ActionSpecs) ActionIdFromAction(action Action) (ValidActionId, bool) {
@@ -296,6 +315,25 @@ func NewTableSpecs(
 		tableGetters[id] = newTableGetter(getterFn)
 	}
 	return TableSpecs{archSchemas: s, tableGetters: tableGetters}, nil
+}
+
+func NewTableSpecsFromRaw(
+	abiJson string,
+	schemasJson string,
+	types map[string]reflect.Type,
+	getters map[string]GetterFn,
+) (TableSpecs, error) {
+	// Load the contract ABI
+	ABI, err := abi.JSON(strings.NewReader(abiJson))
+	if err != nil {
+		return TableSpecs{}, err
+	}
+	// Load the table schemas
+	schemas, err := datamod.UnmarshalTableSchemas([]byte(schemasJson), false)
+	if err != nil {
+		return TableSpecs{}, err
+	}
+	return NewTableSpecs(&ABI, schemas, types, getters)
 }
 
 func (t TableSpecs) read(datastore lib.Datastore, tableId ValidTableId, args ...interface{}) (interface{}, error) {
