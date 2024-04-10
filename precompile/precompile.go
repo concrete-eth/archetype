@@ -17,6 +17,14 @@ type CorePrecompile struct {
 
 var _ concrete.Precompile = (*CorePrecompile)(nil)
 
+// NewCorePrecompile creates a new CorePrecompile.
+func NewCorePrecompile(core archtypes.Core, spec archtypes.ArchSpecs) *CorePrecompile {
+	return &CorePrecompile{
+		core: core,
+		spec: spec,
+	}
+}
+
 func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValueStore, action archtypes.Action) error {
 	// Wrap the persistent kv store in a cached kv store to save gas when reading multiple times from the same slot
 	ckv := kvstore.NewCachedKeyValueStore(kv)
