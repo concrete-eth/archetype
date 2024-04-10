@@ -91,7 +91,7 @@ func GenerateTables(config Config) error {
 	return codegen.ExecuteTemplate(tablesTpl, config.TablesJsonPath, outPath, data, nil)
 }
 
-// Codegen generates the go code for the action types, actions, table types and tables.
+// Codegen generates the go code from the given config.
 func Codegen(config Config) error {
 	if err := config.Validate(); err != nil {
 		return errors.New("error validating config for go code generation: " + err.Error())

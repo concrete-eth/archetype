@@ -2,6 +2,7 @@ package params
 
 import "unicode"
 
+// ValueParams holds value parameters.
 var ValueParams = map[string]interface{}{
 	"ActionExecutedEventName": ActionExecutedEventName,
 	"MultiActionMethodName":   MultiActionMethodName,
@@ -11,6 +12,7 @@ var ValueParams = map[string]interface{}{
 	"EntrypointContract":      EntrypointContract,
 }
 
+// FunctionParams holds function parameters.
 var FunctionParams = map[string]interface{}{
 	"ActionMethodNameFn": ActionMethodName,
 	"ActionStructNameFn": ActionStructName,

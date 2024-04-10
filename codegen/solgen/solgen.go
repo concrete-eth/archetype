@@ -25,13 +25,7 @@ type Config struct {
 	codegen.Config
 }
 
-func (c Config) Validate() error {
-	if err := c.Config.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-
+// GenerateActions generates the solidity interface from the actions schema.
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.IActionsContract.ContractName
@@ -39,6 +33,7 @@ func GenerateActions(config Config) error {
 	return codegen.ExecuteTemplate(actionsTpl, config.ActionsJsonPath, outPath, data, nil)
 }
 
+// GenerateTables generates the solidity interface from the tables schema.
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.ITablesContract.ContractName
@@ -46,6 +41,7 @@ func GenerateTables(config Config) error {
 	return codegen.ExecuteTemplate(tablesTpl, config.TablesJsonPath, outPath, data, nil)
 }
 
+// GenerateCore generates the core solidity interface.
 func GenerateCore(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.ICoreContract.ContractName
@@ -61,6 +57,7 @@ func GenerateCore(config Config) error {
 	return codegen.ExecuteTemplate(coreTpl, "", outPath, data, nil)
 }
 
+// GenerateEntrypoint generates the entrypoint solidity abstract contract.
 func GenerateEntrypoint(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.EntrypointContract.ContractName
@@ -70,6 +67,7 @@ func GenerateEntrypoint(config Config) error {
 	return codegen.ExecuteTemplate(entrypointTpl, config.ActionsJsonPath, outPath, data, nil)
 }
 
+// Codegen generates the solidity code from the given config.
 func Codegen(config Config) error {
 	if err := config.Validate(); err != nil {
 		return errors.New("error validating config for solidity code generation: " + err.Error())
