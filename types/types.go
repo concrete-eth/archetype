@@ -74,7 +74,7 @@ func newArchSchemas(
 
 		actionType, ok := types[schema.Name]
 		if !ok {
-			return archSchemas{}, errors.New("missing type")
+			return archSchemas{}, fmt.Errorf("no type found for schema %s", schema.Name)
 		}
 
 		s.schemas[id] = archSchema{
@@ -176,7 +176,7 @@ func (a ActionSpecs) GetActionSchema(actionId ValidActionId) ActionSchema {
 func (a *ActionSpecs) EncodeAction(action Action) (ValidActionId, []byte, error) {
 	actionId, ok := a.ActionIdFromAction(action)
 	if !ok {
-		return ValidActionId{}, nil, errors.New("invalid action")
+		return ValidActionId{}, nil, fmt.Errorf("action of type %T does not match any canonical action type", action)
 	}
 	schema := a.GetActionSchema(actionId)
 	data, err := schema.Method.Inputs.Pack(action)
@@ -208,7 +208,7 @@ func (a *ActionSpecs) DecodeAction(actionId ValidActionId, data []byte) (Action,
 func (a *ActionSpecs) ActionToCalldata(action Action) ([]byte, error) {
 	actionId, ok := a.ActionIdFromAction(action)
 	if !ok {
-		return nil, errors.New("invalid action")
+		return nil, fmt.Errorf("action of type %T does not match any canonical action type", action)
 	}
 	schema := a.GetActionSchema(actionId)
 	data, err := schema.Method.Inputs.Pack(action)
@@ -224,13 +224,13 @@ func (a *ActionSpecs) ActionToCalldata(action Action) ([]byte, error) {
 // CalldataToAction converts calldata to an action.
 func (a *ActionSpecs) CalldataToAction(calldata []byte) (Action, error) {
 	if len(calldata) < 4 {
-		return nil, errors.New("invalid calldata")
+		return nil, errors.New("invalid calldata (length < 4)")
 	}
 	var methodId [4]byte
 	copy(methodId[:], calldata[:4])
 	actionId, ok := a.NewValidId(methodId)
 	if !ok {
-		return nil, errors.New("invalid method signature")
+		return nil, errors.New("method signature does not match any action")
 	}
 	return a.DecodeAction(actionId, calldata[4:])
 }
@@ -251,7 +251,7 @@ func (a *ActionSpecs) ActionToLog(action Action) (types.Log, error) {
 // LogToAction converts a log to an action.
 func (a *ActionSpecs) LogToAction(log types.Log) (Action, error) {
 	if len(log.Topics) != 1 || log.Topics[0] != ActionExecutedEvent.ID {
-		return nil, errors.New("invalid log")
+		return nil, errors.New("log topics do not match action executed event")
 	}
 	return a.CalldataToAction(log.Data)
 }
@@ -278,7 +278,9 @@ func (t *tableGetter) get(datastore lib.Datastore, args ...interface{}) (interfa
 	tblVal := reflect.ValueOf(t.dsTable)
 	mthVal := tblVal.MethodByName("Get")
 	if !mthVal.IsValid() {
-		return nil, errors.New("get method not found")
+		// NOTE: this should never happen
+		// TODO: handle this when constructing the tableGetter
+		return nil, errors.New("source missing Get<Field> method")
 	}
 
 	// Prepare arguments for the call
@@ -299,6 +301,8 @@ func (t *tableGetter) get(datastore lib.Datastore, args ...interface{}) (interfa
 
 	// Return nil or an appropriate zero value if no results were returned
 	// This part depends on your function's expected behavior
+	// NOTE: this should never happen
+	// TODO: handle this when constructing the tableGetter
 	return nil, errors.New("no results returned")
 }
 
@@ -326,7 +330,7 @@ func NewTableSpecs(
 	for id, schema := range s.schemas {
 		getterFn, ok := getters[schema.Name]
 		if !ok {
-			return TableSpecs{}, errors.New("missing getter")
+			return TableSpecs{}, fmt.Errorf("no table getter found for schema %s", schema.Name)
 		}
 		tableGetters[id] = newTableGetter(getterFn)
 	}
@@ -357,6 +361,9 @@ func NewTableSpecsFromRaw(
 func (t TableSpecs) read(datastore lib.Datastore, tableId ValidTableId, args ...interface{}) (interface{}, error) {
 	getter, ok := t.tableGetters[tableId.Raw()]
 	if !ok {
+		// TODO: should be handled at construction time
+		// If tableId is invalid, Raw() will panic. ValidTableId can only be constructed in this package,
+		// so this should never happen unless there is a bug in the code.
 		return nil, errors.New("invalid table ID")
 	}
 	dsRow, err := getter.get(datastore, args...)
@@ -398,7 +405,7 @@ func (t *TableSpecs) TargetTableId(calldata []byte) (ValidTableId, bool) {
 func (t *TableSpecs) Read(datastore lib.Datastore, calldata []byte) (ValidTableId, interface{}, error) {
 	tableId, ok := t.TargetTableId(calldata)
 	if !ok {
-		return ValidTableId{}, nil, errors.New("invalid calldata")
+		return ValidTableId{}, nil, errors.New("calldata does not correspond to a table read operation")
 	}
 	row, err := t.read(datastore, tableId)
 	if err != nil {
