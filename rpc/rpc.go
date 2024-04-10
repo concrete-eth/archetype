@@ -47,6 +47,8 @@ func getHeadHeader(ethcli EthCli) (*types.Header, error) {
 }
 
 func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
+	// Start two goroutines to get the head header and suggested gas tip cap concurrently
+
 	errChan := make(chan error, 2)
 	headerChan := make(chan *types.Header, 1)
 	gasTipCapChan := make(chan *big.Int, 1)
@@ -84,6 +86,7 @@ func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
 	return gasFeeCap, gasTipCap, nil
 }
 
+// ActionBatchSubscription is a subscription to action batches emitted by a core contract.
 type ActionBatchSubscription struct {
 	ethcli          EthCli
 	actionSpecs     archtypes.ActionSpecs
@@ -95,6 +98,8 @@ type ActionBatchSubscription struct {
 	closeErrOnce    sync.Once
 	unsubscribed    bool
 }
+
+var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
 
 // SubscribeActionBatches subscribes to action batches emitted by the core contract at coreAddress.
 func SubscribeActionBatches(
@@ -302,29 +307,34 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 	return nil
 }
 
+// Unsubscribe unsubscribes from the action batch subscription and closes the error channel.
+// It does not close the action batch channel.
 func (s *ActionBatchSubscription) Unsubscribe() {
 	s.unsubChan <- struct{}{}
 }
 
+// Err returns the subscription error channel. Only one value will ever be sent.
+// The error channel is closed by Unsubscribe.
 func (s *ActionBatchSubscription) Err() <-chan error {
 	return s.errChan
 }
 
-var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
-
+// ActionSender sends actions to a core contract.
 type ActionSender struct {
-	ethcli       EthCli
-	actionSpecs  archtypes.ActionSpecs
-	gasEstimator ethereum.GasEstimator
-	coreAddress  common.Address
-	from         common.Address
-	nonce        uint64
-	signerFn     bind.SignerFn
+	ethcli          EthCli
+	actionSpecs     archtypes.ActionSpecs
+	gasEstimator    ethereum.GasEstimator
+	contractAddress common.Address
+	from            common.Address
+	nonce           uint64
+	signerFn        bind.SignerFn
 }
 
 // TODO: Make these methods of action specs
 // TODO: Rename action specs to something more self-explanatory
+// TODO: check constructor params
 
+// NewActionSender creates a new ActionSender.
 func NewActionSender(
 	ethcli EthCli,
 	actionSpecs archtypes.ActionSpecs,
@@ -334,17 +344,21 @@ func NewActionSender(
 	nonce uint64,
 	signerFn bind.SignerFn,
 ) *ActionSender {
+	// if gasEstimator == nil {
+	// 	gasEstimator = ethcli
+	// }
 	return &ActionSender{
-		ethcli:       ethcli,
-		actionSpecs:  actionSpecs,
-		gasEstimator: gasEstimator,
-		coreAddress:  coreAddress,
-		from:         from,
-		nonce:        nonce,
-		signerFn:     signerFn,
+		ethcli:          ethcli,
+		actionSpecs:     actionSpecs,
+		gasEstimator:    gasEstimator,
+		contractAddress: coreAddress,
+		from:            from,
+		nonce:           nonce,
+		signerFn:        signerFn,
 	}
 }
 
+// packMultiActionCall packs multiple actions into a single call to the contract.
 func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, error) {
 	var (
 		actionIds   = make([]archtypes.RawIdType, 0)
@@ -381,6 +395,7 @@ func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, 
 	return a.actionSpecs.ABI().Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
 }
 
+// sendData sends a transaction to the contract with the provided data.
 func (a *ActionSender) sendData(data []byte) error {
 	errChan := make(chan error, 2)
 	gasPriceChan := make(chan [2]*big.Int, 1)
@@ -402,7 +417,7 @@ func (a *ActionSender) sendData(data []byte) error {
 
 	msg := ethereum.CallMsg{
 		From:      a.from,
-		To:        &a.coreAddress,
+		To:        &a.contractAddress,
 		Value:     common.Big0,
 		GasFeeCap: gasEstGasFeeCap,
 		GasTipCap: gasEstTipCap,
@@ -466,6 +481,7 @@ func (a *ActionSender) sendData(data []byte) error {
 	return err
 }
 
+// signAndSend signs and sends a transaction.
 func (a *ActionSender) signAndSend(txData types.TxData) error {
 	tx := types.NewTx(txData)
 
@@ -485,6 +501,7 @@ func (a *ActionSender) signAndSend(txData types.TxData) error {
 	return nil
 }
 
+// SendAction sends and action to the contract.
 func (a *ActionSender) SendAction(action archtypes.Action) error {
 	data, err := a.actionSpecs.ActionToCalldata(action)
 	if err != nil {
@@ -493,6 +510,7 @@ func (a *ActionSender) SendAction(action archtypes.Action) error {
 	return a.sendData(data)
 }
 
+// SendActions sends multiple actions to the contract in a single transaction.
 func (a *ActionSender) SendActions(actionBatch []archtypes.Action) error {
 	if len(actionBatch) == 0 {
 		return nil
@@ -507,6 +525,7 @@ func (a *ActionSender) SendActions(actionBatch []archtypes.Action) error {
 	}
 }
 
+// StartSendingActions starts sending actions from the provided channel.
 func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
