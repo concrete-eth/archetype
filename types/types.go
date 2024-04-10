@@ -22,10 +22,6 @@ var (
 	ErrInvalidActionId = errors.New("invalid action ID")
 )
 
-var (
-	ActionExecutedEvent *abi.Event // TODO
-)
-
 type RawIdType = [4]byte
 
 type validId struct {
@@ -239,7 +235,7 @@ func (a *ActionSpecs) ActionToLog(action Action) (types.Log, error) {
 		return types.Log{}, err
 	}
 	log := types.Log{
-		Topics: []common.Hash{ActionExecutedEvent.ID},
+		Topics: []common.Hash{params.ActionExecutedEventID},
 		Data:   data,
 	}
 	return log, nil
@@ -247,7 +243,7 @@ func (a *ActionSpecs) ActionToLog(action Action) (types.Log, error) {
 
 // LogToAction converts a log to an action.
 func (a *ActionSpecs) LogToAction(log types.Log) (Action, error) {
-	if len(log.Topics) != 1 || log.Topics[0] != ActionExecutedEvent.ID {
+	if len(log.Topics) != 1 || log.Topics[0] != params.ActionExecutedEventID {
 		return nil, errors.New("log topics do not match action executed event")
 	}
 	return a.CalldataToAction(log.Data)

@@ -1,6 +1,10 @@
 package params
 
-import "unicode"
+import (
+	"unicode"
+
+	"github.com/ethereum/go-ethereum/concrete/crypto"
+)
 
 // ValueParams holds value parameters.
 var ValueParams = map[string]interface{}{
@@ -22,7 +26,12 @@ var FunctionParams = map[string]interface{}{
 
 const (
 	ActionExecutedEventName = "ActionExecuted"
+	ActionEventSignature    = "ActionExecuted(bytes4,bytes)"
 	MultiActionMethodName   = "executeMultipleActions"
+)
+
+var (
+	ActionExecutedEventID = crypto.Keccak256Hash([]byte(ActionEventSignature))
 )
 
 func lowerFirstChar(s string) string {

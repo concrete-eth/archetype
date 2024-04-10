@@ -168,7 +168,7 @@ func (s *ActionBatchSubscription) getLogs(fromBlock, toBlock uint64) ([]types.Lo
 		FromBlock: new(big.Int).SetUint64(fromBlock),
 		ToBlock:   new(big.Int).SetUint64(toBlock),
 		Addresses: []common.Address{s.coreAddress},
-		Topics:    [][]common.Hash{{archtypes.ActionExecutedEvent.ID}},
+		Topics:    [][]common.Hash{{params.ActionExecutedEventID}},
 	}
 	return s.ethcli.FilterLogs(ctx, query)
 }
