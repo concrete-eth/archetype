@@ -395,7 +395,7 @@ func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, 
 	return a.actionSpecs.ABI().Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
 }
 
-// sendData sends a transaction to the contract with the provided data.
+// sendData sends a transaction to the contract with the given data.
 func (a *ActionSender) sendData(data []byte) error {
 	errChan := make(chan error, 2)
 	gasPriceChan := make(chan [2]*big.Int, 1)
@@ -525,7 +525,7 @@ func (a *ActionSender) SendActions(actionBatch []archtypes.Action) error {
 	}
 }
 
-// StartSendingActions starts sending actions from the provided channel.
+// StartSendingActions starts sending actions from the given channel.
 func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
