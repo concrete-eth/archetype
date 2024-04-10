@@ -332,7 +332,6 @@ type ActionSender struct {
 
 // TODO: Make these methods of action specs
 // TODO: Rename action specs to something more self-explanatory
-// TODO: check constructor params
 
 // NewActionSender creates a new ActionSender.
 func NewActionSender(
@@ -344,9 +343,9 @@ func NewActionSender(
 	nonce uint64,
 	signerFn bind.SignerFn,
 ) *ActionSender {
-	// if gasEstimator == nil {
-	// 	gasEstimator = ethcli
-	// }
+	if gasEstimator == nil {
+		gasEstimator = ethcli
+	}
 	return &ActionSender{
 		ethcli:          ethcli,
 		actionSpecs:     actionSpecs,
