@@ -6,7 +6,6 @@ import (
     "reflect"
 
 	archtypes "github.com/concrete-eth/archetype/types"
-	"github.com/ethereum/go-ethereum/concrete/lib"
 
 	{{ range .Imports }}
 	{{- if .Name }}{{ .Name }} "{{ .Path }}"
@@ -26,11 +25,9 @@ func init() {
         "{{.Name}}": reflect.TypeOf({{TableStructNameFn .Name}}{}),
         {{- end }}
     }
-    getters := map[string]archtypes.GetterFn{
+    getters := map[string]interface{}{
         {{- range .Schemas }}
-        "{{.Name}}": func(ds lib.Datastore) interface{} {
-            return mod.New{{.Name}}(ds)
-        },
+        "{{.Name}}": mod.New{{.Name}},
         {{- end }}
     }
     var err error

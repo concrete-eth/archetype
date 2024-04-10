@@ -20,6 +20,7 @@ import (
 var (
 	ErrInvalidAction   = errors.New("invalid action")
 	ErrInvalidActionId = errors.New("invalid action ID")
+	ErrInvalidTableId  = errors.New("invalid table ID")
 )
 
 type RawIdType = [4]byte
@@ -253,50 +254,74 @@ type ValidTableId struct {
 	validId
 }
 
-type GetterFn = func(lib.Datastore) interface{}
-
 type tableGetter struct {
-	dsInstantiateTable GetterFn
-	dsTable            interface{}
+	constructor   reflect.Value
+	rowGetterType reflect.Type
 }
 
-func newTableGetter(dsInstantiateTable GetterFn) tableGetter {
-	return tableGetter{dsInstantiateTable: dsInstantiateTable}
+func newTableGetter(constructor interface{}, rowType reflect.Type) (tableGetter, error) {
+	// Constructor(Datastore) -> Table
+	// Table.Get(Keys) -> Row
+
+	if constructor == nil {
+		return tableGetter{}, errors.New("constructor is nil")
+	}
+
+	constructorVal := reflect.ValueOf(constructor)
+	if !constructorVal.IsValid() {
+		return tableGetter{}, errors.New("constructor is invalid")
+	}
+	if constructorVal.Kind() != reflect.Func {
+		return tableGetter{}, errors.New("constructor is not a function")
+	}
+	if constructorVal.Type().NumIn() != 1 {
+		return tableGetter{}, errors.New("constructor should take a single argument")
+	}
+	if constructorVal.Type().In(0) != reflect.TypeOf((*lib.Datastore)(nil)).Elem() {
+		return tableGetter{}, errors.New("constructor should take a lib.Datastore argument")
+	}
+	if constructorVal.Type().NumOut() != 1 {
+		return tableGetter{}, errors.New("constructor should return a single value")
+	}
+
+	tblType := constructorVal.Type().Out(0)
+	getMth, ok := tblType.MethodByName("Get")
+	if !ok {
+		return tableGetter{}, errors.New("table missing Get method")
+	}
+	if getMth.Type.NumOut() != 1 {
+		return tableGetter{}, errors.New("get method should return a single value")
+	}
+
+	retType := getMth.Type.Out(0)
+	if err := canPopulateStruct(retType, rowType); err != nil {
+		return tableGetter{}, err
+	}
+
+	return tableGetter{
+		constructor:   constructorVal,
+		rowGetterType: getMth.Type,
+	}, nil
 }
 
 func (t *tableGetter) get(datastore lib.Datastore, args ...interface{}) (interface{}, error) {
-	if t.dsTable == nil {
-		t.dsTable = t.dsInstantiateTable(datastore)
-	}
-	tblVal := reflect.ValueOf(t.dsTable)
-	mthVal := tblVal.MethodByName("Get")
-	if !mthVal.IsValid() {
-		// NOTE: this should never happen
-		// TODO: handle this when constructing the tableGetter
-		return nil, errors.New("source missing Get<field> method")
-	}
-
-	// Prepare arguments for the call
-	callArgs := make([]reflect.Value, len(args))
+	// Construct the table
+	constructorArgs := []reflect.Value{reflect.ValueOf(datastore)}
+	table := t.constructor.Call(constructorArgs)[0]
+	// Call the Get method
+	rowGetter := table.MethodByName("Get")
+	// Call the Get method
+	rowArgs := make([]reflect.Value, len(args))
 	for i, arg := range args {
-		callArgs[i] = reflect.ValueOf(arg)
+		argVal := reflect.ValueOf(arg)
+		if argVal.Type() != t.rowGetterType.In(i) {
+			return nil, fmt.Errorf("argument %d has wrong type", i)
+		}
+		rowArgs[i] = argVal
 	}
-
-	// Call the method
-	results := mthVal.Call(callArgs)
-
-	// Assuming your Get method returns a single value,
-	// you could return the first result directly.
-	// Ensure there's at least one result to avoid panicking.
-	if len(results) > 0 {
-		return results[0].Interface(), nil
-	}
-
-	// Return nil or an appropriate zero value if no results were returned
-	// This part depends on your function's expected behavior
-	// NOTE: this should never happen
-	// TODO: handle this when constructing the tableGetter
-	return nil, errors.New("no results returned")
+	result := rowGetter.Call(rowArgs)[0]
+	// Return the result
+	return result.Interface(), nil
 }
 
 type TableSchema struct {
@@ -313,7 +338,7 @@ func NewTableSpecs(
 	abi *abi.ABI,
 	schemas []datamod.TableSchema,
 	types map[string]reflect.Type,
-	getters map[string]GetterFn,
+	getters map[string]interface{},
 ) (TableSpecs, error) {
 	s, err := newArchSchemas(abi, schemas, types, params.TableMethodName)
 	if err != nil {
@@ -325,7 +350,10 @@ func NewTableSpecs(
 		if !ok {
 			return TableSpecs{}, fmt.Errorf("no table getter found for schema %s", schema.Name)
 		}
-		tableGetters[id] = newTableGetter(getterFn)
+		tableGetters[id], err = newTableGetter(getterFn, schema.Type)
+		if err != nil {
+			return TableSpecs{}, err
+		}
 	}
 	return TableSpecs{archSchemas: s, tableGetters: tableGetters}, nil
 }
@@ -335,7 +363,7 @@ func NewTableSpecsFromRaw(
 	abiJson string,
 	schemasJson string,
 	types map[string]reflect.Type,
-	getters map[string]GetterFn,
+	getters map[string]interface{},
 ) (TableSpecs, error) {
 	// Load the contract ABI
 	ABI, err := abi.JSON(strings.NewReader(abiJson))
@@ -352,13 +380,7 @@ func NewTableSpecsFromRaw(
 
 // read reads a row from the datastore.
 func (t TableSpecs) read(datastore lib.Datastore, tableId ValidTableId, args ...interface{}) (interface{}, error) {
-	getter, ok := t.tableGetters[tableId.Raw()]
-	if !ok {
-		// TODO: should be handled at construction time
-		// If tableId is invalid, Raw() will panic. ValidTableId can only be constructed in this package,
-		// so this should never happen unless there is a bug in the code.
-		return nil, errors.New("invalid table ID")
-	}
+	getter := t.tableGetters[tableId.Raw()]
 	dsRow, err := getter.get(datastore, args...)
 	if err != nil {
 		return nil, err
@@ -472,43 +494,56 @@ func convertStruct(src interface{}, dest interface{}) error {
 	return nil
 }
 
-// populateStruct sets all the fields in dest to the values returned by the Get<field name> methods in src.
-func populateStruct(src interface{}, dest interface{}) error {
-	srcVal := reflect.ValueOf(src)
-	if !isStruct(srcVal.Type()) && !isStructPtr(srcVal.Type()) {
-		return errors.New("src is not a struct or a pointer to a struct")
+func canPopulateStruct(srcType reflect.Type, destType reflect.Type) error {
+	if !isStruct(srcType) {
+		return errors.New("src is not a struct")
 	}
-
-	destVal := reflect.ValueOf(dest)
-	if !isStructPtr(destVal.Type()) {
+	if !isStructPtr(destType) {
 		return errors.New("dest is not a pointer to a struct")
 	}
 
-	destElem := destVal.Elem()
-	destType := destElem.Type()
-
-	for i := 0; i < destVal.NumField(); i++ {
-		destField := destElem.Field(i)
-		destTypeField := destType.Field(i)
-		if destField.CanSet() {
-			return fmt.Errorf("field %s is not settable", destTypeField.Name)
-		}
-		getMethodName := "Get" + destTypeField.Name
-		srcGetMethod := srcVal.MethodByName(getMethodName)
-		if !srcGetMethod.IsValid() {
+	for i := 0; i < destType.NumField(); i++ {
+		destField := destType.Field(i)
+		destFieldType := destType.Field(i)
+		getMethodName := "Get" + destFieldType.Name
+		srcGetMethod, ok := srcType.MethodByName(getMethodName)
+		if !ok {
 			return fmt.Errorf("method %s not found", getMethodName)
 		}
-		values := srcGetMethod.Call(nil)
-		if len(values) != 1 {
+		if srcGetMethod.Type.NumOut() != 1 {
 			return errors.New("method should return a single value")
 		}
-		value := values[0]
-		if value.Type() != destField.Type() {
-			return fmt.Errorf("field %s has different type", destTypeField.Name)
+		if srcGetMethod.Type.Out(0) != destField.Type {
+			return fmt.Errorf("field %s has different type", destFieldType.Name)
 		}
-		destField.Set(value)
 	}
 
+	return nil
+
+}
+
+// populateStruct sets all the fields in dest to the values returned by the Get<field name> methods in src.
+func populateStruct(src interface{}, dest interface{}) error {
+	if err := canPopulateStruct(reflect.TypeOf(src), reflect.TypeOf(dest)); err != nil {
+		return err
+	}
+	var (
+		srcVal   = reflect.ValueOf(src)
+		destVal  = reflect.ValueOf(dest)
+		destElem = destVal.Elem()
+		destType = destElem.Type()
+	)
+	for i := 0; i < destVal.NumField(); i++ {
+		var (
+			destField     = destElem.Field(i)
+			destTypeField = destType.Field(i)
+			getMethodName = "Get" + destTypeField.Name
+			srcGetMethod  = srcVal.MethodByName(getMethodName)
+			values        = srcGetMethod.Call(nil)
+			value         = values[0]
+		)
+		destField.Set(value)
+	}
 	return nil
 }
 

@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	archtypes "github.com/concrete-eth/archetype/types"
-	"github.com/ethereum/go-ethereum/concrete/lib"
 
 	contract "github.com/concrete-eth/archetype/example/gogen/abigen/tables"
 	mod "github.com/concrete-eth/archetype/example/gogen/datamod"
@@ -40,13 +39,9 @@ func init() {
 		"Config":  reflect.TypeOf(RowData_Config{}),
 		"Players": reflect.TypeOf(RowData_Players{}),
 	}
-	getters := map[string]archtypes.GetterFn{
-		"Config": func(ds lib.Datastore) interface{} {
-			return mod.NewConfig(ds)
-		},
-		"Players": func(ds lib.Datastore) interface{} {
-			return mod.NewPlayers(ds)
-		},
+	getters := map[string]interface{}{
+		"Config":  mod.NewConfig,
+		"Players": mod.NewPlayers,
 	}
 	var err error
 	if TableSpecs, err = archtypes.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
