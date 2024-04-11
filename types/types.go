@@ -176,7 +176,7 @@ func (a *ActionSpecs) EncodeAction(action Action) (ValidActionId, []byte, error)
 		return ValidActionId{}, nil, fmt.Errorf("action of type %T does not match any canonical action type", action)
 	}
 	schema := a.GetActionSchema(actionId)
-	data, err := schema.Method.Inputs.Pack(action)
+	data, err := packActionMethodInput(schema.Method, action)
 	if err != nil {
 		return ValidActionId{}, nil, err
 	}
@@ -208,7 +208,7 @@ func (a *ActionSpecs) ActionToCalldata(action Action) ([]byte, error) {
 		return nil, fmt.Errorf("action of type %T does not match any canonical action type", action)
 	}
 	schema := a.GetActionSchema(actionId)
-	data, err := schema.Method.Inputs.Pack(action)
+	data, err := packActionMethodInput(schema.Method, action)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +251,17 @@ func (a *ActionSpecs) LogToAction(log types.Log) (Action, error) {
 		return nil, errors.New("log topics do not match action executed event")
 	}
 	return a.CalldataToAction(log.Data)
+}
+
+func packActionMethodInput(method *abi.Method, arg interface{}) ([]byte, error) {
+	switch len(method.Inputs) {
+	case 0:
+		return method.Inputs.Pack()
+	case 1:
+		return method.Inputs.Pack(arg)
+	default:
+		panic("unreachable")
+	}
 }
 
 type ValidTableId struct {
@@ -586,6 +597,7 @@ type BaseCore struct {
 var _ Core = &BaseCore{}
 
 func (b *BaseCore) SetKV(kv lib.KeyValueStore) {
+	b.kv = kv
 	b.ds = lib.NewKVDatastore(kv)
 }
 
@@ -633,7 +645,7 @@ func RunSingleTick(c Core) {
 
 func RunBlockTicks(c Core) {
 	for i := uint(0); i < c.TicksPerBlock(); i++ {
-		c.Tick()
+		RunSingleTick(c)
 		incrementBlockTickIndex(c)
 	}
 }
@@ -655,7 +667,7 @@ func ExecuteAction(spec ActionSpecs, action Action, target interface{}) error {
 	actionName := schema.Name
 	methodName := actionName
 	targetVal := reflect.ValueOf(target)
-	if targetVal.IsValid() {
+	if !targetVal.IsValid() {
 		return fmt.Errorf("target is invalid")
 	}
 	method := targetVal.MethodByName(methodName)
@@ -664,6 +676,9 @@ func ExecuteAction(spec ActionSpecs, action Action, target interface{}) error {
 	}
 	args := []reflect.Value{reflect.ValueOf(action)}
 	result := method.Call(args)
+	if len(result) == 0 {
+		return nil
+	}
 	errVal := result[len(result)-1]
 	if !errVal.IsNil() {
 		return errVal.Interface().(error)
