@@ -1,7 +1,13 @@
 {
+    "addPlayer": {
+        "schema": {
+            "x": "int16",
+            "y": "int16"
+        }
+    },
     "move": {
         "schema": {
-            "playerId": "uint8",
+            "playerId": "uint16",
             "direction": "uint8"
         }
     }

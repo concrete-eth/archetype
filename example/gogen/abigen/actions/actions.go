@@ -29,15 +29,21 @@ var (
 	_ = abi.ConvertType
 )
 
+// ActionDataAddPlayer is an auto generated low-level Go binding around an user-defined struct.
+type ActionDataAddPlayer struct {
+	X int16
+	Y int16
+}
+
 // ActionDataMove is an auto generated low-level Go binding around an user-defined struct.
 type ActionDataMove struct {
-	PlayerId  uint8
+	PlayerId  uint16
 	Direction uint8
 }
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"move\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_Move\",\"components\":[{\"name\":\"playerId\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"direction\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"addPlayer\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_AddPlayer\",\"components\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"move\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_Move\",\"components\":[{\"name\":\"playerId\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"direction\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -186,23 +192,44 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
-// Move is a paid mutator transaction binding the contract method 0xca2b7c1a.
+// AddPlayer is a paid mutator transaction binding the contract method 0xfb55d487.
 //
-// Solidity: function move((uint8,uint8) action) returns()
+// Solidity: function addPlayer((int16,int16) action) returns()
+func (_Contract *ContractTransactor) AddPlayer(opts *bind.TransactOpts, action ActionDataAddPlayer) (*types.Transaction, error) {
+	return _Contract.contract.Transact(opts, "addPlayer", action)
+}
+
+// AddPlayer is a paid mutator transaction binding the contract method 0xfb55d487.
+//
+// Solidity: function addPlayer((int16,int16) action) returns()
+func (_Contract *ContractSession) AddPlayer(action ActionDataAddPlayer) (*types.Transaction, error) {
+	return _Contract.Contract.AddPlayer(&_Contract.TransactOpts, action)
+}
+
+// AddPlayer is a paid mutator transaction binding the contract method 0xfb55d487.
+//
+// Solidity: function addPlayer((int16,int16) action) returns()
+func (_Contract *ContractTransactorSession) AddPlayer(action ActionDataAddPlayer) (*types.Transaction, error) {
+	return _Contract.Contract.AddPlayer(&_Contract.TransactOpts, action)
+}
+
+// Move is a paid mutator transaction binding the contract method 0x047fef34.
+//
+// Solidity: function move((uint16,uint8) action) returns()
 func (_Contract *ContractTransactor) Move(opts *bind.TransactOpts, action ActionDataMove) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "move", action)
 }
 
-// Move is a paid mutator transaction binding the contract method 0xca2b7c1a.
+// Move is a paid mutator transaction binding the contract method 0x047fef34.
 //
-// Solidity: function move((uint8,uint8) action) returns()
+// Solidity: function move((uint16,uint8) action) returns()
 func (_Contract *ContractSession) Move(action ActionDataMove) (*types.Transaction, error) {
 	return _Contract.Contract.Move(&_Contract.TransactOpts, action)
 }
 
-// Move is a paid mutator transaction binding the contract method 0xca2b7c1a.
+// Move is a paid mutator transaction binding the contract method 0x047fef34.
 //
-// Solidity: function move((uint8,uint8) action) returns()
+// Solidity: function move((uint16,uint8) action) returns()
 func (_Contract *ContractTransactorSession) Move(action ActionDataMove) (*types.Transaction, error) {
 	return _Contract.Contract.Move(&_Contract.TransactOpts, action)
 }

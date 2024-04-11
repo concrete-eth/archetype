@@ -1,18 +1,27 @@
 {
-    "config": {
+    "meta": {
         "schema": {
             "startBlock": "uint64",
-            "maxPlayers": "uint8"
+            "maxPlayers": "uint16",
+            "playerCount": "uint16"
         }
     },
     "players": {
         "keySchema": {
-            "playerId": "uint8"
+            "playerId": "uint16"
         },
         "schema": {
             "x": "int16",
-            "y": "int16",
-            "health": "uint8"
+            "y": "int16"
+        }
+    },
+    "board": {
+        "keySchema": {
+            "x": "int16",
+            "y": "int16"
+        },
+        "schema": {
+            "playerId": "uint16"
         }
     }
 }

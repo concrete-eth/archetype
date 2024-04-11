@@ -12,27 +12,32 @@ var (
 
 /*
 Table    KeySize  ValueSize
-Config   0        9
-Players  1        5
+Meta     0        12
+Players  2        4
+Board    4        2
 */
 
-type RowData_Config struct {
-	StartBlock uint64 `json:"startBlock"`
-	MaxPlayers uint8  `json:"maxPlayers"`
+type RowData_Meta struct {
+	StartBlock  uint64 `json:"startBlock"`
+	MaxPlayers  uint16 `json:"maxPlayers"`
+	PlayerCount uint16 `json:"playerCount"`
 }
 
-func (row *RowData_Config) GetStartBlock() uint64 {
+func (row *RowData_Meta) GetStartBlock() uint64 {
 	return row.StartBlock
 }
 
-func (row *RowData_Config) GetMaxPlayers() uint8 {
+func (row *RowData_Meta) GetMaxPlayers() uint16 {
 	return row.MaxPlayers
 }
 
+func (row *RowData_Meta) GetPlayerCount() uint16 {
+	return row.PlayerCount
+}
+
 type RowData_Players struct {
-	X      int16 `json:"x"`
-	Y      int16 `json:"y"`
-	Health uint8 `json:"health"`
+	X int16 `json:"x"`
+	Y int16 `json:"y"`
 }
 
 func (row *RowData_Players) GetX() int16 {
@@ -43,6 +48,10 @@ func (row *RowData_Players) GetY() int16 {
 	return row.Y
 }
 
-func (row *RowData_Players) GetHealth() uint8 {
-	return row.Health
+type RowData_Board struct {
+	PlayerId uint16 `json:"playerId"`
+}
+
+func (row *RowData_Board) GetPlayerId() uint16 {
+	return row.PlayerId
 }

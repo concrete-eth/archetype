@@ -32,28 +32,24 @@ type PlayersRow struct {
 }
 
 func NewPlayersRow(dsSlot lib.DatastoreSlot) *PlayersRow {
-	sizes := []int{2, 2, 1}
+	sizes := []int{2, 2}
 	return &PlayersRow{lib.NewDatastoreStruct(dsSlot, sizes)}
 }
 
 func (v *PlayersRow) Get() (
 	x int16,
 	y int16,
-	health uint8,
 ) {
 	return codec.DecodeSmallInt16(2, v.GetField(0)),
-		codec.DecodeSmallInt16(2, v.GetField(1)),
-		codec.DecodeSmallUint8(1, v.GetField(2))
+		codec.DecodeSmallInt16(2, v.GetField(1))
 }
 
 func (v *PlayersRow) Set(
 	x int16,
 	y int16,
-	health uint8,
 ) {
 	v.SetField(0, codec.EncodeSmallInt16(2, x))
 	v.SetField(1, codec.EncodeSmallInt16(2, y))
-	v.SetField(2, codec.EncodeSmallUint8(1, health))
 }
 
 func (v *PlayersRow) GetX() int16 {
@@ -76,16 +72,6 @@ func (v *PlayersRow) SetY(value int16) {
 	v.SetField(1, data)
 }
 
-func (v *PlayersRow) GetHealth() uint8 {
-	data := v.GetField(2)
-	return codec.DecodeSmallUint8(1, data)
-}
-
-func (v *PlayersRow) SetHealth(value uint8) {
-	data := codec.EncodeSmallUint8(1, value)
-	v.SetField(2, data)
-}
-
 type Players struct {
 	dsSlot lib.DatastoreSlot
 }
@@ -99,10 +85,10 @@ func NewPlayersFromSlot(dsSlot lib.DatastoreSlot) *Players {
 	return &Players{dsSlot}
 }
 func (m *Players) Get(
-	playerId uint8,
+	playerId uint16,
 ) *PlayersRow {
 	dsSlot := m.dsSlot.Mapping().GetNested(
-		codec.EncodeSmallUint8(1, playerId),
+		codec.EncodeSmallUint16(2, playerId),
 	)
 	return NewPlayersRow(dsSlot)
 }

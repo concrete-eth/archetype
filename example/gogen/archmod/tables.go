@@ -14,20 +14,29 @@ import (
 var TablesABIJson = contract.ContractABI
 
 var TablesSchemaJson = `{
-    "config": {
+    "meta": {
         "schema": {
             "startBlock": "uint64",
-            "maxPlayers": "uint8"
+            "maxPlayers": "uint16",
+            "playerCount": "uint16"
         }
     },
     "players": {
         "keySchema": {
-            "playerId": "uint8"
+            "playerId": "uint16"
         },
         "schema": {
             "x": "int16",
-            "y": "int16",
-            "health": "uint8"
+            "y": "int16"
+        }
+    },
+    "board": {
+        "keySchema": {
+            "x": "int16",
+            "y": "int16"
+        },
+        "schema": {
+            "playerId": "uint16"
         }
     }
 }`
@@ -36,12 +45,14 @@ var TableSpecs archtypes.TableSpecs
 
 func init() {
 	types := map[string]reflect.Type{
-		"Config":  reflect.TypeOf(RowData_Config{}),
+		"Meta":    reflect.TypeOf(RowData_Meta{}),
 		"Players": reflect.TypeOf(RowData_Players{}),
+		"Board":   reflect.TypeOf(RowData_Board{}),
 	}
 	getters := map[string]interface{}{
-		"Config":  mod.NewConfig,
+		"Meta":    mod.NewMeta,
 		"Players": mod.NewPlayers,
+		"Board":   mod.NewBoard,
 	}
 	var err error
 	if TableSpecs, err = archtypes.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {

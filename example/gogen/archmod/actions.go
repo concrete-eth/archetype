@@ -13,22 +13,35 @@ import (
 var ActionsABIJson = contract.ContractABI
 
 var ActionsSchemaJson = `{
+    "addPlayer": {
+        "schema": {
+            "x": "int16",
+            "y": "int16"
+        }
+    },
     "move": {
         "schema": {
-            "playerId": "uint8",
+            "playerId": "uint16",
             "direction": "uint8"
         }
     }
-}`
+}
+`
 
 var ActionSpecs archtypes.ActionSpecs
 
 func init() {
 	types := map[string]reflect.Type{
-		"Move": reflect.TypeOf(ActionData_Move{}),
+		"AddPlayer": reflect.TypeOf(ActionData_AddPlayer{}),
+		"Move":      reflect.TypeOf(ActionData_Move{}),
 	}
 	var err error
 	if ActionSpecs, err = archtypes.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
 		panic(err)
 	}
+}
+
+type IActions interface {
+	AddPlayer(action *ActionData_AddPlayer) error
+	Move(action *ActionData_Move) error
 }
