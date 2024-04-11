@@ -48,6 +48,8 @@ func upperFirstChar(s string) string {
 	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
 }
 
+// TODO: separate names from capitalization
+
 func ActionMethodName(name string) string {
 	return lowerFirstChar(name)
 }

@@ -11,17 +11,17 @@ import (
 
 type CorePrecompile struct {
 	lib.BlankPrecompile
-	core archtypes.Core
 	spec archtypes.ArchSpecs
+	core archtypes.Core
 }
 
 var _ concrete.Precompile = (*CorePrecompile)(nil)
 
 // NewCorePrecompile creates a new CorePrecompile.
-func NewCorePrecompile(core archtypes.Core, spec archtypes.ArchSpecs) *CorePrecompile {
+func NewCorePrecompile(spec archtypes.ArchSpecs, core archtypes.Core) *CorePrecompile {
 	return &CorePrecompile{
-		core: core,
 		spec: spec,
+		core: core,
 	}
 }
 
@@ -37,7 +37,7 @@ func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValue
 	p.core.SetBlockNumber(env.GetBlockNumber())
 
 	// Execute the action
-	if err := p.core.ExecuteAction(action); err != nil {
+	if err := archtypes.ExecuteAction(p.spec.Actions, action, p.core); err != nil {
 		return err
 	}
 

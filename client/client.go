@@ -21,7 +21,9 @@ var (
 )
 
 type Client struct {
-	Core archtypes.Core
+	specs archtypes.ArchSpecs
+
+	core archtypes.Core
 	kv   *kvstore.StagedKeyValueStore
 
 	actionBatchInChan <-chan archtypes.ActionBatch
@@ -36,11 +38,12 @@ type Client struct {
 }
 
 // New create a new client object.
-func New(core archtypes.Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
+func New(specs archtypes.ArchSpecs, core archtypes.Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	core.SetKV(stagedKv)
 	return &Client{
-		Core:              core,
+		specs:             specs,
+		core:              core,
 		kv:                stagedKv,
 		actionBatchInChan: actionBatchInChan,
 		actionOutChan:     actionOutChan,
@@ -64,12 +67,12 @@ func (c *Client) error(msg string, ctx ...interface{}) {
 // applyBatch Applies the given action batch to the core and returns whether a tick action was included in the batch.
 // If a tick action is included, it must be the first action in the batch.
 func (c *Client) applyBatch(batch archtypes.ActionBatch) (bool, error) {
-	if c.Core.BlockNumber() != batch.BlockNumber {
+	if c.core.BlockNumber() != batch.BlockNumber {
 		return false, ErrBlockNumberMismatch
 	}
 	tickActionInBatch := false
 	for ii, action := range batch.Actions {
-		if err := c.Core.ExecuteAction(action); err != nil {
+		if err := archtypes.ExecuteAction(c.specs.Actions, action, c.core); err != nil {
 			c.error("failed to execute action", "err", err)
 		}
 		if _, ok := action.(*archtypes.CanonicalTickAction); ok {
@@ -91,7 +94,7 @@ func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) 
 	}
 	c.kv.Commit()
 	c.lastNewBatchTime = time.Now()
-	c.Core.SetBlockNumber(batch.BlockNumber + 1)
+	c.core.SetBlockNumber(batch.BlockNumber + 1)
 	return tickActionInBatch, nil
 }
 
@@ -102,9 +105,9 @@ func (c *Client) Simulate(f func(core archtypes.Core)) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	simKv := kvstore.NewStagedKeyValueStore(c.kv)
-	c.Core.SetKV(simKv)
-	f(c.Core)
-	c.Core.SetKV(c.kv)
+	c.core.SetKV(simKv)
+	f(c.core)
+	c.core.SetKV(c.kv)
 }
 
 // SendAction is a shorthand for sending a single action to the client.
@@ -118,7 +121,7 @@ func (c *Client) SendActions(actions []archtypes.Action) error {
 	actionsToSend := make([]archtypes.Action, 0)
 	c.Simulate(func(core archtypes.Core) {
 		for _, action := range actions {
-			if err := core.ExecuteAction(action); err != nil {
+			if err := archtypes.ExecuteAction(c.specs.Actions, action, core); err != nil {
 				c.error("failed to execute action", "err", err)
 				continue
 			}
@@ -158,7 +161,7 @@ func (c *Client) SyncUntil(blockNumber uint64) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for {
-		if c.Core.BlockNumber() >= blockNumber {
+		if c.core.BlockNumber() >= blockNumber {
 			break
 		}
 		batch, ok := <-c.actionBatchInChan
@@ -175,7 +178,7 @@ func (c *Client) SyncUntil(blockNumber uint64) error {
 // InterpolatedSync applies an action batch if available, otherwise it anticipates the ticks expected in the next block.
 // When an action batch is received, it will revert any tick anticipation and apply the batch normally.
 func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err error) {
-	if !c.Core.ExpectTick() {
+	if !c.core.ExpectTick() {
 		return c.Sync()
 	}
 	select {
@@ -196,7 +199,7 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		didReceiveNewBatch = false
 
 		var (
-			ticksPerBlock = c.Core.TicksPerBlock()
+			ticksPerBlock = c.core.TicksPerBlock()
 			tickPeriod    = c.blockTime / time.Duration(ticksPerBlock)
 		)
 
@@ -212,8 +215,8 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		defer c.lock.Unlock()
 
 		for c.ticksRunThisBlock < targetTicks {
-			c.Core.SetInBlockTickIndex(c.ticksRunThisBlock)
-			c.Core.RunSingleTick()
+			c.core.SetInBlockTickIndex(c.ticksRunThisBlock)
+			archtypes.RunSingleTick(c.core)
 			c.ticksRunThisBlock++
 		}
 		return didReceiveNewBatch, true, nil
