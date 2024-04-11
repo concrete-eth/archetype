@@ -30,3 +30,9 @@ func init() {
 		panic(err)
 	}
 }
+
+type IActions interface {
+    {{- range .Schemas }}
+    {{.Name}}(action *{{ActionStructNameFn .Name}}) error
+    {{- end }}
+}
