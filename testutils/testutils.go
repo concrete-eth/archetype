@@ -21,40 +21,46 @@ func safeAddInt16(a, b int16) (int16, bool) {
 	return a + b, true
 }
 
-type TestCore struct {
+type Core struct {
 	archtypes.BaseCore
 }
 
-var _ archmod.IActions = (*TestCore)(nil)
+var _ archmod.IActions = (*Core)(nil)
 
-func (c *TestCore) setCounter(val int16) {
+func (c *Core) SetCounter(val int16) {
 	counter := datamod.NewCounter(c.Datastore())
 	counter.Get().Set(val)
 }
 
-func (c *TestCore) getCounter() int16 {
+func (c *Core) GetCounter() int16 {
 	counter := datamod.NewCounter(c.Datastore())
 	return counter.Get().GetValue()
 }
 
-func (c *TestCore) add(summand int16) error {
-	counter := c.getCounter()
+func (c *Core) add(summand int16) error {
+	counter := c.GetCounter()
 	if res, ok := safeAddInt16(counter, summand); ok {
-		c.setCounter(res)
+		c.SetCounter(res)
 	}
 	return nil
 }
 
-func (c *TestCore) Add(action *archmod.ActionData_Add) error {
+func (c *Core) mul(factor int16) error {
+	counter := c.GetCounter()
+	c.SetCounter(counter * factor)
+	return nil
+}
+
+func (c *Core) Add(action *archmod.ActionData_Add) error {
 	return c.add(action.Summand)
 }
 
-func (c *TestCore) TicksPerBlock() uint {
+func (c *Core) TicksPerBlock() uint {
 	return 2
 }
 
-func (c *TestCore) Tick() {
-	c.add(1)
+func (c *Core) Tick() {
+	c.mul(2)
 }
 
 func NewTestArchSpecs(t *testing.T) archtypes.ArchSpecs {
@@ -64,6 +70,6 @@ func NewTestArchSpecs(t *testing.T) archtypes.ArchSpecs {
 	}
 }
 
-func NewTestCore(t *testing.T) *TestCore {
-	return &TestCore{}
+func NewTestCore(t *testing.T) *Core {
+	return &Core{}
 }

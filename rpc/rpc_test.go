@@ -39,7 +39,7 @@ func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
 func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 	specs := testutils.NewTestArchSpecs(t)
 
-	pc := precompile.NewCorePrecompile(specs, &testutils.TestCore{})
+	pc := precompile.NewCorePrecompile(specs, &testutils.Core{})
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddress, pc)
 
@@ -48,6 +48,8 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 
 	return sim.NewSimulatedBackend(alloc, 1e8, registry)
 }
+
+// TODO: test for bad inputs
 
 func TestSendAction(t *testing.T) {
 	var (
@@ -93,7 +95,7 @@ func TestSendAction(t *testing.T) {
 
 func waitForActionBatch(t *testing.T, actionBatchesChan <-chan archtypes.ActionBatch) archtypes.ActionBatch {
 	select {
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(10 * time.Millisecond):
 		t.Fatal("timeout")
 		return archtypes.ActionBatch{}
 	case actionBatchIn := <-actionBatchesChan:
