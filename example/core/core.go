@@ -16,7 +16,7 @@ const (
 	Direction_Right
 )
 
-func safeAddUint16(a, b int16) (int16, bool) {
+func safeAddInt16(a, b int16) (int16, bool) {
 	if b > 0 && a > math.MaxInt16-b {
 		return 0, false
 	}
@@ -91,12 +91,12 @@ func (c *Core) Move(action *archmod.ActionData_Move) error {
 		dX = 1
 	}
 
-	newX, ok := safeAddUint16(x, int16(dX))
+	newX, ok := safeAddInt16(x, int16(dX))
 	if !ok {
 		return errors.New("over/underflow")
 	}
 
-	newY, ok := safeAddUint16(y, int16(dY))
+	newY, ok := safeAddInt16(y, int16(dY))
 	if !ok {
 		return errors.New("over/underflow")
 	}
