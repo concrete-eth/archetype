@@ -1,0 +1,7 @@
+{
+    "add": {
+        "schema": {
+            "summand": "int16"
+        }
+    }
+}

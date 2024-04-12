@@ -1,0 +1,7 @@
+{
+    "counter": {
+        "schema": {
+            "value": "int16"
+        }
+    }
+}
