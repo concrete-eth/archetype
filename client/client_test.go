@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-func NewTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.ActionBatch, chan []archtypes.Action) {
+func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.ActionBatch, chan []archtypes.Action) {
 	var (
 		specs                    = testutils.NewTestArchSpecs(t)
 		core                     = &testutils.Core{}
@@ -32,7 +32,7 @@ func NewTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.Act
 }
 
 func TestSimulate(t *testing.T) {
-	client, _, _, _ := NewTestClient(t)
+	client, _, _, _ := newTestClient(t)
 	client.Simulate(func(_core archtypes.Core) {
 		core := _core.(*testutils.Core)
 		core.SetCounter(1)
@@ -47,7 +47,7 @@ func TestSimulate(t *testing.T) {
 
 func TestSendActions(t *testing.T) {
 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlError, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
-	client, _, _, actionOutChan := NewTestClient(t)
+	client, _, _, actionOutChan := newTestClient(t)
 	actionsIn := []archtypes.Action{&archtypes.CanonicalTickAction{}, &testutils.ActionData_Add{}}
 	go client.SendActions(actionsIn)
 	select {
@@ -61,7 +61,7 @@ func TestSendActions(t *testing.T) {
 }
 
 func TestSendAction(t *testing.T) {
-	client, _, _, actionOutChan := NewTestClient(t)
+	client, _, _, actionOutChan := newTestClient(t)
 	actionIn := &testutils.ActionData_Add{}
 	go client.SendAction(actionIn)
 	select {
@@ -132,7 +132,7 @@ func init() {
 }
 
 func TestSync(t *testing.T) {
-	client, _, _, _ := NewTestClient(t)
+	client, _, _, _ := newTestClient(t)
 	actionBatchInChan := make(chan archtypes.ActionBatch, 1)
 	client.actionBatchInChan = actionBatchInChan
 
@@ -172,7 +172,7 @@ func TestSync(t *testing.T) {
 }
 
 func TestSyncUntil(t *testing.T) {
-	client, _, actionBatchInChan, _ := NewTestClient(t)
+	client, _, actionBatchInChan, _ := newTestClient(t)
 
 	err := client.SyncUntil(0)
 	if err != nil {
@@ -200,7 +200,7 @@ func TestSyncUntil(t *testing.T) {
 }
 
 func TestInterpolatedSync(t *testing.T) {
-	client, _, actionBatchInChan, _ := NewTestClient(t)
+	client, _, actionBatchInChan, _ := newTestClient(t)
 
 	didReceiveNewBatch, didTick, err := client.InterpolatedSync()
 	if err != nil {
