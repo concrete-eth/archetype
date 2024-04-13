@@ -11,47 +11,48 @@ var (
 )
 
 /*
-Table    KeySize  ValueSize
-Meta     0        12
-Players  2        4
-Board    4        2
+Table   KeySize  ValueSize
+Meta    0        2
+Bodies  1        10
 */
 
 type RowData_Meta struct {
-	StartBlock  uint64 `json:"startBlock"`
-	MaxPlayers  uint16 `json:"maxPlayers"`
-	PlayerCount uint16 `json:"playerCount"`
+	MaxBodyCount uint8 `json:"maxBodyCount"`
+	BodyCount    uint8 `json:"bodyCount"`
 }
 
-func (row *RowData_Meta) GetStartBlock() uint64 {
-	return row.StartBlock
+func (row *RowData_Meta) GetMaxBodyCount() uint8 {
+	return row.MaxBodyCount
 }
 
-func (row *RowData_Meta) GetMaxPlayers() uint16 {
-	return row.MaxPlayers
+func (row *RowData_Meta) GetBodyCount() uint8 {
+	return row.BodyCount
 }
 
-func (row *RowData_Meta) GetPlayerCount() uint16 {
-	return row.PlayerCount
+type RowData_Bodies struct {
+	X  int16  `json:"x"`
+	Y  int16  `json:"y"`
+	M  uint16 `json:"m"`
+	Vx int16  `json:"vx"`
+	Vy int16  `json:"vy"`
 }
 
-type RowData_Players struct {
-	X int16 `json:"x"`
-	Y int16 `json:"y"`
-}
-
-func (row *RowData_Players) GetX() int16 {
+func (row *RowData_Bodies) GetX() int16 {
 	return row.X
 }
 
-func (row *RowData_Players) GetY() int16 {
+func (row *RowData_Bodies) GetY() int16 {
 	return row.Y
 }
 
-type RowData_Board struct {
-	PlayerId uint16 `json:"playerId"`
+func (row *RowData_Bodies) GetM() uint16 {
+	return row.M
 }
 
-func (row *RowData_Board) GetPlayerId() uint16 {
-	return row.PlayerId
+func (row *RowData_Bodies) GetVx() int16 {
+	return row.Vx
+}
+
+func (row *RowData_Bodies) GetVy() int16 {
+	return row.Vy
 }

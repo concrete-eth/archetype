@@ -11,33 +11,34 @@ var (
 )
 
 /*
-Table      KeySize  ValueSize
-AddPlayer  0        4
-Move       0        3
+Table    KeySize  ValueSize
+AddBody  0        10
 */
 
-type ActionData_AddPlayer struct {
-	X int16 `json:"x"`
-	Y int16 `json:"y"`
+type ActionData_AddBody struct {
+	X  int16  `json:"x"`
+	Y  int16  `json:"y"`
+	M  uint16 `json:"m"`
+	Vx int16  `json:"vx"`
+	Vy int16  `json:"vy"`
 }
 
-func (row *ActionData_AddPlayer) GetX() int16 {
+func (row *ActionData_AddBody) GetX() int16 {
 	return row.X
 }
 
-func (row *ActionData_AddPlayer) GetY() int16 {
+func (row *ActionData_AddBody) GetY() int16 {
 	return row.Y
 }
 
-type ActionData_Move struct {
-	PlayerId  uint16 `json:"playerId"`
-	Direction uint8  `json:"direction"`
+func (row *ActionData_AddBody) GetM() uint16 {
+	return row.M
 }
 
-func (row *ActionData_Move) GetPlayerId() uint16 {
-	return row.PlayerId
+func (row *ActionData_AddBody) GetVx() int16 {
+	return row.Vx
 }
 
-func (row *ActionData_Move) GetDirection() uint8 {
-	return row.Direction
+func (row *ActionData_AddBody) GetVy() int16 {
+	return row.Vy
 }

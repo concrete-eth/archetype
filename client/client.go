@@ -38,7 +38,7 @@ type Client struct {
 }
 
 // New create a new client object.
-func New(specs arch.ArchSpecs, core arch.Core, kv lib.KeyValueStore, actionBatchInChan <-chan arch.ActionBatch, actionOutChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
+func New(specs arch.ArchSpecs, core arch.Core, kv lib.KeyValueStore, actionBatchInChan <-chan arch.ActionBatch, actionOutChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) *Client {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	core.SetKV(stagedKv)
 	return &Client{
@@ -49,7 +49,7 @@ func New(specs arch.ArchSpecs, core arch.Core, kv lib.KeyValueStore, actionBatch
 		actionOutChan:     actionOutChan,
 		blockTime:         blockTime,
 		ticksRunThisBlock: 0,
-	}, nil
+	}
 }
 
 func (c *Client) Core() arch.Core {
@@ -195,8 +195,12 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		// Revert any tick anticipation and apply batch normally
 		didReceiveNewBatch = true
 		c.kv.Revert()
+		c.core.SetInBlockTickIndex(0)
 		didTick, err := c.applyBatchAndCommit(batch)
+
 		c.ticksRunThisBlock = 0
+		c.core.SetInBlockTickIndex(0)
+
 		return didReceiveNewBatch, didTick, err
 	default:
 		// No new batch of actions received

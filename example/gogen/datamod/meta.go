@@ -32,58 +32,44 @@ type MetaRow struct {
 }
 
 func NewMetaRow(dsSlot lib.DatastoreSlot) *MetaRow {
-	sizes := []int{8, 2, 2}
+	sizes := []int{1, 1}
 	return &MetaRow{lib.NewDatastoreStruct(dsSlot, sizes)}
 }
 
 func (v *MetaRow) Get() (
-	startBlock uint64,
-	maxPlayers uint16,
-	playerCount uint16,
+	maxBodyCount uint8,
+	bodyCount uint8,
 ) {
-	return codec.DecodeSmallUint64(8, v.GetField(0)),
-		codec.DecodeSmallUint16(2, v.GetField(1)),
-		codec.DecodeSmallUint16(2, v.GetField(2))
+	return codec.DecodeSmallUint8(1, v.GetField(0)),
+		codec.DecodeSmallUint8(1, v.GetField(1))
 }
 
 func (v *MetaRow) Set(
-	startBlock uint64,
-	maxPlayers uint16,
-	playerCount uint16,
+	maxBodyCount uint8,
+	bodyCount uint8,
 ) {
-	v.SetField(0, codec.EncodeSmallUint64(8, startBlock))
-	v.SetField(1, codec.EncodeSmallUint16(2, maxPlayers))
-	v.SetField(2, codec.EncodeSmallUint16(2, playerCount))
+	v.SetField(0, codec.EncodeSmallUint8(1, maxBodyCount))
+	v.SetField(1, codec.EncodeSmallUint8(1, bodyCount))
 }
 
-func (v *MetaRow) GetStartBlock() uint64 {
+func (v *MetaRow) GetMaxBodyCount() uint8 {
 	data := v.GetField(0)
-	return codec.DecodeSmallUint64(8, data)
+	return codec.DecodeSmallUint8(1, data)
 }
 
-func (v *MetaRow) SetStartBlock(value uint64) {
-	data := codec.EncodeSmallUint64(8, value)
+func (v *MetaRow) SetMaxBodyCount(value uint8) {
+	data := codec.EncodeSmallUint8(1, value)
 	v.SetField(0, data)
 }
 
-func (v *MetaRow) GetMaxPlayers() uint16 {
+func (v *MetaRow) GetBodyCount() uint8 {
 	data := v.GetField(1)
-	return codec.DecodeSmallUint16(2, data)
+	return codec.DecodeSmallUint8(1, data)
 }
 
-func (v *MetaRow) SetMaxPlayers(value uint16) {
-	data := codec.EncodeSmallUint16(2, value)
+func (v *MetaRow) SetBodyCount(value uint8) {
+	data := codec.EncodeSmallUint8(1, value)
 	v.SetField(1, data)
-}
-
-func (v *MetaRow) GetPlayerCount() uint16 {
-	data := v.GetField(2)
-	return codec.DecodeSmallUint16(2, data)
-}
-
-func (v *MetaRow) SetPlayerCount(value uint16) {
-	data := codec.EncodeSmallUint16(2, value)
-	v.SetField(2, data)
 }
 
 type Meta struct {

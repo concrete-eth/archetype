@@ -1,27 +1,20 @@
 {
     "meta": {
         "schema": {
-            "startBlock": "uint64",
-            "maxPlayers": "uint16",
-            "playerCount": "uint16"
+            "maxBodyCount": "uint8",
+            "bodyCount": "uint8"
         }
     },
-    "players": {
+    "bodies": {
         "keySchema": {
-            "playerId": "uint16"
+            "bodyId": "uint8"
         },
         "schema": {
             "x": "int16",
-            "y": "int16"
-        }
-    },
-    "board": {
-        "keySchema": {
-            "x": "int16",
-            "y": "int16"
-        },
-        "schema": {
-            "playerId": "uint16"
+            "y": "int16",
+            "m": "uint16",
+            "vx": "int16",
+            "vy": "int16"
         }
     }
 }

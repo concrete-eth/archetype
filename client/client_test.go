@@ -24,10 +24,7 @@ func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBa
 		blockTime                = 10 * time.Millisecond
 		blockNumber       uint64 = 0
 	)
-	client, err := New(specs, core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := New(specs, core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
 	return client, kv, actionBatchInChan, actionOutChan
 }
 
@@ -245,6 +242,9 @@ func TestInterpolatedSync(t *testing.T) {
 			targetTicks := uint(time.Since(client.lastNewBatchTime)/tickPeriod) + 1
 			targetTicks = utils.Min(targetTicks, ticksPerBlock)
 			expectedCoreVal *= int16(2 * targetTicks)
+			if client.core.InBlockTickIndex() != targetTicks-1 {
+				t.Errorf("expected %v, got %v", targetTicks, client.core.InBlockTickIndex())
+			}
 		}
 		if c := client.Core().(*testutils.Core).GetCounter(); c != expectedCoreVal {
 			t.Errorf("expected %v, got %v", expectedCoreVal, c)

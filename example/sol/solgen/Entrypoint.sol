@@ -23,23 +23,15 @@ abstract contract Entrypoint is IActions {
 
     function _executeAction(uint8 actionId, bytes memory actionData) private {
         if (actionId == 0) {
-            ActionData_AddPlayer memory action = abi.decode(
+            ActionData_AddBody memory action = abi.decode(
                 actionData,
-                (ActionData_AddPlayer)
+                (ActionData_AddBody)
             );
-            addPlayer(action);
-        } else if (actionId == 1) {
-            ActionData_Move memory action = abi.decode(
-                actionData,
-                (ActionData_Move)
-            );
-            move(action);
+            addBody(action);
         } else {
             revert("Entrypoint: Invalid action ID");
         }
     }
 
-    function addPlayer(ActionData_AddPlayer memory action) public virtual;
-
-    function move(ActionData_Move memory action) public virtual;
+    function addBody(ActionData_AddBody memory action) public virtual;
 }

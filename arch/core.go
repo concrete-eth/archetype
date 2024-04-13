@@ -82,6 +82,7 @@ func RunSingleTick(c Core) {
 }
 
 func RunBlockTicks(c Core) {
+	c.SetInBlockTickIndex(0)
 	for i := uint(0); i < c.TicksPerBlock(); i++ {
 		RunSingleTick(c)
 		incrementBlockTickIndex(c)

@@ -37,10 +37,7 @@ func newTestClient(t *testing.T) (*client.Client, lib.KeyValueStore, chan arch.A
 		blockTime                = 10 * time.Millisecond
 		blockNumber       uint64 = 0
 	)
-	client, err := client.New(specs, core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := client.New(specs, core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
 	return client, kv, actionBatchInChan, actionOutChan
 }
 

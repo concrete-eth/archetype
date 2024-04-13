@@ -16,27 +16,20 @@ var TablesABIJson = contract.ContractABI
 var TablesSchemaJson = `{
     "meta": {
         "schema": {
-            "startBlock": "uint64",
-            "maxPlayers": "uint16",
-            "playerCount": "uint16"
+            "maxBodyCount": "uint8",
+            "bodyCount": "uint8"
         }
     },
-    "players": {
+    "bodies": {
         "keySchema": {
-            "playerId": "uint16"
+            "bodyId": "uint8"
         },
         "schema": {
             "x": "int16",
-            "y": "int16"
-        }
-    },
-    "board": {
-        "keySchema": {
-            "x": "int16",
-            "y": "int16"
-        },
-        "schema": {
-            "playerId": "uint16"
+            "y": "int16",
+            "m": "uint16",
+            "vx": "int16",
+            "vy": "int16"
         }
     }
 }`
@@ -45,14 +38,12 @@ var TableSpecs arch.TableSpecs
 
 func init() {
 	types := map[string]reflect.Type{
-		"Meta":    reflect.TypeOf(RowData_Meta{}),
-		"Players": reflect.TypeOf(RowData_Players{}),
-		"Board":   reflect.TypeOf(RowData_Board{}),
+		"Meta":   reflect.TypeOf(RowData_Meta{}),
+		"Bodies": reflect.TypeOf(RowData_Bodies{}),
 	}
 	getters := map[string]interface{}{
-		"Meta":    datamod.NewMeta,
-		"Players": datamod.NewPlayers,
-		"Board":   datamod.NewBoard,
+		"Meta":   datamod.NewMeta,
+		"Bodies": datamod.NewBodies,
 	}
 	var err error
 	if TableSpecs, err = arch.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {

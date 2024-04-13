@@ -29,27 +29,24 @@ var (
 	_ = abi.ConvertType
 )
 
-// RowDataBoard is an auto generated low-level Go binding around an user-defined struct.
-type RowDataBoard struct {
-	PlayerId uint16
+// RowDataBodies is an auto generated low-level Go binding around an user-defined struct.
+type RowDataBodies struct {
+	X  int16
+	Y  int16
+	M  uint16
+	Vx int16
+	Vy int16
 }
 
 // RowDataMeta is an auto generated low-level Go binding around an user-defined struct.
 type RowDataMeta struct {
-	StartBlock  uint64
-	MaxPlayers  uint16
-	PlayerCount uint16
-}
-
-// RowDataPlayers is an auto generated low-level Go binding around an user-defined struct.
-type RowDataPlayers struct {
-	X int16
-	Y int16
+	MaxBodyCount uint8
+	BodyCount    uint8
 }
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"getBoard\",\"inputs\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Board\",\"components\":[{\"name\":\"playerId\",\"type\":\"uint16\",\"internalType\":\"uint16\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMeta\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Meta\",\"components\":[{\"name\":\"startBlock\",\"type\":\"uint64\",\"internalType\":\"uint64\"},{\"name\":\"maxPlayers\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"playerCount\",\"type\":\"uint16\",\"internalType\":\"uint16\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getPlayers\",\"inputs\":[{\"name\":\"playerId\",\"type\":\"uint16\",\"internalType\":\"uint16\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Players\",\"components\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"stateMutability\":\"view\"}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"getBodies\",\"inputs\":[{\"name\":\"bodyId\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Bodies\",\"components\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"m\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"vx\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"vy\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMeta\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Meta\",\"components\":[{\"name\":\"maxBodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"bodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -198,40 +195,40 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
-// GetBoard is a free data retrieval call binding the contract method 0x5f65f666.
+// GetBodies is a free data retrieval call binding the contract method 0x92975a44.
 //
-// Solidity: function getBoard(int16 x, int16 y) view returns((uint16))
-func (_Contract *ContractCaller) GetBoard(opts *bind.CallOpts, x int16, y int16) (RowDataBoard, error) {
+// Solidity: function getBodies(uint8 bodyId) view returns((int16,int16,uint16,int16,int16))
+func (_Contract *ContractCaller) GetBodies(opts *bind.CallOpts, bodyId uint8) (RowDataBodies, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getBoard", x, y)
+	err := _Contract.contract.Call(opts, &out, "getBodies", bodyId)
 
 	if err != nil {
-		return *new(RowDataBoard), err
+		return *new(RowDataBodies), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(RowDataBoard)).(*RowDataBoard)
+	out0 := *abi.ConvertType(out[0], new(RowDataBodies)).(*RowDataBodies)
 
 	return out0, err
 
 }
 
-// GetBoard is a free data retrieval call binding the contract method 0x5f65f666.
+// GetBodies is a free data retrieval call binding the contract method 0x92975a44.
 //
-// Solidity: function getBoard(int16 x, int16 y) view returns((uint16))
-func (_Contract *ContractSession) GetBoard(x int16, y int16) (RowDataBoard, error) {
-	return _Contract.Contract.GetBoard(&_Contract.CallOpts, x, y)
+// Solidity: function getBodies(uint8 bodyId) view returns((int16,int16,uint16,int16,int16))
+func (_Contract *ContractSession) GetBodies(bodyId uint8) (RowDataBodies, error) {
+	return _Contract.Contract.GetBodies(&_Contract.CallOpts, bodyId)
 }
 
-// GetBoard is a free data retrieval call binding the contract method 0x5f65f666.
+// GetBodies is a free data retrieval call binding the contract method 0x92975a44.
 //
-// Solidity: function getBoard(int16 x, int16 y) view returns((uint16))
-func (_Contract *ContractCallerSession) GetBoard(x int16, y int16) (RowDataBoard, error) {
-	return _Contract.Contract.GetBoard(&_Contract.CallOpts, x, y)
+// Solidity: function getBodies(uint8 bodyId) view returns((int16,int16,uint16,int16,int16))
+func (_Contract *ContractCallerSession) GetBodies(bodyId uint8) (RowDataBodies, error) {
+	return _Contract.Contract.GetBodies(&_Contract.CallOpts, bodyId)
 }
 
 // GetMeta is a free data retrieval call binding the contract method 0xa79af2ce.
 //
-// Solidity: function getMeta() view returns((uint64,uint16,uint16))
+// Solidity: function getMeta() view returns((uint8,uint8))
 func (_Contract *ContractCaller) GetMeta(opts *bind.CallOpts) (RowDataMeta, error) {
 	var out []interface{}
 	err := _Contract.contract.Call(opts, &out, "getMeta")
@@ -248,45 +245,14 @@ func (_Contract *ContractCaller) GetMeta(opts *bind.CallOpts) (RowDataMeta, erro
 
 // GetMeta is a free data retrieval call binding the contract method 0xa79af2ce.
 //
-// Solidity: function getMeta() view returns((uint64,uint16,uint16))
+// Solidity: function getMeta() view returns((uint8,uint8))
 func (_Contract *ContractSession) GetMeta() (RowDataMeta, error) {
 	return _Contract.Contract.GetMeta(&_Contract.CallOpts)
 }
 
 // GetMeta is a free data retrieval call binding the contract method 0xa79af2ce.
 //
-// Solidity: function getMeta() view returns((uint64,uint16,uint16))
+// Solidity: function getMeta() view returns((uint8,uint8))
 func (_Contract *ContractCallerSession) GetMeta() (RowDataMeta, error) {
 	return _Contract.Contract.GetMeta(&_Contract.CallOpts)
-}
-
-// GetPlayers is a free data retrieval call binding the contract method 0xfa3ffbee.
-//
-// Solidity: function getPlayers(uint16 playerId) view returns((int16,int16))
-func (_Contract *ContractCaller) GetPlayers(opts *bind.CallOpts, playerId uint16) (RowDataPlayers, error) {
-	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getPlayers", playerId)
-
-	if err != nil {
-		return *new(RowDataPlayers), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(RowDataPlayers)).(*RowDataPlayers)
-
-	return out0, err
-
-}
-
-// GetPlayers is a free data retrieval call binding the contract method 0xfa3ffbee.
-//
-// Solidity: function getPlayers(uint16 playerId) view returns((int16,int16))
-func (_Contract *ContractSession) GetPlayers(playerId uint16) (RowDataPlayers, error) {
-	return _Contract.Contract.GetPlayers(&_Contract.CallOpts, playerId)
-}
-
-// GetPlayers is a free data retrieval call binding the contract method 0xfa3ffbee.
-//
-// Solidity: function getPlayers(uint16 playerId) view returns((int16,int16))
-func (_Contract *ContractCallerSession) GetPlayers(playerId uint16) (RowDataPlayers, error) {
-	return _Contract.Contract.GetPlayers(&_Contract.CallOpts, playerId)
 }
