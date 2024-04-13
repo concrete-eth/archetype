@@ -62,6 +62,13 @@ func logTaskFail(name string, err error) {
 	fmt.Println()
 }
 
+func logTaskSkip(name string, reason string) {
+	yellow.Print("[SKIP] ")
+	fmt.Print(name)
+	fmt.Print(": ", reason)
+	fmt.Println()
+}
+
 func logInfo(a ...any) {
 	fmt.Println(a...)
 }
@@ -71,12 +78,12 @@ func logDebug(a ...any) {
 }
 
 func logWarning(warning string) {
-	yellow.Println("\nWarning:")
+	yellow.Print("Warning: ")
 	fmt.Println(warning)
 }
 
 func logError(err error) {
-	fmt.Println("\nError:")
+	fmt.Println("Error:")
 	red.Println(err)
 	fmt.Println("\nContext:")
 	logDebug(string(debug.Stack()))
@@ -320,22 +327,6 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		logFatal(err)
 	}
 
-	if verbose {
-		// Print schema descriptions
-		actionsSchema, err := loadSchemaFromFile(gogenConfig.ActionsJsonPath)
-		if err != nil {
-			logFatal(err)
-		}
-		tablesSchema, err := loadSchemaFromFile(gogenConfig.TablesJsonPath)
-		if err != nil {
-			logFatal(err)
-		}
-		printSchemaDescription("Actions", actionsSchema)
-		fmt.Println("")
-		printSchemaDescription("Tables", tablesSchema)
-		fmt.Println("")
-	}
-
 	// Preliminary checks
 	if !isInstalled(GO_BIN) {
 		logFatal(fmt.Errorf("go is not installed (go_bin=%s)", GO_BIN))
@@ -351,6 +342,67 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	}
 	if !isInstalled(ABIGEN_BIN) {
 		logFatal(fmt.Errorf("abigen is not installed (abigen_bin=%s)", ABIGEN_BIN))
+	}
+
+	var skipGofmt bool
+	var skipPrettier bool
+	var hasPreliminaryWarnings bool
+
+	if isInstalled(GOFMT_BIN) {
+		skipGofmt = false
+	} else {
+		logWarning(fmt.Sprintf("gofmt is not installed (gofmt_bin=%s). Install it to format the generated go code.", GOFMT_BIN))
+		skipGofmt = true
+		hasPreliminaryWarnings = true
+	}
+
+	var missing string
+	if isInstalled(NODE_EXEC_BIN) {
+		if isInstalled(NODE_EXEC_BIN, PRETTIER_BIN) {
+			if isInstalled(NODE_EXEC_BIN, PRETTIER_BIN, "--plugin="+PRETTIER_SOL_PLUGIN) {
+				skipPrettier = false
+			} else {
+				missing = PRETTIER_SOL_PLUGIN
+			}
+		} else {
+			missing = PRETTIER_BIN
+		}
+	} else {
+		missing = NODE_EXEC_BIN
+	}
+	if missing != "" {
+		logWarning(fmt.Sprintf("%s is not installed. Install it to format the generated solidity code.", missing))
+		skipPrettier = true
+		hasPreliminaryWarnings = true
+	}
+
+	// Validate schema files
+	actionsSchema, err := loadSchemaFromFile(gogenConfig.ActionsJsonPath)
+	if err != nil {
+		logFatal(err)
+	}
+	tablesSchema, err := loadSchemaFromFile(gogenConfig.TablesJsonPath)
+	if err != nil {
+		logFatal(err)
+	}
+
+	for _, schema := range actionsSchema {
+		if len(schema.Keys) > 0 {
+			logWarning(fmt.Sprintf("Action %s has keys defined. Keys are not supported in actions.", schema.Name))
+			hasPreliminaryWarnings = true
+		}
+	}
+
+	if hasPreliminaryWarnings {
+		fmt.Println("")
+	}
+
+	if verbose {
+		// Print schema descriptions
+		printSchemaDescription("Actions", actionsSchema)
+		fmt.Println("")
+		printSchemaDescription("Tables", tablesSchema)
+		fmt.Println("")
 	}
 
 	// Run concrete datamod
@@ -371,29 +423,17 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	}
 
 	// Run gofmt
-	if isInstalled(GOFMT_BIN) {
+	if !skipGofmt {
 		runGofmt(datamodOut, gogenConfig.Out)
 	} else {
-		logWarning(fmt.Sprintf("gofmt is not installed (gofmt_bin=%s). Install it to format the generated go code.", GOFMT_BIN))
+		logTaskSkip("gofmt", "gofmt is not installed")
 	}
 
 	// Run prettier solidity plugin
-	var missing string
-	if isInstalled(NODE_EXEC_BIN) {
-		if isInstalled(NODE_EXEC_BIN, PRETTIER_BIN) {
-			if isInstalled(NODE_EXEC_BIN, PRETTIER_BIN, "--plugin="+PRETTIER_SOL_PLUGIN) {
-				runPrettier(solgenConfig.Out + "/**/*.sol")
-			} else {
-				missing = PRETTIER_SOL_PLUGIN
-			}
-		} else {
-			missing = PRETTIER_BIN
-		}
+	if !skipPrettier {
+		runPrettier(solgenConfig.Out + "/**/*.sol")
 	} else {
-		missing = NODE_EXEC_BIN
-	}
-	if missing != "" {
-		logWarning(fmt.Sprintf("%s is not installed. Install it to format the generated solidity code.", missing))
+		logTaskSkip("prettier", "prettier is not installed")
 	}
 
 	// Run forge build
@@ -608,8 +648,7 @@ func initConfig(cfgFile string) {
 		logDebug("Using config file:", configFilePathToPrint)
 		fmt.Println("")
 	} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-		logError(err)
-		os.Exit(1)
+		logFatal(err)
 	}
 }
 
