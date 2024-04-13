@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	G_NUMERATOR          int32 = 400
+	G_NUMERATOR          int32 = 200
 	G_DENOMINATOR        int32 = 1
-	INTERVAL_NUMERATOR   int16 = 1
-	INTERVAL_DENOMINATOR int16 = 1
+	INTERVAL_NUMERATOR   int32 = 1
+	INTERVAL_DENOMINATOR int32 = 1
 )
 
 type Core struct {
@@ -46,7 +46,7 @@ func (c *Core) AddBody(action *archmod.ActionData_AddBody) error {
 	bodyId := bodyCount + 1
 	meta.SetBodyCount(bodyId)
 	body := c.GetBody(bodyId)
-	body.Set(action.X, action.Y, action.M, action.Vx, action.Vy)
+	body.Set(action.X, action.Y, action.R, action.Vx, action.Vy)
 
 	return nil
 }
@@ -58,8 +58,9 @@ func (c *Core) Tick() {
 	for i := uint8(1); i <= bodyCount; i++ {
 		iBody := c.GetBody(i)
 		ix, iy := iBody.GetX(), iBody.GetY()
-		im := int32(iBody.GetM())
-		var ax, ay int32 // Using int32 for possibly larger values during summation
+		ir := int32(iBody.GetR())
+		im := Mass(ir)
+		var ax, ay int32
 
 		// Calculate acceleration
 		for j := uint8(1); j <= bodyCount; j++ {
@@ -69,18 +70,22 @@ func (c *Core) Tick() {
 
 			jBody := c.GetBody(j)
 			jx, jy := jBody.GetX(), jBody.GetY()
-			jm := int32(jBody.GetM())
+			jr := int32(jBody.GetR())
+			jm := Mass(jr)
 
-			d := int32(Distance(ix, iy, jx, jy))
+			d := Distance(ix, iy, jx, jy)
 			if d == 0 {
 				continue // Avoid division by zero, or handle error
+			}
+			if d < ir+jr {
+				continue
 			}
 
 			// Compute force, note that we adjust calculations to avoid overflow and maintain precision
 			f := G_NUMERATOR * im * jm / (d * d) / G_DENOMINATOR
 
-			dx := int32(jx - ix)
-			dy := int32(jy - iy)
+			dx := jx - ix
+			dy := jy - iy
 
 			// Calculate acceleration components
 			ax += f * dx / d / im // Normalize dx and multiply by force to get acceleration component
@@ -88,8 +93,8 @@ func (c *Core) Tick() {
 		}
 
 		// Update velocities
-		vx := iBody.GetVx() + INTERVAL_NUMERATOR*int16(ax)/INTERVAL_DENOMINATOR
-		vy := iBody.GetVy() + INTERVAL_NUMERATOR*int16(ay)/INTERVAL_DENOMINATOR
+		vx := iBody.GetVx() + INTERVAL_NUMERATOR*ax/INTERVAL_DENOMINATOR
+		vy := iBody.GetVy() + INTERVAL_NUMERATOR*ay/INTERVAL_DENOMINATOR
 		iBody.SetVx(vx)
 		iBody.SetVy(vy)
 	}
@@ -112,4 +117,8 @@ func distance(x1, y1, x2, y2 int) int {
 
 func Distance[T constraints.Integer](x1, y1, x2, y2 T) T {
 	return T(distance(int(x1), int(y1), int(x2), int(y2)))
+}
+
+func Mass(r int32) int32 {
+	return r * r
 }

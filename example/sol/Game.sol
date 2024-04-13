@@ -20,16 +20,17 @@ contract Game is Entrypoint, ArchProxyAdmin, Initializable {
 
     function _initialize() internal initializer {}
 
-    function _addBody(int16 x, int16 y, uint16 m, int16 vx, int16 vy) internal {
+    function _addBody(int32 x, int32 y, uint32 r, int32 vx, int32 vy) internal {
         ICore(proxy).addBody(
-            ActionData_AddBody({x: x, y: y, m: m, vx: vx, vy: vy})
+            ActionData_AddBody({x: x, y: y, r: r, vx: vx, vy: vy})
         );
     }
 
     function addBody(ActionData_AddBody memory action) public override {
-        (int16 x, int16 y) = (action.x, action.y);
-        uint16 m = action.m;
-        (int16 vx, int16 vy) = (action.vx, action.vy);
-        _addBody(x, y, m, vx, vy);
+        (int32 x, int32 y) = (action.x, action.y);
+        uint32 r = action.r;
+        (int32 vx, int32 vy) = (action.vx, action.vy);
+        // ... do something with x, y, r, vx, vy
+        _addBody(x, y, r, vx, vy);
     }
 }

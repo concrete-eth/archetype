@@ -12,33 +12,33 @@ var (
 
 /*
 Table    KeySize  ValueSize
-AddBody  0        10
+AddBody  0        20
 */
 
 type ActionData_AddBody struct {
-	X  int16  `json:"x"`
-	Y  int16  `json:"y"`
-	M  uint16 `json:"m"`
-	Vx int16  `json:"vx"`
-	Vy int16  `json:"vy"`
+	X  int32  `json:"x"`
+	Y  int32  `json:"y"`
+	R  uint32 `json:"r"`
+	Vx int32  `json:"vx"`
+	Vy int32  `json:"vy"`
 }
 
-func (row *ActionData_AddBody) GetX() int16 {
+func (row *ActionData_AddBody) GetX() int32 {
 	return row.X
 }
 
-func (row *ActionData_AddBody) GetY() int16 {
+func (row *ActionData_AddBody) GetY() int32 {
 	return row.Y
 }
 
-func (row *ActionData_AddBody) GetM() uint16 {
-	return row.M
+func (row *ActionData_AddBody) GetR() uint32 {
+	return row.R
 }
 
-func (row *ActionData_AddBody) GetVx() int16 {
+func (row *ActionData_AddBody) GetVx() int32 {
 	return row.Vx
 }
 
-func (row *ActionData_AddBody) GetVy() int16 {
+func (row *ActionData_AddBody) GetVy() int32 {
 	return row.Vy
 }

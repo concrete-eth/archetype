@@ -15,14 +15,15 @@ import (
 )
 
 const (
-	TrailLength = uint64(16)
+	TrailLength  = uint64(16)
+	ScreenWidth  = 640
+	ScreenHeight = 720
+	PixelSize    = 2.0
 )
 
 type Client struct {
 	client.Client
-	positionHistory map[uint8]map[uint64][2]int16
-	width           int
-	height          int
+	positionHistory map[uint8]map[uint64][2]int32
 }
 
 func NewClient(
@@ -36,9 +37,7 @@ func NewClient(
 	c := &core.Core{}
 	return &Client{
 		Client:          *client.New(specs, c, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber),
-		positionHistory: make(map[uint8]map[uint64][2]int16),
-		width:           640,
-		height:          720,
+		positionHistory: make(map[uint8]map[uint64][2]int32),
 	}
 }
 
@@ -47,9 +46,9 @@ func (c *Client) tickIndex() uint64 {
 	return core.BlockNumber()*uint64(core.TicksPerBlock()) + uint64(core.InBlockTickIndex())
 }
 
-func (c *Client) internalPositionToScreenPosition(screen *ebiten.Image, x, y int16) (float32, float32) {
-	screenX := float32(x+1000) / 2000 * float32(c.width)
-	screenY := float32(y+1000) / 2000 * float32(c.height)
+func (c *Client) internalPositionToScreenPosition(screen *ebiten.Image, x, y int32) (float32, float32) {
+	screenX := float32(x)/PixelSize + ScreenWidth/2
+	screenY := float32(y)/PixelSize + ScreenHeight/2
 	return screenX, screenY
 }
 
@@ -73,9 +72,9 @@ func (c *Client) Update() error {
 			body := c.GetBody(i)
 			x, y := body.GetX(), body.GetY()
 			if c.positionHistory[i] == nil {
-				c.positionHistory[i] = make(map[uint64][2]int16)
+				c.positionHistory[i] = make(map[uint64][2]int32)
 			}
-			c.positionHistory[i][tickIndex] = [2]int16{x, y}
+			c.positionHistory[i][tickIndex] = [2]int32{x, y}
 			delete(c.positionHistory[i], tickIndex-TrailLength-1)
 		}
 	}
@@ -101,7 +100,7 @@ func (c *Client) Draw(screen *ebiten.Image) {
 		} else {
 			trailStart = curIndex - TrailLength
 		}
-		var lastPos [2]int16
+		var lastPos [2]int32
 		var lastPosOk bool
 		for idx := trailStart; idx < curIndex; idx++ {
 			if pos, ok := c.positionHistory[i][idx]; ok {
@@ -123,8 +122,7 @@ func (c *Client) Draw(screen *ebiten.Image) {
 			}
 			psx, psy := c.internalPositionToScreenPosition(screen, lastPos[0], lastPos[1])
 			sx, sy := c.internalPositionToScreenPosition(screen, pos[0], pos[1])
-			sr := float32(1)
-			vector.StrokeLine(screen, psx, psy, sx, sy, sr, color.White, true)
+			vector.StrokeLine(screen, psx, psy, sx, sy, 1, color.White, true)
 			lastPos = pos
 		}
 	}
@@ -133,13 +131,13 @@ func (c *Client) Draw(screen *ebiten.Image) {
 	for i := uint8(1); i <= bodyCount; i++ {
 		body := c.GetBody(i)
 		x, y := body.GetX(), body.GetY()
-		m := body.GetM()
+		r := body.GetR()
 		sx, sy := c.internalPositionToScreenPosition(screen, x, y)
-		sr := float32(m / 100)
+		sr := float32(r) / PixelSize
 		vector.DrawFilledCircle(screen, sx, sy, sr, color.White, true)
 	}
 }
 
 func (c *Client) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return c.width, c.height
+	return ScreenWidth, ScreenHeight
 }

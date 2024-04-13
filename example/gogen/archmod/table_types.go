@@ -13,7 +13,7 @@ var (
 /*
 Table   KeySize  ValueSize
 Meta    0        2
-Bodies  1        10
+Bodies  1        20
 */
 
 type RowData_Meta struct {
@@ -30,29 +30,29 @@ func (row *RowData_Meta) GetBodyCount() uint8 {
 }
 
 type RowData_Bodies struct {
-	X  int16  `json:"x"`
-	Y  int16  `json:"y"`
-	M  uint16 `json:"m"`
-	Vx int16  `json:"vx"`
-	Vy int16  `json:"vy"`
+	X  int32  `json:"x"`
+	Y  int32  `json:"y"`
+	R  uint32 `json:"r"`
+	Vx int32  `json:"vx"`
+	Vy int32  `json:"vy"`
 }
 
-func (row *RowData_Bodies) GetX() int16 {
+func (row *RowData_Bodies) GetX() int32 {
 	return row.X
 }
 
-func (row *RowData_Bodies) GetY() int16 {
+func (row *RowData_Bodies) GetY() int32 {
 	return row.Y
 }
 
-func (row *RowData_Bodies) GetM() uint16 {
-	return row.M
+func (row *RowData_Bodies) GetR() uint32 {
+	return row.R
 }
 
-func (row *RowData_Bodies) GetVx() int16 {
+func (row *RowData_Bodies) GetVx() int32 {
 	return row.Vx
 }
 
-func (row *RowData_Bodies) GetVy() int16 {
+func (row *RowData_Bodies) GetVy() int32 {
 	return row.Vy
 }

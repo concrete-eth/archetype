@@ -9,11 +9,11 @@ struct RowData_Meta {
 }
 
 struct RowData_Bodies {
-    int16 x;
-    int16 y;
-    uint16 m;
-    int16 vx;
-    int16 vy;
+    int32 x;
+    int32 y;
+    uint32 r;
+    int32 vx;
+    int32 vy;
 }
 
 interface ITables {

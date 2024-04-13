@@ -25,9 +25,9 @@ func main() {
 			BlockNumber: bn,
 			Actions: []arch.Action{
 				&arch.CanonicalTickAction{},
-				&archmod.ActionData_AddBody{X: 0, Y: 0, M: 1000, Vx: 0, Vy: 0},
-				&archmod.ActionData_AddBody{X: -500, Y: 0, M: 250, Vx: 0, Vy: -20},
-				// &archmod.ActionData_AddBody{X: 500, Y: 0, M: 250, Vx: 0, Vy: 10},
+				&archmod.ActionData_AddBody{X: 0, Y: 0, R: 30, Vx: 0, Vy: 0},
+				&archmod.ActionData_AddBody{X: -275, Y: 0, R: 15, Vx: 0, Vy: -15},
+				&archmod.ActionData_AddBody{X: 275, Y: 0, R: 15, Vx: 0, Vy: 15},
 			},
 		}
 		ticker := time.NewTicker(blockTime)

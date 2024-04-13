@@ -31,16 +31,16 @@ var (
 
 // ActionDataAddBody is an auto generated low-level Go binding around an user-defined struct.
 type ActionDataAddBody struct {
-	X  int16
-	Y  int16
-	M  uint16
-	Vx int16
-	Vy int16
+	X  int32
+	Y  int32
+	R  uint32
+	Vx int32
+	Vy int32
 }
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"addBody\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_AddBody\",\"components\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"m\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"vx\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"vy\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"addBody\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_AddBody\",\"components\":[{\"name\":\"x\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"y\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"r\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"vx\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"vy\",\"type\":\"int32\",\"internalType\":\"int32\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -189,23 +189,23 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
-// AddBody is a paid mutator transaction binding the contract method 0xc2c00cf1.
+// AddBody is a paid mutator transaction binding the contract method 0x22c5eafe.
 //
-// Solidity: function addBody((int16,int16,uint16,int16,int16) action) returns()
+// Solidity: function addBody((int32,int32,uint32,int32,int32) action) returns()
 func (_Contract *ContractTransactor) AddBody(opts *bind.TransactOpts, action ActionDataAddBody) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "addBody", action)
 }
 
-// AddBody is a paid mutator transaction binding the contract method 0xc2c00cf1.
+// AddBody is a paid mutator transaction binding the contract method 0x22c5eafe.
 //
-// Solidity: function addBody((int16,int16,uint16,int16,int16) action) returns()
+// Solidity: function addBody((int32,int32,uint32,int32,int32) action) returns()
 func (_Contract *ContractSession) AddBody(action ActionDataAddBody) (*types.Transaction, error) {
 	return _Contract.Contract.AddBody(&_Contract.TransactOpts, action)
 }
 
-// AddBody is a paid mutator transaction binding the contract method 0xc2c00cf1.
+// AddBody is a paid mutator transaction binding the contract method 0x22c5eafe.
 //
-// Solidity: function addBody((int16,int16,uint16,int16,int16) action) returns()
+// Solidity: function addBody((int32,int32,uint32,int32,int32) action) returns()
 func (_Contract *ContractTransactorSession) AddBody(action ActionDataAddBody) (*types.Transaction, error) {
 	return _Contract.Contract.AddBody(&_Contract.TransactOpts, action)
 }

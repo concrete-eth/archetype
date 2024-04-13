@@ -31,11 +31,11 @@ var (
 
 // RowDataBodies is an auto generated low-level Go binding around an user-defined struct.
 type RowDataBodies struct {
-	X  int16
-	Y  int16
-	M  uint16
-	Vx int16
-	Vy int16
+	X  int32
+	Y  int32
+	R  uint32
+	Vx int32
+	Vy int32
 }
 
 // RowDataMeta is an auto generated low-level Go binding around an user-defined struct.
@@ -46,7 +46,7 @@ type RowDataMeta struct {
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"getBodies\",\"inputs\":[{\"name\":\"bodyId\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Bodies\",\"components\":[{\"name\":\"x\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"y\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"m\",\"type\":\"uint16\",\"internalType\":\"uint16\"},{\"name\":\"vx\",\"type\":\"int16\",\"internalType\":\"int16\"},{\"name\":\"vy\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMeta\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Meta\",\"components\":[{\"name\":\"maxBodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"bodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"getBodies\",\"inputs\":[{\"name\":\"bodyId\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Bodies\",\"components\":[{\"name\":\"x\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"y\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"r\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"vx\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"vy\",\"type\":\"int32\",\"internalType\":\"int32\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMeta\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Meta\",\"components\":[{\"name\":\"maxBodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"bodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -197,7 +197,7 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 
 // GetBodies is a free data retrieval call binding the contract method 0x92975a44.
 //
-// Solidity: function getBodies(uint8 bodyId) view returns((int16,int16,uint16,int16,int16))
+// Solidity: function getBodies(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
 func (_Contract *ContractCaller) GetBodies(opts *bind.CallOpts, bodyId uint8) (RowDataBodies, error) {
 	var out []interface{}
 	err := _Contract.contract.Call(opts, &out, "getBodies", bodyId)
@@ -214,14 +214,14 @@ func (_Contract *ContractCaller) GetBodies(opts *bind.CallOpts, bodyId uint8) (R
 
 // GetBodies is a free data retrieval call binding the contract method 0x92975a44.
 //
-// Solidity: function getBodies(uint8 bodyId) view returns((int16,int16,uint16,int16,int16))
+// Solidity: function getBodies(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
 func (_Contract *ContractSession) GetBodies(bodyId uint8) (RowDataBodies, error) {
 	return _Contract.Contract.GetBodies(&_Contract.CallOpts, bodyId)
 }
 
 // GetBodies is a free data retrieval call binding the contract method 0x92975a44.
 //
-// Solidity: function getBodies(uint8 bodyId) view returns((int16,int16,uint16,int16,int16))
+// Solidity: function getBodies(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
 func (_Contract *ContractCallerSession) GetBodies(bodyId uint8) (RowDataBodies, error) {
 	return _Contract.Contract.GetBodies(&_Contract.CallOpts, bodyId)
 }

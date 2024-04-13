@@ -25,11 +25,11 @@ var TablesSchemaJson = `{
             "bodyId": "uint8"
         },
         "schema": {
-            "x": "int16",
-            "y": "int16",
-            "m": "uint16",
-            "vx": "int16",
-            "vy": "int16"
+            "x": "int32",
+            "y": "int32",
+            "r": "uint32",
+            "vx": "int32",
+            "vy": "int32"
         }
     }
 }`
