@@ -8,7 +8,7 @@ import (
 	"github.com/concrete-eth/archetype/arch"
 
 	contract "github.com/concrete-eth/archetype/testutils/gogen/abigen/tables"
-	mod "github.com/concrete-eth/archetype/testutils/gogen/datamod"
+	"github.com/concrete-eth/archetype/testutils/gogen/datamod"
 )
 
 var TablesABIJson = contract.ContractABI
@@ -28,7 +28,7 @@ func init() {
 		"Counter": reflect.TypeOf(RowData_Counter{}),
 	}
 	getters := map[string]interface{}{
-		"Counter": mod.NewCounter,
+		"Counter": datamod.NewCounter,
 	}
 	var err error
 	if TableSpecs, err = arch.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {

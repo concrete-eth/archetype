@@ -27,7 +27,7 @@ func init() {
     }
     getters := map[string]interface{}{
         {{- range .Schemas }}
-        "{{.Name}}": mod.New{{.Name}},
+        "{{.Name}}": datamod.New{{.Name}},
         {{- end }}
     }
     var err error

@@ -83,7 +83,7 @@ func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
 	data["Imports"] = []importSpecs{
-		{"mod", config.DatamodImportPath},
+		{"", config.DatamodImportPath},
 		{"contract", filepath.Join(config.ContractsImportPath, params.ITablesContract.PackageName)},
 	}
 	data["Experimental"] = config.Experimental

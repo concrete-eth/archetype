@@ -8,7 +8,7 @@ import (
 	"github.com/concrete-eth/archetype/arch"
 
 	contract "github.com/concrete-eth/archetype/example/gogen/abigen/tables"
-	mod "github.com/concrete-eth/archetype/example/gogen/datamod"
+	"github.com/concrete-eth/archetype/example/gogen/datamod"
 )
 
 var TablesABIJson = contract.ContractABI
@@ -50,9 +50,9 @@ func init() {
 		"Board":   reflect.TypeOf(RowData_Board{}),
 	}
 	getters := map[string]interface{}{
-		"Meta":    mod.NewMeta,
-		"Players": mod.NewPlayers,
-		"Board":   mod.NewBoard,
+		"Meta":    datamod.NewMeta,
+		"Players": datamod.NewPlayers,
+		"Board":   datamod.NewBoard,
 	}
 	var err error
 	if TableSpecs, err = arch.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
