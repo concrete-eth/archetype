@@ -8,10 +8,11 @@ import {CallUtils} from "./utils/CallUtils.sol";
 
 contract ArchProxy is ERC1967PrecompileProxy {
     constructor(
+        address _admin,
         address _logic,
         bytes memory _data
     ) payable ERC1967PrecompileProxy(_logic, _data) {
-        ERC1967Utils.changeAdmin(msg.sender);
+        ERC1967Utils.changeAdmin(_admin);
     }
 
     fallback() external payable virtual override {
