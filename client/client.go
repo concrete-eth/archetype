@@ -156,10 +156,9 @@ func (c *Client) Sync() (didReceiveNewBatch bool, didTick bool, err error) {
 }
 
 // SyncUntil applies action batches until the block number is reached.
+// The action batch corresponding to the given block number will not be included.
 // It will only return when the block number is reached, the channel is closed, or an error occurs.
 func (c *Client) SyncUntil(blockNumber uint64) error {
-	// TODO: is should be more clear if the batch for the block is included or not (it is not)
-	// TODO: take context?
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for {

@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/concrete/crypto"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 )
 
 func testKeyValueStore(t *testing.T, kv lib.KeyValueStore) {
-	key := common.BytesToHash([]byte("foo"))
-	val0 := common.BytesToHash([]byte("bar"))
-	val1 := common.BytesToHash([]byte("foobar"))
+	key := common.BytesToHash([]byte("foobar"))
+	val0 := common.BytesToHash([]byte("foo"))
+	val1 := common.BytesToHash([]byte("bar"))
 	kv.Set(key, val0)
 	if kv.Get(key) != val0 {
 		t.Errorf("expected %v, got %v", val0, kv.Get(key))
@@ -27,6 +28,47 @@ func TestMemoryKeyValueStore(t *testing.T) {
 
 func TestHashedMemoryKeyValueStore(t *testing.T) {
 	testKeyValueStore(t, NewHashedMemoryKeyValueStore())
+
+	kv := NewHashedMemoryKeyValueStore()
+
+	var (
+		key     = common.BytesToHash([]byte("foobar"))
+		keyHash = crypto.Keccak256Hash(key.Bytes())
+		val0    = common.BytesToHash([]byte("foo"))
+		val1    = common.BytesToHash([]byte("bar"))
+	)
+
+	kv.Set(key, val0)
+	if kv.GetByKeyHash(keyHash) != val0 {
+		t.Errorf("expected %v, got %v", val0, kv.GetByKeyHash(keyHash))
+	}
+
+	kv.SetByKeyHash(keyHash, val1)
+	if kv.Get(key) != val1 {
+		t.Errorf("expected %v, got %v", val1, kv.Get(key))
+	}
+
+	if !kv.Has(key) {
+		t.Errorf("expected key %v to exist", key)
+	}
+	if !kv.HasByKeyHash(keyHash) {
+		t.Errorf("expected key hash %v to exist", keyHash)
+	}
+
+	kv.Delete(key)
+
+	if kv.Get(key) != (common.Hash{}) {
+		t.Errorf("expected %v, got %v", common.Hash{}, kv.Get(key))
+	}
+	if kv.GetByKeyHash(keyHash) != (common.Hash{}) {
+		t.Errorf("expected %v, got %v", common.Hash{}, kv.GetByKeyHash(keyHash))
+	}
+	if kv.Has(key) {
+		t.Errorf("expected key %v to not exist", key)
+	}
+	if kv.HasByKeyHash(keyHash) {
+		t.Errorf("expected key hash %v to not exist", keyHash)
+	}
 }
 
 func TestCachedKeyValueStore(t *testing.T) {
@@ -58,9 +100,11 @@ func TestStagedKeyValueStore(t *testing.T) {
 	baseKv := NewMemoryKeyValueStore()
 	stagedKv := NewStagedKeyValueStore(baseKv)
 
-	key := common.BytesToHash([]byte("foo"))
-	val0 := common.BytesToHash([]byte("bar"))
-	val1 := common.BytesToHash([]byte("foobar"))
+	var (
+		key  = common.BytesToHash([]byte("foobar"))
+		val0 = common.BytesToHash([]byte("foo"))
+		val1 = common.BytesToHash([]byte("bar"))
+	)
 
 	stagedKv.Set(key, val0)
 	if baseKv.Get(key) != (common.Hash{}) {

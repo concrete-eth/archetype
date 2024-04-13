@@ -36,12 +36,12 @@ func TestSimulate(t *testing.T) {
 	client.Simulate(func(_core archtypes.Core) {
 		core := _core.(*testutils.Core)
 		core.SetCounter(1)
-		if core.GetCounter() != 1 {
-			t.Fatal("unexpected value")
+		if c := core.GetCounter(); c != 1 {
+			t.Errorf("expected %v, got %v", 1, c)
 		}
 	})
-	if client.Core.(*testutils.Core).GetCounter() != 0 {
-		t.Fatal("unexpected value")
+	if c := client.Core.(*testutils.Core).GetCounter(); c != 0 {
+		t.Errorf("expected %v, got %v", 0, c)
 	}
 }
 
@@ -78,9 +78,9 @@ func TestSendAction(t *testing.T) {
 }
 
 var testData = []struct {
-	batch                     archtypes.ActionBatch
-	expectedTickActionInBatch bool
-	expectedCoreVal           int16
+	batch                archtypes.ActionBatch
+	expTickActionInBatch bool
+	expCounterValue      int16
 }{
 	{
 		archtypes.ActionBatch{
@@ -159,14 +159,14 @@ func TestSync(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if didTick != actionBatch.expectedTickActionInBatch {
-			t.Fatal("unexpected tick action")
+		if didTick != actionBatch.expTickActionInBatch {
+			t.Errorf("expected %v, got %v", actionBatch.expTickActionInBatch, didTick)
 		}
 		if client.Core.BlockNumber() != actionBatch.batch.BlockNumber+1 {
-			t.Fatal("unexpected block number")
+			t.Errorf("expected %v, got %v", actionBatch.batch.BlockNumber+1, client.Core.BlockNumber())
 		}
-		if client.Core.(*testutils.Core).GetCounter() != actionBatch.expectedCoreVal {
-			t.Fatal("unexpected value")
+		if c := client.Core.(*testutils.Core).GetCounter(); c != actionBatch.expCounterValue {
+			t.Errorf("expected %v, got %v", actionBatch.expCounterValue, c)
 		}
 	}
 }
@@ -193,8 +193,8 @@ func TestSyncUntil(t *testing.T) {
 		if client.Core.BlockNumber() != blockToSyncTo {
 			t.Fatal("unexpected block number")
 		}
-		if client.Core.(*testutils.Core).GetCounter() != testData[blockToSyncTo-1].expectedCoreVal {
-			t.Fatal("unexpected value")
+		if c := client.Core.(*testutils.Core).GetCounter(); c != testData[blockToSyncTo-1].expCounterValue {
+			t.Errorf("expected %v, got %v", testData[blockToSyncTo-1].expCounterValue, c)
 		}
 	}
 }
@@ -238,7 +238,7 @@ func TestInterpolatedSync(t *testing.T) {
 		if client.Core.BlockNumber() == 0 {
 			expectedCoreVal = 0
 		} else {
-			expectedCoreVal = testData[client.Core.BlockNumber()-1].expectedCoreVal
+			expectedCoreVal = testData[client.Core.BlockNumber()-1].expCounterValue
 		}
 		if !didReceiveNewBatch {
 			// Adjust expectedCoreVal for interpolated ticks
@@ -246,15 +246,15 @@ func TestInterpolatedSync(t *testing.T) {
 			targetTicks = utils.Min(targetTicks, ticksPerBlock)
 			expectedCoreVal *= int16(2 * targetTicks)
 		}
-		if client.Core.(*testutils.Core).GetCounter() != expectedCoreVal {
-			t.Fatal("unexpected value")
+		if c := client.Core.(*testutils.Core).GetCounter(); c != expectedCoreVal {
+			t.Errorf("expected %v, got %v", expectedCoreVal, c)
 		}
 		if int(client.Core.BlockNumber()) >= len(testData) {
 			break
 		}
 	}
 
-	if client.Core.(*testutils.Core).GetCounter() != testData[len(testData)-1].expectedCoreVal {
-		t.Fatal("unexpected value")
+	if c := client.Core.(*testutils.Core).GetCounter(); c != testData[len(testData)-1].expCounterValue {
+		t.Errorf("expected %v, got %v", testData[len(testData)-1].expCounterValue, c)
 	}
 }

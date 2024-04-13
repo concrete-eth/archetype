@@ -116,7 +116,7 @@ func TestE2E(t *testing.T) {
 		}
 		select {
 		case <-timeout:
-			t.Fatal("timed out waiting for action batch")
+			t.Fatal("timeout")
 		default:
 			time.Sleep(1 * time.Millisecond)
 		}
@@ -134,15 +134,11 @@ func TestE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	remoteCounter, ok := _remoteCounter.(interface {
-		GetValue() int16
-	})
+	remoteCounter, ok := _remoteCounter.(*testutils.RowData_Counter)
 	if !ok {
-		t.Fatalf("expected counter to have GetValue() int16 method, got %T", _remoteCounter)
+		t.Fatalf("expected counter row, got %T", _remoteCounter)
 	}
 	if remoteCounter.GetValue() != 1 {
 		t.Errorf("expected remote counter to be 1, got %d", remoteCounter)
 	}
 }
-
-// TODO: error vs fatal

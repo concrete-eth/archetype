@@ -171,10 +171,12 @@ func TestConvertStruct(t *testing.T) {
 				dstFieldType := dstType.Field(i)
 				srcFieldVal := srcVal.FieldByName(dstFieldType.Name)
 				if !srcFieldVal.IsValid() {
-					t.Fatalf("field %s is not valid", dstFieldType.Name)
+					t.Errorf("field %s is not valid", dstFieldType.Name)
+					continue
 				}
 				if !reflect.DeepEqual(dstFieldVal.Interface(), srcFieldVal.Interface()) {
-					t.Fatalf("field %s is not equal", dstFieldType.Name)
+					t.Errorf("field %s is not equal", dstFieldType.Name)
+					continue
 				}
 			}
 		})

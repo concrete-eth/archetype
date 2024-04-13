@@ -49,7 +49,7 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 	return sim.NewSimulatedBackend(alloc, 1e8, registry)
 }
 
-// TODO: test for bad inputs
+// TODO: test for bad inputs, unsubscribing, etc.
 
 func TestSendAction(t *testing.T) {
 	var (
