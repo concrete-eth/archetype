@@ -2,7 +2,9 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"math/big"
+	"reflect"
 	"sync"
 	"time"
 
@@ -537,7 +539,7 @@ func (a *ActionSender) SendActions(actionBatch []archtypes.Action) (*types.Trans
 }
 
 // StartSendingActions starts sending actions from the given channel.
-func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action) (<-chan error, func()) {
+func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action, txOutChan chan<- *types.Transaction) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
 	go func() {
@@ -549,12 +551,15 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action
 				if !ok {
 					return
 				}
-				// TODO: pass txs
-				if _, err := a.SendActions(actions); err != nil {
+				tx, err := a.SendActions(actions)
+				if err != nil {
 					select {
 					case errChan <- err:
 					default:
 					}
+				}
+				if tx != nil {
+					txOutChan <- tx
 				}
 			}
 		}
@@ -563,4 +568,71 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action
 		close(stopChan)
 	}
 	return errChan, cancel
+}
+
+// TableGetter reads a table from the core contract.
+type TableGetter struct {
+	ethcli          EthCli
+	tableSpecs      archtypes.TableSpecs
+	contractAddress common.Address
+}
+
+// NewTableGetter creates a new TableGetter.
+func NewTableGetter(
+	ethcli EthCli,
+	tableSpecs archtypes.TableSpecs,
+	coreAddress common.Address,
+) *TableGetter {
+	return &TableGetter{
+		ethcli:          ethcli,
+		tableSpecs:      tableSpecs,
+		contractAddress: coreAddress,
+	}
+}
+
+// TODO: consolidate this with read ops in spec
+
+// ReadTable reads a table from the contract.
+func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, error) {
+	// Get table ID from table name
+	tableId, ok := t.tableSpecs.NewValidIdFromName(tableName)
+	if !ok {
+		return nil, errors.New("table not found") // TODO: error message
+	}
+
+	// Get table schema from table ID
+	schema := t.tableSpecs.GetTableSchema(tableId)
+	data, err := t.tableSpecs.ABI().Pack(schema.Method.Name, keys...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Call contract
+	msg := ethereum.CallMsg{
+		To:   &t.contractAddress,
+		Data: data,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
+	defer cancel()
+	result, err := t.ethcli.CallContract(ctx, msg, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unpack result
+	_ret, err := schema.Method.Outputs.Unpack(result)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: check assumptions about method signatures
+	ret := _ret[0]
+
+	// Convert result to canonical type
+	row := reflect.New(schema.Type).Interface()
+	if err := archtypes.ConvertStruct(ret, row); err != nil {
+		return nil, err
+	}
+
+	return row, nil
 }

@@ -153,7 +153,7 @@ func TestConvertStruct(t *testing.T) {
 			}()
 			src := data.src
 			dst := reflect.New(data.dstType.Elem()).Interface()
-			err := convertStruct(src, dst)
+			err := ConvertStruct(src, dst)
 			if !data.ok {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
@@ -254,7 +254,7 @@ func TestCanPopulateStruct(t *testing.T) {
 					t.Fatal("PANIC", r)
 				}
 			}()
-			err := canPopulateStruct(data.srcType, data.dstType)
+			err := CanPopulateStruct(data.srcType, data.dstType)
 			if !data.ok {
 				if err == nil {
 					t.Fatalf("expected error, got nil")

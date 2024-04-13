@@ -19,12 +19,12 @@ import (
 )
 
 var (
-	chainId   = big.NewInt(1337)
-	pcAddress = common.HexToAddress("0x1234")
+	chainId       = big.NewInt(1337)
+	pcAddress     = common.HexToAddress("0x1234")
+	privateKeyHex = "b6caec81f24a057222a99f925671a845f5f27944e627e4097e5d7689b8981511"
 )
 
 func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
-	privateKeyHex := "b6caec81f24a057222a99f925671a845f5f27944e627e4097e5d7689b8981511"
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
 		t.Fatal(err)

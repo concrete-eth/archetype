@@ -40,7 +40,7 @@ func TestSimulate(t *testing.T) {
 			t.Fatal("unexpected value")
 		}
 	})
-	if client.core.(*testutils.Core).GetCounter() != 0 {
+	if client.Core.(*testutils.Core).GetCounter() != 0 {
 		t.Fatal("unexpected value")
 	}
 }
@@ -146,10 +146,10 @@ func TestSync(t *testing.T) {
 	if didTick {
 		t.Fatal("expected no tick action")
 	}
-	if client.core.BlockNumber() != 0 {
+	if client.Core.BlockNumber() != 0 {
 		t.Fatal("unexpected block number")
 	}
-	if client.core.(*testutils.Core).GetCounter() != 0 {
+	if client.Core.(*testutils.Core).GetCounter() != 0 {
 		t.Fatal("unexpected value")
 	}
 
@@ -162,10 +162,10 @@ func TestSync(t *testing.T) {
 		if didTick != actionBatch.expectedTickActionInBatch {
 			t.Fatal("unexpected tick action")
 		}
-		if client.core.BlockNumber() != actionBatch.batch.BlockNumber+1 {
+		if client.Core.BlockNumber() != actionBatch.batch.BlockNumber+1 {
 			t.Fatal("unexpected block number")
 		}
-		if client.core.(*testutils.Core).GetCounter() != actionBatch.expectedCoreVal {
+		if client.Core.(*testutils.Core).GetCounter() != actionBatch.expectedCoreVal {
 			t.Fatal("unexpected value")
 		}
 	}
@@ -190,10 +190,10 @@ func TestSyncUntil(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if client.core.BlockNumber() != blockToSyncTo {
+		if client.Core.BlockNumber() != blockToSyncTo {
 			t.Fatal("unexpected block number")
 		}
-		if client.core.(*testutils.Core).GetCounter() != testData[blockToSyncTo-1].expectedCoreVal {
+		if client.Core.(*testutils.Core).GetCounter() != testData[blockToSyncTo-1].expectedCoreVal {
 			t.Fatal("unexpected value")
 		}
 	}
@@ -223,7 +223,7 @@ func TestInterpolatedSync(t *testing.T) {
 	}()
 
 	var (
-		ticksPerBlock = client.core.TicksPerBlock()
+		ticksPerBlock = client.Core.TicksPerBlock()
 		tickPeriod    = client.blockTime / time.Duration(ticksPerBlock)
 	)
 
@@ -235,10 +235,10 @@ func TestInterpolatedSync(t *testing.T) {
 			t.Fatal(err)
 		}
 		var expectedCoreVal int16
-		if client.core.BlockNumber() == 0 {
+		if client.Core.BlockNumber() == 0 {
 			expectedCoreVal = 0
 		} else {
-			expectedCoreVal = testData[client.core.BlockNumber()-1].expectedCoreVal
+			expectedCoreVal = testData[client.Core.BlockNumber()-1].expectedCoreVal
 		}
 		if !didReceiveNewBatch {
 			// Adjust expectedCoreVal for interpolated ticks
@@ -246,15 +246,15 @@ func TestInterpolatedSync(t *testing.T) {
 			targetTicks = utils.Min(targetTicks, ticksPerBlock)
 			expectedCoreVal *= int16(2 * targetTicks)
 		}
-		if client.core.(*testutils.Core).GetCounter() != expectedCoreVal {
+		if client.Core.(*testutils.Core).GetCounter() != expectedCoreVal {
 			t.Fatal("unexpected value")
 		}
-		if int(client.core.BlockNumber()) >= len(testData) {
+		if int(client.Core.BlockNumber()) >= len(testData) {
 			break
 		}
 	}
 
-	if client.core.(*testutils.Core).GetCounter() != testData[len(testData)-1].expectedCoreVal {
+	if client.Core.(*testutils.Core).GetCounter() != testData[len(testData)-1].expectedCoreVal {
 		t.Fatal("unexpected value")
 	}
 }
