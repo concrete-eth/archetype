@@ -5,7 +5,7 @@ pragma solidity >=0.8.0;
 
 {{ range $schema := .Schemas }}
 {{- if $schema.Values }}
-struct {{ActionStructNameFn $schema.Name}} {
+struct {{SolidityActionStructNameFn $schema.Name}} {
     {{- range $value := $schema.Values }}
     {{$value.Type.SolType}} {{$value.Name}};
     {{- end }}
@@ -17,9 +17,9 @@ interface {{.Name}} {
     event {{$.ArchParams.ActionExecutedEventName}}(bytes4 actionId, bytes data);
 {{ range $schema := .Schemas }}
     {{- if $schema.Values }}
-    function {{ActionMethodNameFn $schema.Name}}({{ActionStructNameFn $schema.Name}} memory action) external;
+    function {{SolidityActionMethodNameFn $schema.Name}}({{SolidityActionStructNameFn $schema.Name}} memory action) external;
     {{- else }}
-    function {{ActionMethodNameFn $schema.Name}}() external;
+    function {{SolidityActionMethodNameFn $schema.Name}}() external;
     {{- end }}
 {{- end }}
 }

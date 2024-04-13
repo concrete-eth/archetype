@@ -26,11 +26,11 @@ abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ 
     function _executeAction(uint8 actionId, bytes memory actionData) private {
         {{- range $index, $schema := .Schemas }}
         if (actionId == {{$index}}) {
-            {{ActionStructNameFn $schema.Name}} memory action = abi.decode(
+            {{SolidityActionStructNameFn $schema.Name}} memory action = abi.decode(
                 actionData,
-                ({{ActionStructNameFn $schema.Name}})
+                ({{SolidityActionStructNameFn $schema.Name}})
             );
-            {{ActionMethodNameFn $schema.Name}}(action);
+            {{SolidityActionMethodNameFn $schema.Name}}(action);
         } else {{- end }} {
             revert("Entrypoint: Invalid action ID");
         }
@@ -38,9 +38,9 @@ abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ 
 
     {{- range $schema := .Schemas }}
     {{ if $schema.Values }}
-    function {{ActionMethodNameFn .Name}}({{ActionStructNameFn $schema.Name}} memory action) public virtual;
+    function {{SolidityActionMethodNameFn .Name}}({{SolidityActionStructNameFn $schema.Name}} memory action) public virtual;
     {{- else }}
-    function {{ActionMethodNameFn .Name}}() public;
+    function {{SolidityActionMethodNameFn .Name}}() public;
     {{- end }}
     {{- end }}
 }

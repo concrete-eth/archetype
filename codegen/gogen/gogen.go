@@ -51,7 +51,7 @@ func GenerateActionTypes(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
 	funcMap := make(template.FuncMap)
-	funcMap["StructNameFn"] = params.ActionStructName
+	funcMap["StructNameFn"] = params.GoActionStructName
 	outPath := filepath.Join(config.Out, "action_types.go")
 	return codegen.ExecuteTemplate(typesTpl, config.ActionsJsonPath, outPath, data, funcMap)
 }
@@ -73,7 +73,7 @@ func GenerateTableTypes(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
 	funcMap := make(template.FuncMap)
-	funcMap["StructNameFn"] = params.TableStructName
+	funcMap["StructNameFn"] = params.GoTableStructName
 	outPath := filepath.Join(config.Out, "table_types.go")
 	return codegen.ExecuteTemplate(typesTpl, config.TablesJsonPath, outPath, data, funcMap)
 }

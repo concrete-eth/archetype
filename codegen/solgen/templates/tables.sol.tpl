@@ -5,7 +5,7 @@ pragma solidity >=0.8.0;
 
 {{ range $schema := .Schemas }}
 {{- if $schema.Values }}
-struct {{ TableStructNameFn .Name }} {
+struct {{ SolidityTableStructNameFn .Name }} {
     {{- range $value := $schema.Values }}
     {{.Type.SolType}} {{$value.Name}};
     {{- end }}
@@ -15,11 +15,11 @@ struct {{ TableStructNameFn .Name }} {
 
 interface {{.Name}} {
 {{- range $schema := .Schemas }}
-    function {{TableMethodNameFn $schema.Name}}(
+    function {{SolidityTableMethodNameFn $schema.Name}}(
         {{- $length := len $schema.Keys -}}
         {{- range $index, $key := $schema.Keys -}}
         {{- $key.Type.SolType }} {{$key.Name}}{{if lt $index (_sub $length 1)}},{{ end -}}
         {{- end -}}
-    ) external view returns ({{TableStructNameFn .Name}} memory);
+    ) external view returns ({{SolidityTableStructNameFn .Name}} memory);
 {{- end }}
 }

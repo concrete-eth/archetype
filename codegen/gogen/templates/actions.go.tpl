@@ -22,7 +22,7 @@ var ActionSpecs arch.ActionSpecs
 func init() {
     types := map[string]reflect.Type{
         {{- range .Schemas }}
-        "{{.Name}}": reflect.TypeOf({{ActionStructNameFn .Name}}{}),
+        "{{.Name}}": reflect.TypeOf({{GoActionStructNameFn .Name}}{}),
         {{- end }}
     }
     var err error
@@ -33,6 +33,6 @@ func init() {
 
 type IActions interface {
     {{- range .Schemas }}
-    {{.Name}}(action *{{ActionStructNameFn .Name}}) error
+    {{.Name}}(action *{{GoActionStructNameFn .Name}}) error
     {{- end }}
 }

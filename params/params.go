@@ -18,10 +18,14 @@ var ValueParams = map[string]interface{}{
 
 // FunctionParams holds function parameters.
 var FunctionParams = map[string]interface{}{
-	"ActionMethodNameFn": ActionMethodName,
-	"ActionStructNameFn": ActionStructName,
-	"TableMethodNameFn":  TableMethodName,
-	"TableStructNameFn":  TableStructName,
+	"GoActionMethodNameFn":       GoActionMethodName,
+	"GoActionStructNameFn":       GoActionStructName,
+	"GoTableMethodNameFn":        GoTableMethodName,
+	"GoTableStructNameFn":        GoTableStructName,
+	"SolidityActionMethodNameFn": SolidityActionMethodName,
+	"SolidityActionStructNameFn": SolidityActionStructName,
+	"SolidityTableMethodNameFn":  SolidityTableMethodName,
+	"SolidityTableStructNameFn":  SolidityTableStructName,
 }
 
 const (
@@ -48,22 +52,52 @@ func upperFirstChar(s string) string {
 	return string(unicode.ToUpper(rune(s[0]))) + s[1:]
 }
 
-// TODO: separate names from capitalization
-
-func ActionMethodName(name string) string {
-	return lowerFirstChar(name)
+func actionMethodName(name string) string {
+	return name
 }
 
-func ActionStructName(name string) string {
+func actionStructName(name string) string {
 	return "ActionData_" + upperFirstChar(name)
 }
 
-func TableMethodName(name string) string {
+func tableMethodName(name string) string {
 	return "get" + upperFirstChar(name)
 }
 
-func TableStructName(name string) string {
+func tableStructName(name string) string {
 	return "RowData_" + upperFirstChar(name)
+}
+
+func GoActionMethodName(name string) string {
+	return upperFirstChar(actionMethodName(name))
+}
+
+func GoActionStructName(name string) string {
+	return actionStructName(name)
+}
+
+func GoTableMethodName(name string) string {
+	return upperFirstChar(tableMethodName(name))
+}
+
+func GoTableStructName(name string) string {
+	return tableStructName(name)
+}
+
+func SolidityActionMethodName(name string) string {
+	return lowerFirstChar(actionMethodName(name))
+}
+
+func SolidityActionStructName(name string) string {
+	return actionStructName(name)
+}
+
+func SolidityTableMethodName(name string) string {
+	return lowerFirstChar(tableMethodName(name))
+}
+
+func SolidityTableStructName(name string) string {
+	return tableStructName(name)
 }
 
 type ContractSpecs struct {

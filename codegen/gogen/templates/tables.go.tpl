@@ -22,7 +22,7 @@ var TableSpecs arch.TableSpecs
 func init() {
     types := map[string]reflect.Type{
         {{- range .Schemas }}
-        "{{.Name}}": reflect.TypeOf({{TableStructNameFn .Name}}{}),
+        "{{.Name}}": reflect.TypeOf({{GoTableStructNameFn .Name}}{}),
         {{- end }}
     }
     getters := map[string]interface{}{
