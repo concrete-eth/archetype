@@ -4,9 +4,9 @@ import (
 	"errors"
 	"math"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/example/gogen/archmod"
 	"github.com/concrete-eth/archetype/example/gogen/datamod"
-	archtypes "github.com/concrete-eth/archetype/types"
 )
 
 const (
@@ -27,7 +27,7 @@ func safeAddInt16(a, b int16) (int16, bool) {
 }
 
 type Core struct {
-	archtypes.BaseCore
+	arch.BaseCore
 }
 
 var _ archmod.IActions = &Core{}

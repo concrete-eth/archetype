@@ -5,7 +5,7 @@ package archmod
 import (
 	"reflect"
 
-	archtypes "github.com/concrete-eth/archetype/types"
+	"github.com/concrete-eth/archetype/arch"
 
 	contract "github.com/concrete-eth/archetype/testutils/gogen/abigen/tables"
 	mod "github.com/concrete-eth/archetype/testutils/gogen/datamod"
@@ -21,7 +21,7 @@ var TablesSchemaJson = `{
     }
 }`
 
-var TableSpecs archtypes.TableSpecs
+var TableSpecs arch.TableSpecs
 
 func init() {
 	types := map[string]reflect.Type{
@@ -31,7 +31,7 @@ func init() {
 		"Counter": mod.NewCounter,
 	}
 	var err error
-	if TableSpecs, err = archtypes.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
+	if TableSpecs, err = arch.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
 		panic(err)
 	}
 }

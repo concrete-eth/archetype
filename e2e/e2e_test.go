@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/client"
 	"github.com/concrete-eth/archetype/kvstore"
 	"github.com/concrete-eth/archetype/precompile"
 	"github.com/concrete-eth/archetype/rpc"
 	"github.com/concrete-eth/archetype/sim"
 	"github.com/concrete-eth/archetype/testutils"
-	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
@@ -27,13 +27,13 @@ var (
 	privateKeyHex = "b6caec81f24a057222a99f925671a845f5f27944e627e4097e5d7689b8981511"
 )
 
-func newTestClient(t *testing.T) (*client.Client, lib.KeyValueStore, chan archtypes.ActionBatch, chan []archtypes.Action) {
+func newTestClient(t *testing.T) (*client.Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
 		specs                    = testutils.NewTestArchSpecs(t)
 		core                     = &testutils.Core{}
 		kv                       = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan        = make(chan archtypes.ActionBatch)
-		actionOutChan            = make(chan []archtypes.Action)
+		actionBatchInChan        = make(chan arch.ActionBatch)
+		actionOutChan            = make(chan []arch.Action)
 		blockTime                = 10 * time.Millisecond
 		blockNumber       uint64 = 0
 	)

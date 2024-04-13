@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/precompile"
 	"github.com/concrete-eth/archetype/sim"
 	"github.com/concrete-eth/archetype/testutils"
-	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
@@ -93,11 +93,11 @@ func TestSendAction(t *testing.T) {
 	}
 }
 
-func waitForActionBatch(t *testing.T, actionBatchesChan <-chan archtypes.ActionBatch) archtypes.ActionBatch {
+func waitForActionBatch(t *testing.T, actionBatchesChan <-chan arch.ActionBatch) arch.ActionBatch {
 	select {
 	case <-time.After(10 * time.Millisecond):
 		t.Fatal("timeout")
-		return archtypes.ActionBatch{}
+		return arch.ActionBatch{}
 	case actionBatchIn := <-actionBatchesChan:
 		return actionBatchIn
 	}
@@ -110,14 +110,14 @@ func TestSubscribeToActionBatches(t *testing.T) {
 	)
 
 	// Subscribe to action batches
-	actionBatchesChan := make(chan archtypes.ActionBatch, 1)
+	actionBatchesChan := make(chan arch.ActionBatch, 1)
 	sub := SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchesChan)
 	defer sub.Unsubscribe()
 
 	// Commit and empty block
 	ethcli.Commit()
 
-	var batch archtypes.ActionBatch
+	var batch arch.ActionBatch
 	// Block 0
 	if batch = waitForActionBatch(t, actionBatchesChan); batch.Len() != 0 {
 		t.Fatalf("expected 0 actions, got %d", batch.Len())

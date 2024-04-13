@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/params"
-	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/concrete-eth/archetype/utils"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -92,9 +92,9 @@ func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
 // ActionBatchSubscription is a subscription to action batches emitted by a core contract.
 type ActionBatchSubscription struct {
 	ethcli          EthCli
-	actionSpecs     archtypes.ActionSpecs
+	actionSpecs     arch.ActionSpecs
 	coreAddress     common.Address
-	actionBatchChan chan<- archtypes.ActionBatch
+	actionBatchChan chan<- arch.ActionBatch
 	unsubChan       chan struct{}
 	errChan         chan error
 	closeUnsubOnce  sync.Once
@@ -107,10 +107,10 @@ var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
 // SubscribeActionBatches subscribes to action batches emitted by the core contract at coreAddress.
 func SubscribeActionBatches(
 	ethcli EthCli,
-	actionSpecs archtypes.ActionSpecs,
+	actionSpecs arch.ActionSpecs,
 	coreAddress common.Address,
 	startingBlockNumber uint64,
-	actionBatchesChan chan<- archtypes.ActionBatch,
+	actionBatchesChan chan<- arch.ActionBatch,
 ) *ActionBatchSubscription {
 	sub := &ActionBatchSubscription{
 		ethcli:          ethcli,
@@ -303,7 +303,7 @@ func (s *ActionBatchSubscription) processLogs(logs []types.Log, from, to uint64)
 
 func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []types.Log) error {
 	// Process logBatch into action batch and send
-	actions := make([]archtypes.Action, 0, len(logBatch))
+	actions := make([]arch.Action, 0, len(logBatch))
 	for _, log := range logBatch {
 		action, err := s.actionSpecs.LogToAction(log)
 		if err != nil {
@@ -311,7 +311,7 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 		}
 		actions = append(actions, action)
 	}
-	actionBatch := archtypes.NewActionBatch(blockNumber, actions)
+	actionBatch := arch.NewActionBatch(blockNumber, actions)
 	select {
 	case <-s.unsubChan:
 		s.unsubscribe()
@@ -336,7 +336,7 @@ func (s *ActionBatchSubscription) Err() <-chan error {
 // ActionSender sends actions to a core contract.
 type ActionSender struct {
 	ethcli          EthCli
-	actionSpecs     archtypes.ActionSpecs
+	actionSpecs     arch.ActionSpecs
 	gasEstimator    ethereum.GasEstimator
 	contractAddress common.Address
 	from            common.Address
@@ -350,7 +350,7 @@ type ActionSender struct {
 // NewActionSender creates a new ActionSender.
 func NewActionSender(
 	ethcli EthCli,
-	actionSpecs archtypes.ActionSpecs,
+	actionSpecs arch.ActionSpecs,
 	gasEstimator ethereum.GasEstimator,
 	coreAddress common.Address,
 	from common.Address,
@@ -372,9 +372,9 @@ func NewActionSender(
 }
 
 // packMultiActionCall packs multiple actions into a single call to the contract.
-func (a *ActionSender) packMultiActionCall(actions []archtypes.Action) ([]byte, error) {
+func (a *ActionSender) packMultiActionCall(actions []arch.Action) ([]byte, error) {
 	var (
-		actionIds   = make([]archtypes.RawIdType, 0)
+		actionIds   = make([]arch.RawIdType, 0)
 		actionCount = make([]uint8, 0)
 		actionData  = make([][]byte, 0, len(actions))
 	)
@@ -515,7 +515,7 @@ func (a *ActionSender) signAndSend(txData types.TxData) (*types.Transaction, err
 }
 
 // SendAction sends and action to the contract.
-func (a *ActionSender) SendAction(action archtypes.Action) (*types.Transaction, error) {
+func (a *ActionSender) SendAction(action arch.Action) (*types.Transaction, error) {
 	data, err := a.actionSpecs.ActionToCalldata(action)
 	if err != nil {
 		return nil, err
@@ -524,7 +524,7 @@ func (a *ActionSender) SendAction(action archtypes.Action) (*types.Transaction, 
 }
 
 // SendActions sends multiple actions to the contract in a single transaction.
-func (a *ActionSender) SendActions(actionBatch []archtypes.Action) (*types.Transaction, error) {
+func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transaction, error) {
 	if len(actionBatch) == 0 {
 		return nil, nil
 	} else if len(actionBatch) == 1 {
@@ -539,7 +539,7 @@ func (a *ActionSender) SendActions(actionBatch []archtypes.Action) (*types.Trans
 }
 
 // StartSendingActions starts sending actions from the given channel.
-func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action, txOutChan chan<- *types.Transaction) (<-chan error, func()) {
+func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txOutChan chan<- *types.Transaction) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
 	go func() {
@@ -573,14 +573,14 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []archtypes.Action
 // TableGetter reads a table from the core contract.
 type TableGetter struct {
 	ethcli          EthCli
-	tableSpecs      archtypes.TableSpecs
+	tableSpecs      arch.TableSpecs
 	contractAddress common.Address
 }
 
 // NewTableGetter creates a new TableGetter.
 func NewTableGetter(
 	ethcli EthCli,
-	tableSpecs archtypes.TableSpecs,
+	tableSpecs arch.TableSpecs,
 	coreAddress common.Address,
 ) *TableGetter {
 	return &TableGetter{
@@ -630,7 +630,7 @@ func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, 
 
 	// Convert result to canonical type
 	row := reflect.New(schema.Type).Interface()
-	if err := archtypes.ConvertStruct(ret, row); err != nil {
+	if err := arch.ConvertStruct(ret, row); err != nil {
 		return nil, err
 	}
 

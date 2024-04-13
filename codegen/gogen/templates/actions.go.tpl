@@ -5,7 +5,7 @@ package {{.Package}}
 import (
     "reflect"
 
-	archtypes "github.com/concrete-eth/archetype/types"
+	"github.com/concrete-eth/archetype/arch"
 
 	{{ range .Imports }}
 	{{- if .Name }}{{ .Name }} "{{ .Path }}"
@@ -17,7 +17,7 @@ var ActionsABIJson = contract.ContractABI
 
 var ActionsSchemaJson = `{{.Json}}`
 
-var ActionSpecs archtypes.ActionSpecs
+var ActionSpecs arch.ActionSpecs
 
 func init() {
     types := map[string]reflect.Type{
@@ -26,7 +26,7 @@ func init() {
         {{- end }}
     }
     var err error
-	if ActionSpecs, err = archtypes.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
+	if ActionSpecs, err = arch.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
 		panic(err)
 	}
 }

@@ -3,29 +3,29 @@ package precompile
 import (
 	"fmt"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/kvstore"
-	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/ethereum/go-ethereum/concrete"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 )
 
 type CorePrecompile struct {
 	lib.BlankPrecompile
-	spec archtypes.ArchSpecs
-	core archtypes.Core
+	spec arch.ArchSpecs
+	core arch.Core
 }
 
 var _ concrete.Precompile = (*CorePrecompile)(nil)
 
 // NewCorePrecompile creates a new CorePrecompile.
-func NewCorePrecompile(spec archtypes.ArchSpecs, core archtypes.Core) *CorePrecompile {
+func NewCorePrecompile(spec arch.ArchSpecs, core arch.Core) *CorePrecompile {
 	return &CorePrecompile{
 		spec: spec,
 		core: core,
 	}
 }
 
-func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValueStore, action archtypes.Action) error {
+func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValueStore, action arch.Action) error {
 	// Wrap the persistent kv store in a cached kv store to save gas when reading multiple times from the same slot
 	ckv := kvstore.NewCachedKeyValueStore(kv)
 	// Wrap the cached kv store in a staged kv store to save gas when writing multiple times to the same slot
@@ -37,7 +37,7 @@ func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValue
 	p.core.SetBlockNumber(env.GetBlockNumber())
 
 	// Execute the action
-	if err := archtypes.ExecuteAction(p.spec.Actions, action, p.core); err != nil {
+	if err := arch.ExecuteAction(p.spec.Actions, action, p.core); err != nil {
 		return err
 	}
 

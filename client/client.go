@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/kvstore"
-	archtypes "github.com/concrete-eth/archetype/types"
 )
 
 var (
@@ -21,13 +21,13 @@ var (
 )
 
 type Client struct {
-	specs archtypes.ArchSpecs
+	specs arch.ArchSpecs
 
-	Core archtypes.Core
+	Core arch.Core
 	kv   *kvstore.StagedKeyValueStore
 
-	actionBatchInChan <-chan archtypes.ActionBatch
-	actionOutChan     chan<- []archtypes.Action
+	actionBatchInChan <-chan arch.ActionBatch
+	actionOutChan     chan<- []arch.Action
 
 	blockTime time.Duration
 
@@ -38,7 +38,7 @@ type Client struct {
 }
 
 // New create a new client object.
-func New(specs archtypes.ArchSpecs, core archtypes.Core, kv lib.KeyValueStore, actionBatchInChan <-chan archtypes.ActionBatch, actionOutChan chan<- []archtypes.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
+func New(specs arch.ArchSpecs, core arch.Core, kv lib.KeyValueStore, actionBatchInChan <-chan arch.ActionBatch, actionOutChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) (*Client, error) {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	core.SetKV(stagedKv)
 	return &Client{
@@ -66,16 +66,16 @@ func (c *Client) error(msg string, ctx ...interface{}) {
 
 // applyBatch Applies the given action batch to the core and returns whether a tick action was included in the batch.
 // If a tick action is included, it must be the first action in the batch.
-func (c *Client) applyBatch(batch archtypes.ActionBatch) (bool, error) {
+func (c *Client) applyBatch(batch arch.ActionBatch) (bool, error) {
 	if c.Core.BlockNumber() != batch.BlockNumber {
 		return false, ErrBlockNumberMismatch
 	}
 	tickActionInBatch := false
 	for ii, action := range batch.Actions {
-		if err := archtypes.ExecuteAction(c.specs.Actions, action, c.Core); err != nil {
+		if err := arch.ExecuteAction(c.specs.Actions, action, c.Core); err != nil {
 			c.error("failed to execute action", "err", err)
 		}
-		if _, ok := action.(*archtypes.CanonicalTickAction); ok {
+		if _, ok := action.(*arch.CanonicalTickAction); ok {
 			if ii != 0 {
 				return false, ErrTickNotFirst
 			}
@@ -87,7 +87,7 @@ func (c *Client) applyBatch(batch archtypes.ActionBatch) (bool, error) {
 
 // applyBatchAndCommit applies the given action batch to the core, commits the changes to the key-value store,
 // and updates the core block number.
-func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) {
+func (c *Client) applyBatchAndCommit(batch arch.ActionBatch) (bool, error) {
 	tickActionInBatch, err := c.applyBatch(batch)
 	if err != nil {
 		return false, err
@@ -99,7 +99,7 @@ func (c *Client) applyBatchAndCommit(batch archtypes.ActionBatch) (bool, error) 
 }
 
 // Simulate runs the given function and then reverts all the changes to the key-value store.
-func (c *Client) Simulate(f func(core archtypes.Core)) {
+func (c *Client) Simulate(f func(core arch.Core)) {
 	// Put another stage on top of the current key-value store that will never be committed
 	// and will be discarded after the function is executed
 	c.lock.Lock()
@@ -112,16 +112,16 @@ func (c *Client) Simulate(f func(core archtypes.Core)) {
 
 // SendAction is a shorthand for sending a single action to the client.
 // See SendActions for more details.
-func (c *Client) SendAction(action archtypes.Action) error {
-	return c.SendActions([]archtypes.Action{action})
+func (c *Client) SendAction(action arch.Action) error {
+	return c.SendActions([]arch.Action{action})
 }
 
 // SendActions sends a slice of actions to actionOutChan.
-func (c *Client) SendActions(actions []archtypes.Action) error {
-	actionsToSend := make([]archtypes.Action, 0)
-	c.Simulate(func(core archtypes.Core) {
+func (c *Client) SendActions(actions []arch.Action) error {
+	actionsToSend := make([]arch.Action, 0)
+	c.Simulate(func(core arch.Core) {
 		for _, action := range actions {
-			if err := archtypes.ExecuteAction(c.specs.Actions, action, core); err != nil {
+			if err := arch.ExecuteAction(c.specs.Actions, action, core); err != nil {
 				c.error("failed to execute action", "err", err)
 				continue
 			}
@@ -217,7 +217,7 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 
 		for c.ticksRunThisBlock < targetTicks {
 			c.Core.SetInBlockTickIndex(c.ticksRunThisBlock)
-			archtypes.RunSingleTick(c.Core)
+			arch.RunSingleTick(c.Core)
 			c.ticksRunThisBlock++
 		}
 		return didReceiveNewBatch, true, nil

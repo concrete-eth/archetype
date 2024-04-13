@@ -6,21 +6,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/kvstore"
 	"github.com/concrete-eth/archetype/testutils"
-	archtypes "github.com/concrete-eth/archetype/types"
 	"github.com/concrete-eth/archetype/utils"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/log"
 )
 
-func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.ActionBatch, chan []archtypes.Action) {
+func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
 		specs                    = testutils.NewTestArchSpecs(t)
 		core                     = &testutils.Core{}
 		kv                       = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan        = make(chan archtypes.ActionBatch)
-		actionOutChan            = make(chan []archtypes.Action)
+		actionBatchInChan        = make(chan arch.ActionBatch)
+		actionOutChan            = make(chan []arch.Action)
 		blockTime                = 10 * time.Millisecond
 		blockNumber       uint64 = 0
 	)
@@ -33,7 +33,7 @@ func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan archtypes.Act
 
 func TestSimulate(t *testing.T) {
 	client, _, _, _ := newTestClient(t)
-	client.Simulate(func(_core archtypes.Core) {
+	client.Simulate(func(_core arch.Core) {
 		core := _core.(*testutils.Core)
 		core.SetCounter(1)
 		if c := core.GetCounter(); c != 1 {
@@ -48,7 +48,7 @@ func TestSimulate(t *testing.T) {
 func TestSendActions(t *testing.T) {
 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlError, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 	client, _, _, actionOutChan := newTestClient(t)
-	actionsIn := []archtypes.Action{&archtypes.CanonicalTickAction{}, &testutils.ActionData_Add{}}
+	actionsIn := []arch.Action{&arch.CanonicalTickAction{}, &testutils.ActionData_Add{}}
 	go client.SendActions(actionsIn)
 	select {
 	case <-time.After(10 * time.Millisecond):
@@ -78,15 +78,15 @@ func TestSendAction(t *testing.T) {
 }
 
 var testData = []struct {
-	batch                archtypes.ActionBatch
+	batch                arch.ActionBatch
 	expTickActionInBatch bool
 	expCounterValue      int16
 }{
 	{
-		archtypes.ActionBatch{
+		arch.ActionBatch{
 			BlockNumber: 0,
-			Actions: []archtypes.Action{
-				&archtypes.CanonicalTickAction{},
+			Actions: []arch.Action{
+				&arch.CanonicalTickAction{},
 				&testutils.ActionData_Add{Summand: 1},
 			},
 		},
@@ -94,19 +94,19 @@ var testData = []struct {
 		1,
 	},
 	{
-		archtypes.ActionBatch{
+		arch.ActionBatch{
 			BlockNumber: 1,
-			Actions: []archtypes.Action{
-				&archtypes.CanonicalTickAction{},
+			Actions: []arch.Action{
+				&arch.CanonicalTickAction{},
 			},
 		},
 		true,
 		4,
 	},
 	{
-		archtypes.ActionBatch{
+		arch.ActionBatch{
 			BlockNumber: 2,
-			Actions: []archtypes.Action{
+			Actions: []arch.Action{
 				&testutils.ActionData_Add{Summand: 1},
 			},
 		},
@@ -114,9 +114,9 @@ var testData = []struct {
 		5,
 	},
 	{
-		archtypes.ActionBatch{
+		arch.ActionBatch{
 			BlockNumber: 3,
-			Actions:     []archtypes.Action{},
+			Actions:     []arch.Action{},
 		},
 		false,
 		5,
@@ -133,7 +133,7 @@ func init() {
 
 func TestSync(t *testing.T) {
 	client, _, _, _ := newTestClient(t)
-	actionBatchInChan := make(chan archtypes.ActionBatch, 1)
+	actionBatchInChan := make(chan arch.ActionBatch, 1)
 	client.actionBatchInChan = actionBatchInChan
 
 	didReceiveNewBatch, didTick, err := client.Sync()

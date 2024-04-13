@@ -4,9 +4,9 @@ import (
 	"math"
 	"testing"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/testutils/gogen/archmod"
 	"github.com/concrete-eth/archetype/testutils/gogen/datamod"
-	archtypes "github.com/concrete-eth/archetype/types"
 )
 
 type ActionData_Add = archmod.ActionData_Add
@@ -23,7 +23,7 @@ func safeAddInt16(a, b int16) (int16, bool) {
 }
 
 type Core struct {
-	archtypes.BaseCore
+	arch.BaseCore
 }
 
 var _ archmod.IActions = (*Core)(nil)
@@ -64,8 +64,8 @@ func (c *Core) Tick() {
 	c.mul(2)
 }
 
-func NewTestArchSpecs(t *testing.T) archtypes.ArchSpecs {
-	return archtypes.ArchSpecs{
+func NewTestArchSpecs(t *testing.T) arch.ArchSpecs {
+	return arch.ArchSpecs{
 		Actions: archmod.ActionSpecs,
 		Tables:  archmod.TableSpecs,
 	}

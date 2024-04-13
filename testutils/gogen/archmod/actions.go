@@ -5,7 +5,7 @@ package archmod
 import (
 	"reflect"
 
-	archtypes "github.com/concrete-eth/archetype/types"
+	"github.com/concrete-eth/archetype/arch"
 
 	contract "github.com/concrete-eth/archetype/testutils/gogen/abigen/actions"
 )
@@ -20,14 +20,14 @@ var ActionsSchemaJson = `{
     }
 }`
 
-var ActionSpecs archtypes.ActionSpecs
+var ActionSpecs arch.ActionSpecs
 
 func init() {
 	types := map[string]reflect.Type{
 		"Add": reflect.TypeOf(ActionData_Add{}),
 	}
 	var err error
-	if ActionSpecs, err = archtypes.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
+	if ActionSpecs, err = arch.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
 		panic(err)
 	}
 }

@@ -1,4 +1,4 @@
-package types
+package arch
 
 // TODO: rename package? how to not have to name imports?
 
