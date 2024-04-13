@@ -1,7 +1,5 @@
 package arch
 
-// TODO: rename package? how to not have to name imports?
-
 import (
 	"errors"
 	"fmt"
@@ -39,6 +37,7 @@ func (v validId) Raw() RawIdType {
 
 /*
 
+TODO:
 Schema: Spec for a single action or table
 Schemas: Specs for either all actions or all tables
 
@@ -59,11 +58,11 @@ func newArchSchemas(
 	abi *abi.ABI,
 	schemas []datamod.TableSchema,
 	types map[string]reflect.Type,
-	methodNameFn func(string) string,
+	solMethodNameFn func(string) string,
 ) (archSchemas, error) {
 	s := archSchemas{abi: abi, schemas: make(map[RawIdType]archSchema, len(schemas))}
 	for _, schema := range schemas {
-		methodName := methodNameFn(schema.Name)
+		methodName := solMethodNameFn(schema.Name)
 		method := abi.Methods[methodName]
 		var id [4]byte
 		copy(id[:], method.ID)
@@ -82,9 +81,18 @@ func newArchSchemas(
 	return s, nil
 }
 
-func (a archSchemas) newValidId(id RawIdType) (validId, bool) {
+func (a archSchemas) newId(id RawIdType) (validId, bool) {
 	if _, ok := a.schemas[id]; ok {
 		return validId{id: id, valid: true}, true
+	}
+	return validId{}, false
+}
+
+func (t archSchemas) idFromName(name string) (validId, bool) {
+	for id, schema := range t.schemas {
+		if schema.Name == name {
+			return validId{id: id, valid: true}, true
+		}
 	}
 	return validId{}, false
 }
@@ -118,9 +126,14 @@ func NewActionSpecs(
 	schemas []datamod.TableSchema,
 	types map[string]reflect.Type,
 ) (ActionSpecs, error) {
-	s, err := newArchSchemas(abi, schemas, types, params.ActionMethodName)
+	s, err := newArchSchemas(abi, schemas, types, params.SolidityActionMethodName)
 	if err != nil {
 		return ActionSpecs{}, err
+	}
+	for _, schema := range s.schemas {
+		if len(schema.Method.Inputs) > 1 {
+			return ActionSpecs{}, fmt.Errorf("action method %s has more than one argument", schema.Name)
+		}
 	}
 	return ActionSpecs{archSchemas: s}, nil
 }
@@ -144,6 +157,18 @@ func NewActionSpecsFromRaw(
 	return NewActionSpecs(&ABI, schemas, types)
 }
 
+// NewActionId wraps a valid ID in a ValidActionId.
+func (a ActionSpecs) NewActionId(id RawIdType) (ValidActionId, bool) {
+	validId, ok := a.newId(id)
+	return ValidActionId{validId}, ok
+}
+
+// TODO: rename
+func (a ActionSpecs) ActionIdFromName(name string) (ValidActionId, bool) {
+	validId, ok := a.idFromName(name)
+	return ValidActionId{validId}, ok
+}
+
 // ActionIdFromAction returns the action ID of the given action.
 func (a ActionSpecs) ActionIdFromAction(action Action) (ValidActionId, bool) {
 	actionType := reflect.TypeOf(action)
@@ -157,12 +182,6 @@ func (a ActionSpecs) ActionIdFromAction(action Action) (ValidActionId, bool) {
 		}
 	}
 	return ValidActionId{}, false
-}
-
-// NewValidId wraps a valid ID in a ValidActionId.
-func (a ActionSpecs) NewValidId(id RawIdType) (ValidActionId, bool) {
-	validId, ok := a.newValidId(id)
-	return ValidActionId{validId}, ok
 }
 
 // GetActionSchema returns the schema of the action with the given ID.
@@ -226,7 +245,7 @@ func (a *ActionSpecs) CalldataToAction(calldata []byte) (Action, error) {
 	}
 	var methodId [4]byte
 	copy(methodId[:], calldata[:4])
-	actionId, ok := a.NewValidId(methodId)
+	actionId, ok := a.NewActionId(methodId)
 	if !ok {
 		return nil, errors.New("method signature does not match any action")
 	}
@@ -319,15 +338,15 @@ func newTableGetter(constructor interface{}, rowType reflect.Type) (tableGetter,
 	}, nil
 }
 
-func (t *tableGetter) get(datastore lib.Datastore, args ...interface{}) (interface{}, error) {
+func (t *tableGetter) get(datastore lib.Datastore, keys ...interface{}) (interface{}, error) {
 	// Construct the table
 	constructorArgs := []reflect.Value{reflect.ValueOf(datastore)}
 	table := t.constructor.Call(constructorArgs)[0]
 	// Call the Get method
 	rowGetter := table.MethodByName("Get")
 	// Call the Get method
-	rowArgs := make([]reflect.Value, len(args))
-	for i, arg := range args {
+	rowArgs := make([]reflect.Value, len(keys))
+	for i, arg := range keys {
 		argVal := reflect.ValueOf(arg)
 		if argVal.Type() != t.rowGetterType.In(i) {
 			return nil, fmt.Errorf("argument %d has wrong type", i)
@@ -355,9 +374,14 @@ func NewTableSpecs(
 	types map[string]reflect.Type,
 	getters map[string]interface{},
 ) (TableSpecs, error) {
-	s, err := newArchSchemas(abi, schemas, types, params.TableMethodName)
+	s, err := newArchSchemas(abi, schemas, types, params.SolidityTableMethodName)
 	if err != nil {
 		return TableSpecs{}, err
+	}
+	for _, schema := range s.schemas {
+		if len(schema.Method.Outputs) != 1 {
+			return TableSpecs{}, fmt.Errorf("table method %s does not have exactly one return value", schema.Name)
+		}
 	}
 	tableGetters := make(map[RawIdType]tableGetter, len(getters))
 	for id, schema := range s.schemas {
@@ -393,10 +417,26 @@ func NewTableSpecsFromRaw(
 	return NewTableSpecs(&ABI, schemas, types, getters)
 }
 
+// NewTableId wraps a valid ID in a ValidTableId.
+func (t TableSpecs) NewTableId(id RawIdType) (ValidTableId, bool) {
+	validId, ok := t.newId(id)
+	return ValidTableId{validId}, ok
+}
+
+func (t TableSpecs) TableIdFromName(name string) (ValidTableId, bool) {
+	validId, ok := t.idFromName(name)
+	return ValidTableId{validId}, ok
+}
+
+// GetTableSchema returns the schema of the table with the given ID.
+func (t TableSpecs) GetTableSchema(tableId ValidTableId) TableSchema {
+	return TableSchema{t.archSchemas.getSchema(tableId.validId)}
+}
+
 // read reads a row from the datastore.
-func (t TableSpecs) read(datastore lib.Datastore, tableId ValidTableId, args ...interface{}) (interface{}, error) {
+func (t TableSpecs) Read(datastore lib.Datastore, tableId ValidTableId, keys ...interface{}) (interface{}, error) {
 	getter := t.tableGetters[tableId.Raw()]
-	dsRow, err := getter.get(datastore, args...)
+	dsRow, err := getter.get(datastore, keys...)
 	if err != nil {
 		return nil, err
 	}
@@ -408,26 +448,6 @@ func (t TableSpecs) read(datastore lib.Datastore, tableId ValidTableId, args ...
 	return row, nil
 }
 
-// NewValidId wraps a valid ID in a ValidTableId.
-func (t TableSpecs) NewValidId(id RawIdType) (ValidTableId, bool) {
-	validId, ok := t.newValidId(id)
-	return ValidTableId{validId}, ok
-}
-
-func (t TableSpecs) NewValidIdFromName(name string) (ValidTableId, bool) {
-	for id, schema := range t.schemas {
-		if schema.Name == name {
-			return ValidTableId{validId{id: id, valid: true}}, true
-		}
-	}
-	return ValidTableId{}, false
-}
-
-// GetTableSchema returns the schema of the table with the given ID.
-func (t TableSpecs) GetTableSchema(tableId ValidTableId) TableSchema {
-	return TableSchema{t.archSchemas.getSchema(tableId.validId)}
-}
-
 // TableIdFromCalldata returns the table ID of the table targeted by the given calldata.
 // If the calldata does not encode a table read, the second return value is false.
 func (t *TableSpecs) TargetTableId(calldata []byte) (ValidTableId, bool) {
@@ -436,276 +456,29 @@ func (t *TableSpecs) TargetTableId(calldata []byte) (ValidTableId, bool) {
 	}
 	var methodId [4]byte
 	copy(methodId[:], calldata[:4])
-	tableId, ok := t.NewValidId(methodId)
+	tableId, ok := t.NewTableId(methodId)
 	return tableId, ok
-}
-
-// Read reads a row from the datastore if the calldata corresponds to a table read operation.
-func (t *TableSpecs) Read(datastore lib.Datastore, calldata []byte) (ValidTableId, interface{}, error) {
-	tableId, ok := t.TargetTableId(calldata)
-	if !ok {
-		return ValidTableId{}, nil, errors.New("calldata does not correspond to a table read operation")
-	}
-	schema := t.GetTableSchema(tableId)
-	args, err := schema.Method.Inputs.UnpackValues(calldata[4:])
-	if err != nil {
-		return tableId, nil, err
-	}
-	row, err := t.read(datastore, tableId, args...)
-	if err != nil {
-		return tableId, nil, err
-	}
-	return tableId, row, nil
 }
 
 // ReadPacked reads a row from the datastore and packs it into an ABI-encoded byte slice.
 func (t *TableSpecs) ReadPacked(datastore lib.Datastore, calldata []byte) ([]byte, error) {
-	tableId, data, err := t.Read(datastore, calldata)
+	tableId, ok := t.TargetTableId(calldata)
+	if !ok {
+		return nil, errors.New("calldata does not correspond to a table read operation")
+	}
+	schema := t.GetTableSchema(tableId)
+	keys, err := schema.Method.Inputs.UnpackValues(calldata[4:])
 	if err != nil {
 		return nil, err
 	}
-	schema := t.GetTableSchema(tableId)
-	return schema.Method.Outputs.Pack(data)
+	row, err := t.Read(datastore, tableId, keys...)
+	if err != nil {
+		return nil, err
+	}
+	return schema.Method.Outputs.Pack(row)
 }
 
 type ArchSpecs struct {
 	Actions ActionSpecs
 	Tables  TableSpecs
-}
-
-type Action interface{}
-
-type CanonicalTickAction struct{}
-
-// Holds all the actions included to a specific core in a specific block
-type ActionBatch struct {
-	BlockNumber uint64
-	Actions     []Action
-}
-
-func (a ActionBatch) Len() int {
-	return len(a.Actions)
-}
-
-// NewActionBatch creates a new ActionBatch instance.
-func NewActionBatch(blockNumber uint64, actions []Action) ActionBatch {
-	return ActionBatch{BlockNumber: blockNumber, Actions: actions}
-}
-
-// ConvertStruct copies the fields from src to dest if they have the same name and type.
-// All fields in dest must be set.
-func ConvertStruct(src interface{}, dest interface{}) error {
-	srcVal := reflect.ValueOf(src)
-	if !isStruct(srcVal.Type()) {
-		return fmt.Errorf("expected src to be a struct, got %v", srcVal.Type())
-	}
-
-	destVal := reflect.ValueOf(dest)
-	if !isStructPtr(destVal.Type()) {
-		return fmt.Errorf("expected dest to be a pointer to a struct, got %v", destVal.Type())
-	}
-
-	destElem := destVal.Elem()
-	destType := destElem.Type()
-
-	for i := 0; i < destElem.NumField(); i++ {
-		destField := destElem.Field(i)
-		destFieldType := destType.Field(i)
-		if !destField.CanSet() {
-			return fmt.Errorf("field %s is not settable", destFieldType.Name)
-		}
-		srcField := srcVal.FieldByName(destFieldType.Name)
-		if !srcField.IsValid() {
-			return fmt.Errorf("field %s not found", destFieldType.Name)
-		}
-		if srcField.Type() != destField.Type() {
-			return fmt.Errorf("field %s has different type", destFieldType.Name)
-		}
-		destField.Set(srcField)
-	}
-
-	return nil
-}
-
-func CanPopulateStruct(srcType reflect.Type, destType reflect.Type) error {
-	if !isStruct(srcType) && !isStructPtr(srcType) {
-		return errors.New("src is not a struct or a pointer to a struct")
-	}
-	if !isStructPtr(destType) {
-		return errors.New("dest is not a pointer to a struct")
-	}
-
-	destElemType := destType.Elem()
-
-	// TODO: checks to avoid panics
-	// TODO: dest vs dst
-
-	for i := 0; i < destElemType.NumField(); i++ {
-		destField := destElemType.Field(i)
-		destFieldType := destElemType.Field(i)
-		getMethodName := "Get" + destFieldType.Name
-		srcGetMethod, ok := srcType.MethodByName(getMethodName)
-		if !ok {
-			return fmt.Errorf("method %s not found", getMethodName)
-		}
-		if srcGetMethod.Type.NumOut() != 1 {
-			return errors.New("method should return a single value")
-		}
-		if srcGetMethod.Type.Out(0) != destField.Type {
-			return fmt.Errorf("field %s has different type", destFieldType.Name)
-		}
-	}
-
-	return nil
-
-}
-
-// PopulateStruct sets all the fields in dest to the values returned by the Get<field name> methods in src.
-func PopulateStruct(src interface{}, dest interface{}) error {
-	if err := CanPopulateStruct(reflect.TypeOf(src), reflect.TypeOf(dest)); err != nil {
-		return err
-	}
-	var (
-		srcVal       = reflect.ValueOf(src)
-		destVal      = reflect.ValueOf(dest)
-		destElem     = destVal.Elem()
-		destElemType = destElem.Type()
-	)
-	for i := 0; i < destElem.NumField(); i++ {
-		var (
-			destField     = destElem.Field(i)
-			destTypeField = destElemType.Field(i)
-			getMethodName = "Get" + destTypeField.Name
-			srcGetMethod  = srcVal.MethodByName(getMethodName)
-			values        = srcGetMethod.Call(nil)
-			value         = values[0]
-		)
-		destField.Set(value)
-	}
-	return nil
-}
-
-func isStructPtr(t reflect.Type) bool {
-	return t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct
-}
-
-func isStruct(t reflect.Type) bool {
-	return t.Kind() == reflect.Struct
-}
-
-type Core interface {
-	SetKV(kv lib.KeyValueStore) // Set the key-value store
-	KV() lib.KeyValueStore      // Get the key-value store
-	// ExecuteAction(Action) error // Execute the given action
-	SetBlockNumber(uint64) // Set the block number
-	BlockNumber() uint64   // Get the block number
-	// RunSingleTick()             // Run a single tick
-	// RunBlockTicks()             // Run all ticks in a block
-	Tick()                    // Run a single tick
-	TicksPerBlock() uint      // Get the number of ticks per block
-	ExpectTick() bool         // Check if a tick is expected
-	SetInBlockTickIndex(uint) // Set the in-block tick index
-	InBlockTickIndex() uint   // Get the in-block tick index
-}
-
-// TODO: force actions to be valid like ids [?]
-
-type BaseCore struct {
-	kv               lib.KeyValueStore
-	ds               lib.Datastore
-	blockNumber      uint64
-	inBlockTickIndex uint
-	ticksPerBlock    uint
-}
-
-var _ Core = &BaseCore{}
-
-func (b *BaseCore) SetKV(kv lib.KeyValueStore) {
-	b.kv = kv
-	b.ds = lib.NewKVDatastore(kv)
-}
-
-func (b *BaseCore) KV() lib.KeyValueStore {
-	return b.kv
-}
-
-func (b *BaseCore) Datastore() lib.Datastore {
-	return b.ds
-}
-
-func (b *BaseCore) SetBlockNumber(blockNumber uint64) {
-	b.blockNumber = blockNumber
-}
-
-func (b *BaseCore) BlockNumber() uint64 {
-	return b.blockNumber
-}
-
-func (b *BaseCore) SetInBlockTickIndex(index uint) {
-	b.inBlockTickIndex = index
-}
-
-func (b *BaseCore) InBlockTickIndex() uint {
-	return b.inBlockTickIndex
-}
-
-func (b *BaseCore) TicksPerBlock() uint {
-	return b.ticksPerBlock
-}
-
-func (b *BaseCore) ExpectTick() bool {
-	return true
-}
-
-func (b *BaseCore) Tick() {}
-
-func incrementBlockTickIndex(c Core) {
-	c.SetInBlockTickIndex(c.InBlockTickIndex() + 1)
-}
-
-func RunSingleTick(c Core) {
-	c.Tick()
-}
-
-func RunBlockTicks(c Core) {
-	for i := uint(0); i < c.TicksPerBlock(); i++ {
-		RunSingleTick(c)
-		incrementBlockTickIndex(c)
-	}
-}
-
-// TODO: have this as a method of action specs [?]
-
-// ExecuteAction executes the method in the target matching the action name with the given action as argument.
-// The action must either be a canonical actions (i.e. Tick) or be in the action specs.
-func ExecuteAction(spec ActionSpecs, action Action, target interface{}) error {
-	if _, ok := action.(*CanonicalTickAction); ok {
-		RunBlockTicks(target.(Core))
-		return nil
-	}
-	actionId, ok := spec.ActionIdFromAction(action)
-	if !ok {
-		return ErrInvalidAction
-	}
-	schema := spec.GetActionSchema(actionId)
-	actionName := schema.Name
-	methodName := actionName
-	targetVal := reflect.ValueOf(target)
-	if !targetVal.IsValid() {
-		return fmt.Errorf("target is invalid")
-	}
-	method := targetVal.MethodByName(methodName)
-	if !method.IsValid() {
-		return fmt.Errorf("method %s not found", methodName)
-	}
-	args := []reflect.Value{reflect.ValueOf(action)}
-	result := method.Call(args)
-	if len(result) == 0 {
-		return nil
-	}
-	errVal := result[len(result)-1]
-	if !errVal.IsNil() {
-		return errVal.Interface().(error)
-	}
-	return nil
 }

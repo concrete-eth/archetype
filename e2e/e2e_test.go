@@ -129,7 +129,7 @@ func TestE2E(t *testing.T) {
 	}
 
 	// Read the counter from the chain
-	tableGetter := rpc.NewTableGetter(ethcli, specs.Tables, pcAddress)
+	tableGetter := rpc.NewTableReader(ethcli, specs.Tables, pcAddress)
 	_remoteCounter, err := tableGetter.Read("Counter")
 	if err != nil {
 		t.Fatal(err)

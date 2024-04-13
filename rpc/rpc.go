@@ -577,8 +577,8 @@ type TableGetter struct {
 	contractAddress common.Address
 }
 
-// NewTableGetter creates a new TableGetter.
-func NewTableGetter(
+// NewTableReader creates a new TableGetter.
+func NewTableReader(
 	ethcli EthCli,
 	tableSpecs arch.TableSpecs,
 	coreAddress common.Address,
@@ -592,12 +592,15 @@ func NewTableGetter(
 
 // TODO: consolidate this with read ops in spec
 
+// TODO: error message
+// TODO: check assumptions about method signatures
+
 // ReadTable reads a table from the contract.
 func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, error) {
 	// Get table ID from table name
-	tableId, ok := t.tableSpecs.NewValidIdFromName(tableName)
+	tableId, ok := t.tableSpecs.TableIdFromName(tableName)
 	if !ok {
-		return nil, errors.New("table not found") // TODO: error message
+		return nil, errors.New("table name does not match any table")
 	}
 
 	// Get table schema from table ID
@@ -624,8 +627,6 @@ func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, 
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: check assumptions about method signatures
 	ret := _ret[0]
 
 	// Convert result to canonical type
