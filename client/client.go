@@ -23,7 +23,7 @@ var (
 type Client struct {
 	specs arch.ArchSpecs
 
-	Core arch.Core
+	core arch.Core
 	kv   *kvstore.StagedKeyValueStore
 
 	actionBatchInChan <-chan arch.ActionBatch
@@ -43,13 +43,17 @@ func New(specs arch.ArchSpecs, core arch.Core, kv lib.KeyValueStore, actionBatch
 	core.SetKV(stagedKv)
 	return &Client{
 		specs:             specs,
-		Core:              core,
+		core:              core,
 		kv:                stagedKv,
 		actionBatchInChan: actionBatchInChan,
 		actionOutChan:     actionOutChan,
 		blockTime:         blockTime,
 		ticksRunThisBlock: 0,
 	}, nil
+}
+
+func (c *Client) Core() arch.Core {
+	return c.core
 }
 
 func (c *Client) debug(msg string, ctx ...interface{}) {
@@ -67,12 +71,12 @@ func (c *Client) error(msg string, ctx ...interface{}) {
 // applyBatch Applies the given action batch to the core and returns whether a tick action was included in the batch.
 // If a tick action is included, it must be the first action in the batch.
 func (c *Client) applyBatch(batch arch.ActionBatch) (bool, error) {
-	if c.Core.BlockNumber() != batch.BlockNumber {
+	if c.core.BlockNumber() != batch.BlockNumber {
 		return false, ErrBlockNumberMismatch
 	}
 	tickActionInBatch := false
 	for ii, action := range batch.Actions {
-		if err := arch.ExecuteAction(c.specs.Actions, action, c.Core); err != nil {
+		if err := arch.ExecuteAction(c.specs.Actions, action, c.core); err != nil {
 			c.error("failed to execute action", "err", err)
 		}
 		if _, ok := action.(*arch.CanonicalTickAction); ok {
@@ -94,7 +98,7 @@ func (c *Client) applyBatchAndCommit(batch arch.ActionBatch) (bool, error) {
 	}
 	c.kv.Commit()
 	c.lastNewBatchTime = time.Now()
-	c.Core.SetBlockNumber(batch.BlockNumber + 1)
+	c.core.SetBlockNumber(batch.BlockNumber + 1)
 	return tickActionInBatch, nil
 }
 
@@ -105,9 +109,9 @@ func (c *Client) Simulate(f func(core arch.Core)) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	simKv := kvstore.NewStagedKeyValueStore(c.kv)
-	c.Core.SetKV(simKv)
-	f(c.Core)
-	c.Core.SetKV(c.kv)
+	c.core.SetKV(simKv)
+	f(c.core)
+	c.core.SetKV(c.kv)
 }
 
 // SendAction is a shorthand for sending a single action to the client.
@@ -162,7 +166,7 @@ func (c *Client) SyncUntil(blockNumber uint64) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for {
-		if c.Core.BlockNumber() >= blockNumber {
+		if c.core.BlockNumber() >= blockNumber {
 			break
 		}
 		batch, ok := <-c.actionBatchInChan
@@ -179,7 +183,7 @@ func (c *Client) SyncUntil(blockNumber uint64) error {
 // InterpolatedSync applies an action batch if available, otherwise it anticipates the ticks expected in the next block.
 // When an action batch is received, it will revert any tick anticipation and apply the batch normally.
 func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err error) {
-	if !c.Core.ExpectTick() {
+	if !c.core.ExpectTick() {
 		return c.Sync()
 	}
 	select {
@@ -200,7 +204,7 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		didReceiveNewBatch = false
 
 		var (
-			ticksPerBlock = c.Core.TicksPerBlock()
+			ticksPerBlock = c.core.TicksPerBlock()
 			tickPeriod    = c.blockTime / time.Duration(ticksPerBlock)
 		)
 
@@ -216,8 +220,8 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		defer c.lock.Unlock()
 
 		for c.ticksRunThisBlock < targetTicks {
-			c.Core.SetInBlockTickIndex(c.ticksRunThisBlock)
-			arch.RunSingleTick(c.Core)
+			c.core.SetInBlockTickIndex(c.ticksRunThisBlock)
+			arch.RunSingleTick(c.core)
 			c.ticksRunThisBlock++
 		}
 		return didReceiveNewBatch, true, nil

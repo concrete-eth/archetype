@@ -123,7 +123,7 @@ func TestE2E(t *testing.T) {
 	}
 
 	// Read the counter
-	localCounter := client.Core.(*testutils.Core).GetCounter()
+	localCounter := client.Core().(*testutils.Core).GetCounter()
 	if localCounter != 1 {
 		t.Errorf("expected local counter to be 1, got %d", localCounter)
 	}

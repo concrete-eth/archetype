@@ -40,7 +40,7 @@ func TestSimulate(t *testing.T) {
 			t.Errorf("expected %v, got %v", 1, c)
 		}
 	})
-	if c := client.Core.(*testutils.Core).GetCounter(); c != 0 {
+	if c := client.Core().(*testutils.Core).GetCounter(); c != 0 {
 		t.Errorf("expected %v, got %v", 0, c)
 	}
 }
@@ -146,10 +146,10 @@ func TestSync(t *testing.T) {
 	if didTick {
 		t.Fatal("expected no tick action")
 	}
-	if client.Core.BlockNumber() != 0 {
+	if client.Core().BlockNumber() != 0 {
 		t.Fatal("unexpected block number")
 	}
-	if client.Core.(*testutils.Core).GetCounter() != 0 {
+	if client.Core().(*testutils.Core).GetCounter() != 0 {
 		t.Fatal("unexpected value")
 	}
 
@@ -162,10 +162,10 @@ func TestSync(t *testing.T) {
 		if didTick != actionBatch.expTickActionInBatch {
 			t.Errorf("expected %v, got %v", actionBatch.expTickActionInBatch, didTick)
 		}
-		if client.Core.BlockNumber() != actionBatch.batch.BlockNumber+1 {
-			t.Errorf("expected %v, got %v", actionBatch.batch.BlockNumber+1, client.Core.BlockNumber())
+		if client.Core().BlockNumber() != actionBatch.batch.BlockNumber+1 {
+			t.Errorf("expected %v, got %v", actionBatch.batch.BlockNumber+1, client.Core().BlockNumber())
 		}
-		if c := client.Core.(*testutils.Core).GetCounter(); c != actionBatch.expCounterValue {
+		if c := client.Core().(*testutils.Core).GetCounter(); c != actionBatch.expCounterValue {
 			t.Errorf("expected %v, got %v", actionBatch.expCounterValue, c)
 		}
 	}
@@ -190,10 +190,10 @@ func TestSyncUntil(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if client.Core.BlockNumber() != blockToSyncTo {
+		if client.Core().BlockNumber() != blockToSyncTo {
 			t.Fatal("unexpected block number")
 		}
-		if c := client.Core.(*testutils.Core).GetCounter(); c != testData[blockToSyncTo-1].expCounterValue {
+		if c := client.Core().(*testutils.Core).GetCounter(); c != testData[blockToSyncTo-1].expCounterValue {
 			t.Errorf("expected %v, got %v", testData[blockToSyncTo-1].expCounterValue, c)
 		}
 	}
@@ -223,7 +223,7 @@ func TestInterpolatedSync(t *testing.T) {
 	}()
 
 	var (
-		ticksPerBlock = client.Core.TicksPerBlock()
+		ticksPerBlock = client.Core().TicksPerBlock()
 		tickPeriod    = client.blockTime / time.Duration(ticksPerBlock)
 	)
 
@@ -235,10 +235,10 @@ func TestInterpolatedSync(t *testing.T) {
 			t.Fatal(err)
 		}
 		var expectedCoreVal int16
-		if client.Core.BlockNumber() == 0 {
+		if client.Core().BlockNumber() == 0 {
 			expectedCoreVal = 0
 		} else {
-			expectedCoreVal = testData[client.Core.BlockNumber()-1].expCounterValue
+			expectedCoreVal = testData[client.Core().BlockNumber()-1].expCounterValue
 		}
 		if !didReceiveNewBatch {
 			// Adjust expectedCoreVal for interpolated ticks
@@ -246,15 +246,15 @@ func TestInterpolatedSync(t *testing.T) {
 			targetTicks = utils.Min(targetTicks, ticksPerBlock)
 			expectedCoreVal *= int16(2 * targetTicks)
 		}
-		if c := client.Core.(*testutils.Core).GetCounter(); c != expectedCoreVal {
+		if c := client.Core().(*testutils.Core).GetCounter(); c != expectedCoreVal {
 			t.Errorf("expected %v, got %v", expectedCoreVal, c)
 		}
-		if int(client.Core.BlockNumber()) >= len(testData) {
+		if int(client.Core().BlockNumber()) >= len(testData) {
 			break
 		}
 	}
 
-	if c := client.Core.(*testutils.Core).GetCounter(); c != testData[len(testData)-1].expCounterValue {
+	if c := client.Core().(*testutils.Core).GetCounter(); c != testData[len(testData)-1].expCounterValue {
 		t.Errorf("expected %v, got %v", testData[len(testData)-1].expCounterValue, c)
 	}
 }
