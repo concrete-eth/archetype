@@ -46,18 +46,36 @@ func (c *Client) tickIndex() uint64 {
 	return core.BlockNumber()*uint64(core.TicksPerBlock()) + uint64(core.InBlockTickIndex())
 }
 
-func (c *Client) internalPositionToScreenPosition(screen *ebiten.Image, x, y int32) (float32, float32) {
+func (c *Client) updatePositionHistory() {
+	tickIndex := c.tickIndex()
+	bodyCount := c.GetBodyCount()
+	for i := uint8(1); i <= bodyCount; i++ {
+		body := c.GetBody(i)
+		x, y := body.GetX(), body.GetY()
+		if c.positionHistory[i] == nil {
+			c.positionHistory[i] = make(map[uint64][2]int32)
+		}
+		c.positionHistory[i][tickIndex] = [2]int32{x, y}
+		delete(c.positionHistory[i], tickIndex-TrailLength-1)
+	}
+}
+
+func (c *Client) coreCoordToScreenCoord(x, y int32) (float32, float32) {
 	screenX := float32(x)/PixelSize + ScreenWidth/2
 	screenY := float32(y)/PixelSize + ScreenHeight/2
 	return screenX, screenY
 }
 
-func (c *Client) GetBodyCount() uint8 {
-	return c.Core().(*core.Core).GetMeta().GetBodyCount()
+func (c *Client) GetMeta() *datamod.MetaRow {
+	return c.Core().(*core.Core).GetMeta()
 }
 
 func (c *Client) GetBody(bodyId uint8) *datamod.BodiesRow {
 	return c.Core().(*core.Core).GetBody(bodyId)
+}
+
+func (c *Client) GetBodyCount() uint8 {
+	return c.GetMeta().GetBodyCount()
 }
 
 func (c *Client) Update() error {
@@ -66,75 +84,69 @@ func (c *Client) Update() error {
 		return err
 	}
 	if didTick {
-		tickIndex := c.tickIndex()
-		bodyCount := c.GetBodyCount()
-		for i := uint8(1); i <= bodyCount; i++ {
-			body := c.GetBody(i)
-			x, y := body.GetX(), body.GetY()
-			if c.positionHistory[i] == nil {
-				c.positionHistory[i] = make(map[uint64][2]int32)
-			}
-			c.positionHistory[i][tickIndex] = [2]int32{x, y}
-			delete(c.positionHistory[i], tickIndex-TrailLength-1)
-		}
+		c.updatePositionHistory()
 	}
 	return nil
 }
 
-func (c *Client) Draw(screen *ebiten.Image) {
-	screen.Fill(color.Black)
-	bodyCount := c.Core().(*core.Core).GetMeta().GetBodyCount()
+func (c *Client) drawLine(screen *ebiten.Image, x1, y1, x2, y2 int32) {
+	sx1, sy1 := c.coreCoordToScreenCoord(x1, y1)
+	sx2, sy2 := c.coreCoordToScreenCoord(x2, y2)
+	vector.StrokeLine(screen, sx1, sy1, sx2, sy2, 1, color.White, true)
+}
 
-	// Draw trails
-	for i := uint8(1); i <= bodyCount; i++ {
-		if c.positionHistory[i] == nil {
-			continue
-		}
+func (c *Client) drawCircle(screen *ebiten.Image, x, y, r int32) {
+	sx, sy := c.coreCoordToScreenCoord(x, y)
+	sr := float32(r) / PixelSize
+	vector.DrawFilledCircle(screen, sx, sy, sr, color.White, true)
+}
 
-		curIndex := c.tickIndex()
+func (c *Client) drawTrail(screen *ebiten.Image, bodyId uint8, body *datamod.BodiesRow) {
+	if c.positionHistory[bodyId] == nil {
+		return
+	}
 
-		// Find the start of the trail
-		var trailStart uint64
-		if TrailLength > curIndex {
-			trailStart = 0
-		} else {
-			trailStart = curIndex - TrailLength
-		}
-		var lastPos [2]int32
-		var lastPosOk bool
-		for idx := trailStart; idx < curIndex; idx++ {
-			if pos, ok := c.positionHistory[i][idx]; ok {
-				trailStart = idx + 1
-				lastPos = pos
-				lastPosOk = true
-				break
-			}
-		}
-		if !lastPosOk {
-			continue
-		}
+	curIndex := c.tickIndex()
 
-		// Draw the trail
-		for idx := trailStart; idx <= curIndex; idx++ {
-			pos, ok := c.positionHistory[i][idx]
-			if !ok {
-				continue
-			}
-			psx, psy := c.internalPositionToScreenPosition(screen, lastPos[0], lastPos[1])
-			sx, sy := c.internalPositionToScreenPosition(screen, pos[0], pos[1])
-			vector.StrokeLine(screen, psx, psy, sx, sy, 1, color.White, true)
+	// Find the start of the trail
+	var trailStart uint64
+	if TrailLength > curIndex {
+		trailStart = 0
+	} else {
+		trailStart = curIndex - TrailLength
+	}
+	var lastPos [2]int32
+	var lastPosOk bool
+	for idx := trailStart; idx < curIndex; idx++ {
+		if pos, ok := c.positionHistory[bodyId][idx]; ok {
+			trailStart = idx + 1
+			lastPos = pos
+			lastPosOk = true
+			break
+		}
+	}
+	if !lastPosOk {
+		return
+	}
+
+	// Draw the trail
+	for idx := trailStart; idx <= curIndex; idx++ {
+		if pos, ok := c.positionHistory[bodyId][idx]; ok {
+			c.drawLine(screen, lastPos[0], lastPos[1], pos[0], pos[1])
 			lastPos = pos
 		}
 	}
+}
 
-	// Draw bodies
+func (c *Client) Draw(screen *ebiten.Image) {
+	screen.Fill(color.Black)
+	bodyCount := c.GetBodyCount()
 	for i := uint8(1); i <= bodyCount; i++ {
 		body := c.GetBody(i)
 		x, y := body.GetX(), body.GetY()
-		r := body.GetR()
-		sx, sy := c.internalPositionToScreenPosition(screen, x, y)
-		sr := float32(r) / PixelSize
-		vector.DrawFilledCircle(screen, sx, sy, sr, color.White, true)
+		r := int32(body.GetR())
+		c.drawTrail(screen, i, body)
+		c.drawCircle(screen, x, y, r)
 	}
 }
 
