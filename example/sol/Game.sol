@@ -18,7 +18,11 @@ contract Game is Entrypoint, ArchProxyAdmin, Initializable {
         _initialize();
     }
 
-    function _initialize() internal initializer {}
+    function _initialize() internal {
+        _addBody(0, 0, 30, 0, 0);
+        _addBody(-275, 0, 15, 0, -15);
+        _addBody(275, 0, 15, 0, 15);
+    }
 
     function _addBody(int32 x, int32 y, uint32 r, int32 vx, int32 vy) internal {
         ICore(proxy).addBody(
@@ -32,5 +36,10 @@ contract Game is Entrypoint, ArchProxyAdmin, Initializable {
         (int32 vx, int32 vy) = (action.vx, action.vy);
         // ... do something with x, y, r, vx, vy
         _addBody(x, y, r, vx, vy);
+    }
+
+    function tick() public {
+        // TODO: implement
+        // ICore(proxy).tick();
     }
 }

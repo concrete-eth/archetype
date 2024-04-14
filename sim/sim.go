@@ -2,7 +2,6 @@ package sim
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -107,8 +106,6 @@ func (tsb *TickingSimulatedBackend) SendTransaction(ctx context.Context, tx *typ
 }
 
 func (tsb *TickingSimulatedBackend) Commit() {
-	fmt.Println("Committing block", tsb.BlockChain().CurrentBlock().Number)
-
 	if tsb.tickTarget != (common.Address{}) {
 		tickTx := tsb.newTickTransaction()
 		err := tsb.SimulatedBackend.SendTransaction(context.Background(), tickTx)

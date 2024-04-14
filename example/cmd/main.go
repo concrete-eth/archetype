@@ -1,16 +1,71 @@
 package main
 
 import (
+	"math/big"
 	"time"
 
 	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/example/client"
+	"github.com/concrete-eth/archetype/example/core"
+	game_contract "github.com/concrete-eth/archetype/example/gogen/abigen/game"
 	"github.com/concrete-eth/archetype/example/gogen/archmod"
 	"github.com/concrete-eth/archetype/kvstore"
+	"github.com/concrete-eth/archetype/precompile"
+	"github.com/concrete-eth/archetype/rpc"
+	"github.com/concrete-eth/archetype/sim"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/concrete"
+	geth_core "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+var (
+	chainId       = big.NewInt(1337)
+	privateKeyHex = "2fc96e918d52d60d78657d7c8b021207ae5cd7d20a311363b16d6bc08f6efd78"
+	pcAddress     = common.HexToAddress("0x1234")
+)
+
 func main() {
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil {
+		panic(err)
+	}
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainId)
+	if err != nil {
+		panic(err)
+	}
+	from := auth.From
+	// signerFn := auth.Signer
+
+	specs := arch.ArchSpecs{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
+	pc := precompile.NewCorePrecompile(specs, &core.Core{})
+
+	registry := concrete.NewRegistry()
+	registry.AddPrecompile(0, pcAddress, pc)
+
+	alloc := geth_core.GenesisAlloc{from: {Balance: new(big.Int).SetUint64(1e18)}}
+	sim := sim.NewTickingSimulatedBackend(alloc, 1e8, registry)
+
+	gameAddress, _, gameContract, err := game_contract.DeployContract(auth, sim)
+	if err != nil {
+		panic(err)
+	}
+	sim.Commit()
+
+	_, err = gameContract.Initialize(auth, pcAddress)
+	if err != nil {
+		panic(err)
+	}
+	sim.Commit()
+
+	coreAddress, err := gameContract.Proxy(nil)
+	if err != nil {
+		panic(err)
+	}
+	sim.Commit()
+
 	var (
 		kv                                     = kvstore.NewMemoryKeyValueStore()
 		actionBatchInChan                      = make(chan arch.ActionBatch, 1)
@@ -19,37 +74,17 @@ func main() {
 		blockNumber       uint64               = 0
 	)
 
-	go func() {
-		bn := blockNumber
-		actionBatchInChan <- arch.ActionBatch{
-			BlockNumber: bn,
-			Actions: []arch.Action{
-				&arch.CanonicalTickAction{},
-				&archmod.ActionData_AddBody{X: 0, Y: 0, R: 30, Vx: 0, Vy: 0},
-				&archmod.ActionData_AddBody{X: -275, Y: 0, R: 15, Vx: 0, Vy: -15},
-				&archmod.ActionData_AddBody{X: 275, Y: 0, R: 15, Vx: 0, Vy: 15},
-			},
-		}
-		ticker := time.NewTicker(blockTime)
-		for range ticker.C {
-			bn++
-			actionBatchInChan <- arch.ActionBatch{
-				BlockNumber: bn,
-				Actions: []arch.Action{
-					&arch.CanonicalTickAction{},
-				},
-			}
-		}
-	}()
+	sub := rpc.SubscribeActionBatches(sim, specs.Actions, coreAddress, 0, nil)
+	defer sub.Unsubscribe()
+
+	sim.Start(blockTime, gameAddress)
+	defer sim.Stop()
 
 	c := client.NewClient(kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
-
 	w, h := c.Layout(0, 0)
-
 	ebiten.SetWindowSize(w, h)
 	ebiten.SetWindowTitle("Archetype Example")
 	ebiten.SetTPS(60)
-
 	if err := ebiten.RunGame(c); err != nil {
 		panic(err)
 	}
