@@ -56,6 +56,10 @@ func (c *Client) Core() arch.Core {
 	return c.core
 }
 
+func (c *Client) BlockTime() time.Duration {
+	return c.blockTime
+}
+
 func (c *Client) debug(msg string, ctx ...interface{}) {
 	log.Debug(msg, ctx...)
 }
@@ -196,38 +200,39 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		didReceiveNewBatch = true
 		c.kv.Revert()
 		c.core.SetInBlockTickIndex(0)
-		didTick, err := c.applyBatchAndCommit(batch)
+		didTick, err = c.applyBatchAndCommit(batch)
+		if err != nil {
+			return didReceiveNewBatch, didTick, err
+		}
 
 		c.ticksRunThisBlock = 0
 		c.core.SetInBlockTickIndex(0)
-
-		return didReceiveNewBatch, didTick, err
 	default:
 		// No new batch of actions received
 		// Anticipate ticks corresponding to the expected tick action in the next block
 		didReceiveNewBatch = false
-
-		var (
-			ticksPerBlock = c.core.TicksPerBlock()
-			tickPeriod    = c.blockTime / time.Duration(ticksPerBlock)
-		)
-
-		targetTicks := uint(time.Since(c.lastNewBatchTime)/tickPeriod) + 1
-		targetTicks = utils.Min(targetTicks, ticksPerBlock) // Cap index to ticksPerBlock
-
-		if c.ticksRunThisBlock >= targetTicks {
-			// Already up to date
-			return didReceiveNewBatch, false, nil
-		}
-
-		c.lock.Lock()
-		defer c.lock.Unlock()
-
-		for c.ticksRunThisBlock < targetTicks {
-			c.core.SetInBlockTickIndex(c.ticksRunThisBlock)
-			arch.RunSingleTick(c.core)
-			c.ticksRunThisBlock++
-		}
-		return didReceiveNewBatch, true, nil
 	}
+
+	var (
+		ticksPerBlock = c.core.TicksPerBlock()
+		tickPeriod    = c.blockTime / time.Duration(ticksPerBlock) // TODO: Only compute this once
+	)
+
+	targetTicks := uint(time.Since(c.lastNewBatchTime)/tickPeriod) + 1
+	targetTicks = utils.Min(targetTicks, ticksPerBlock) // Cap index to ticksPerBlock
+
+	if c.ticksRunThisBlock >= targetTicks {
+		// Already up to date
+		return didReceiveNewBatch, didTick, nil
+	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for c.ticksRunThisBlock < targetTicks {
+		c.core.SetInBlockTickIndex(c.ticksRunThisBlock)
+		arch.RunSingleTick(c.core)
+		c.ticksRunThisBlock++
+	}
+	return didReceiveNewBatch, true, nil
 }

@@ -22,8 +22,10 @@ const (
 )
 
 type Client struct {
-	client.Client
+	*client.Client
+	lastTickTime    time.Time
 	positionHistory map[uint8]map[uint64][2]int32
+	_tickTime       time.Duration
 }
 
 func NewClient(
@@ -35,9 +37,11 @@ func NewClient(
 ) *Client {
 	specs := arch.ArchSpecs{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
 	c := &core.Core{}
+	cli := client.New(specs, c, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
 	return &Client{
-		Client:          *client.New(specs, c, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber),
+		Client:          cli,
 		positionHistory: make(map[uint8]map[uint64][2]int32),
+		_tickTime:       cli.BlockTime() / time.Duration(c.TicksPerBlock()),
 	}
 }
 
@@ -66,12 +70,16 @@ func (c *Client) coreCoordToScreenCoord(x, y int32) (float32, float32) {
 	return screenX, screenY
 }
 
+func (c *Client) Core() *core.Core {
+	return c.Client.Core().(*core.Core)
+}
+
 func (c *Client) GetMeta() *datamod.MetaRow {
-	return c.Core().(*core.Core).GetMeta()
+	return c.Core().GetMeta()
 }
 
 func (c *Client) GetBody(bodyId uint8) *datamod.BodiesRow {
-	return c.Core().(*core.Core).GetBody(bodyId)
+	return c.Core().GetBody(bodyId)
 }
 
 func (c *Client) GetBodyCount() uint8 {
@@ -84,6 +92,7 @@ func (c *Client) Update() error {
 		return err
 	}
 	if didTick {
+		c.lastTickTime = time.Now()
 		c.updatePositionHistory()
 	}
 	return nil
@@ -136,16 +145,29 @@ func (c *Client) drawTrail(screen *ebiten.Image, bodyId uint8, body *datamod.Bod
 			lastPos = pos
 		}
 	}
+
+	// Draw a line from the last position to the interpolated position
+	x, y := c.interpolatedPosition(bodyId, body)
+	c.drawLine(screen, lastPos[0], lastPos[1], x, y)
+}
+
+func (c *Client) interpolatedPosition(bodyId uint8, body *datamod.BodiesRow) (int32, int32) {
+	x, y := body.GetX(), body.GetY()
+	nx, ny := c.Core().NextPosition(body)
+	tickFraction := time.Since(c.lastTickTime).Seconds() / float64(c._tickTime.Seconds())
+	ix := x + int32(float64(nx-x)*tickFraction)
+	iy := y + int32(float64(ny-y)*tickFraction)
+	return ix, iy
 }
 
 func (c *Client) Draw(screen *ebiten.Image) {
 	screen.Fill(color.Black)
 	bodyCount := c.GetBodyCount()
-	for i := uint8(1); i <= bodyCount; i++ {
-		body := c.GetBody(i)
-		x, y := body.GetX(), body.GetY()
+	for bodyId := uint8(1); bodyId <= bodyCount; bodyId++ {
+		body := c.GetBody(bodyId)
+		x, y := c.interpolatedPosition(bodyId, body)
 		r := int32(body.GetR())
-		c.drawTrail(screen, i, body)
+		c.drawTrail(screen, bodyId, body)
 		c.drawCircle(screen, x, y, r)
 	}
 }

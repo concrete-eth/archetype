@@ -48,7 +48,7 @@ func main() {
 
 	ebiten.SetWindowSize(w, h)
 	ebiten.SetWindowTitle("Archetype Example")
-	ebiten.SetTPS(30)
+	ebiten.SetTPS(60)
 
 	if err := ebiten.RunGame(c); err != nil {
 		panic(err)

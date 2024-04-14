@@ -51,61 +51,75 @@ func (c *Core) AddBody(action *archmod.ActionData_AddBody) error {
 	return nil
 }
 
+func (c *Core) NextPosition(body *datamod.BodiesRow) (int32, int32) {
+	x := body.GetX() + INTERVAL_NUMERATOR*body.GetVx()/INTERVAL_DENOMINATOR
+	y := body.GetY() + INTERVAL_NUMERATOR*body.GetVy()/INTERVAL_DENOMINATOR
+	return x, y
+}
+
+func (c *Core) Mass(r int32) int32 {
+	return r * r
+}
+
+func (c *Core) Acceleration(bodyId uint8, body *datamod.BodiesRow) (int32, int32) {
+	x, y := body.GetX(), body.GetY()
+	r := int32(body.GetR())
+	m := c.Mass(r)
+
+	var ax, ay int32
+
+	// Calculate acceleration
+	for j := uint8(1); j <= c.GetMeta().GetBodyCount(); j++ {
+		if j == bodyId {
+			continue
+		}
+
+		jBody := c.GetBody(j)
+		jx, jy := jBody.GetX(), jBody.GetY()
+		jr := int32(jBody.GetR())
+		jm := c.Mass(jr)
+
+		d := Distance(x, y, jx, jy)
+		if d == 0 || d < r+jr {
+			continue
+		}
+
+		// Compute force, note that we adjust calculations to avoid overflow and maintain precision
+		f := G_NUMERATOR * m * jm / (d * d) / G_DENOMINATOR
+
+		dx := jx - x
+		dy := jy - y
+
+		// Calculate acceleration components
+		ax += f * dx / d / m // Normalize dx and multiply by force to get acceleration component
+		ay += f * dy / d / m // Normalize dy and multiply by force to get acceleration component
+	}
+
+	return ax, ay
+}
+
 func (c *Core) Tick() {
 	meta := c.GetMeta()
 	bodyCount := meta.GetBodyCount()
 
+	// Update positionss
 	for i := uint8(1); i <= bodyCount; i++ {
 		iBody := c.GetBody(i)
-		ix, iy := iBody.GetX(), iBody.GetY()
-		ir := int32(iBody.GetR())
-		im := Mass(ir)
-		var ax, ay int32
+		ix, iy := c.NextPosition(iBody)
+		iBody.SetX(ix)
+		iBody.SetY(iy)
+	}
 
-		// Calculate acceleration
-		for j := uint8(1); j <= bodyCount; j++ {
-			if j == i {
-				continue
-			}
-
-			jBody := c.GetBody(j)
-			jx, jy := jBody.GetX(), jBody.GetY()
-			jr := int32(jBody.GetR())
-			jm := Mass(jr)
-
-			d := Distance(ix, iy, jx, jy)
-			if d == 0 {
-				continue // Avoid division by zero, or handle error
-			}
-			if d < ir+jr {
-				continue
-			}
-
-			// Compute force, note that we adjust calculations to avoid overflow and maintain precision
-			f := G_NUMERATOR * im * jm / (d * d) / G_DENOMINATOR
-
-			dx := jx - ix
-			dy := jy - iy
-
-			// Calculate acceleration components
-			ax += f * dx / d / im // Normalize dx and multiply by force to get acceleration component
-			ay += f * dy / d / im // Normalize dy and multiply by force to get acceleration component
-		}
+	// Update velocities
+	for i := uint8(1); i <= bodyCount; i++ {
+		iBody := c.GetBody(i)
+		ax, ay := c.Acceleration(i, iBody)
 
 		// Update velocities
 		vx := iBody.GetVx() + INTERVAL_NUMERATOR*ax/INTERVAL_DENOMINATOR
 		vy := iBody.GetVy() + INTERVAL_NUMERATOR*ay/INTERVAL_DENOMINATOR
 		iBody.SetVx(vx)
 		iBody.SetVy(vy)
-	}
-
-	// Update positionss
-	for i := uint8(1); i <= bodyCount; i++ {
-		iBody := c.GetBody(i)
-		ix := iBody.GetX() + INTERVAL_NUMERATOR*iBody.GetVx()/INTERVAL_DENOMINATOR
-		iy := iBody.GetY() + INTERVAL_NUMERATOR*iBody.GetVy()/INTERVAL_DENOMINATOR
-		iBody.SetX(ix)
-		iBody.SetY(iy)
 	}
 }
 
@@ -117,8 +131,4 @@ func distance(x1, y1, x2, y2 int) int {
 
 func Distance[T constraints.Integer](x1, y1, x2, y2 T) T {
 	return T(distance(int(x1), int(y1), int(x2), int(y2)))
-}
-
-func Mass(r int32) int32 {
-	return r * r
 }
