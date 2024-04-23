@@ -3,6 +3,7 @@ package params
 import (
 	"unicode"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/crypto"
 )
 
@@ -14,6 +15,8 @@ var ValueParams = map[string]interface{}{
 	"ITablesContract":         ITablesContract,
 	"ICoreContract":           ICoreContract,
 	"EntrypointContract":      EntrypointContract,
+	"TickActionName":          TickActionName,
+	"TickActionIdHex":         TickActionIdHex,
 }
 
 // FunctionParams holds function parameters.
@@ -129,3 +132,9 @@ var EntrypointContract = ContractSpecs{
 	ContractName: "Entrypoint",
 	PackageName:  "entrypoint",
 }
+
+var (
+	TickActionName  = "Tick"
+	TickActionId    = crypto.Keccak256([]byte(SolidityActionMethodName(TickActionName) + "()"))[:4]
+	TickActionIdHex = "0x" + common.Bytes2Hex(TickActionId)
+)

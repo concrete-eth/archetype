@@ -67,6 +67,9 @@ func (p *CorePrecompile) Run(env concrete.Environment, input []byte) (_ret []byt
 			_ret = nil
 			_err = fmt.Errorf("panic: %v", r)
 		}
+		if _err != nil {
+			fmt.Println(_err)
+		}
 	}()
 
 	// Wrap env in a kv store and datastore

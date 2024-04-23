@@ -18,7 +18,9 @@ contract TestLogic is ICore {
                 y: action.y,
                 r: action.r,
                 vx: action.vx,
-                vy: action.vy
+                vy: action.vy,
+                ax: 0,
+                ay: 0
             })
         );
     }

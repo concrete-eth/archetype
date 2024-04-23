@@ -36,29 +36,15 @@ func (c *Core) GetBody(bodyId uint8) *datamod.BodiesRow {
 	return datamod.NewBodies(c.Datastore()).Get(bodyId)
 }
 
-func (c *Core) AddBody(action *archmod.ActionData_AddBody) error {
-	meta := c.GetMeta()
-	bodyCount := meta.GetBodyCount()
-	if bodyCount == math.MaxUint8 {
-		return errors.New("too many players")
-	}
-
-	bodyId := bodyCount + 1
-	meta.SetBodyCount(bodyId)
-	body := c.GetBody(bodyId)
-	body.Set(action.X, action.Y, action.R, action.Vx, action.Vy)
-
-	return nil
+// TODO: should this be a method [?]
+func (c *Core) Mass(r int32) int32 {
+	return r * r
 }
 
 func (c *Core) NextPosition(body *datamod.BodiesRow) (int32, int32) {
-	x := body.GetX() + INTERVAL_NUMERATOR*body.GetVx()/INTERVAL_DENOMINATOR
-	y := body.GetY() + INTERVAL_NUMERATOR*body.GetVy()/INTERVAL_DENOMINATOR
+	x := body.GetX() + IntervalDisplacement(body.GetVx(), body.GetAx())
+	y := body.GetY() + IntervalDisplacement(body.GetVy(), body.GetAy())
 	return x, y
-}
-
-func (c *Core) Mass(r int32) int32 {
-	return r * r
 }
 
 func (c *Core) Acceleration(bodyId uint8, body *datamod.BodiesRow) (int32, int32) {
@@ -98,6 +84,21 @@ func (c *Core) Acceleration(bodyId uint8, body *datamod.BodiesRow) (int32, int32
 	return ax, ay
 }
 
+func (c *Core) AddBody(action *archmod.ActionData_AddBody) error {
+	meta := c.GetMeta()
+	bodyCount := meta.GetBodyCount()
+	if bodyCount == math.MaxUint8 {
+		return errors.New("too many players")
+	}
+
+	bodyId := bodyCount + 1
+	meta.SetBodyCount(bodyId)
+	body := c.GetBody(bodyId)
+	body.Set(action.X, action.Y, action.R, action.Vx, action.Vy, 0, 0)
+
+	return nil
+}
+
 func (c *Core) Tick() {
 	meta := c.GetMeta()
 	bodyCount := meta.GetBodyCount()
@@ -115,6 +116,10 @@ func (c *Core) Tick() {
 		iBody := c.GetBody(i)
 		ax, ay := c.Acceleration(i, iBody)
 
+		// Update accelerations
+		iBody.SetAx(ax)
+		iBody.SetAy(ay)
+
 		// Update velocities
 		vx := iBody.GetVx() + INTERVAL_NUMERATOR*ax/INTERVAL_DENOMINATOR
 		vy := iBody.GetVy() + INTERVAL_NUMERATOR*ay/INTERVAL_DENOMINATOR
@@ -131,4 +136,9 @@ func distance(x1, y1, x2, y2 int) int {
 
 func Distance[T constraints.Integer](x1, y1, x2, y2 T) T {
 	return T(distance(int(x1), int(y1), int(x2), int(y2)))
+}
+
+func IntervalDisplacement(v, a int32) int32 {
+	return INTERVAL_NUMERATOR*v/INTERVAL_DENOMINATOR +
+		a*INTERVAL_NUMERATOR*INTERVAL_NUMERATOR/(2*INTERVAL_DENOMINATOR*INTERVAL_DENOMINATOR)
 }

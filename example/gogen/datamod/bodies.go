@@ -32,7 +32,7 @@ type BodiesRow struct {
 }
 
 func NewBodiesRow(dsSlot lib.DatastoreSlot) *BodiesRow {
-	sizes := []int{4, 4, 4, 4, 4}
+	sizes := []int{4, 4, 4, 4, 4, 4, 4}
 	return &BodiesRow{lib.NewDatastoreStruct(dsSlot, sizes)}
 }
 
@@ -42,12 +42,16 @@ func (v *BodiesRow) Get() (
 	r uint32,
 	vx int32,
 	vy int32,
+	ax int32,
+	ay int32,
 ) {
 	return codec.DecodeSmallInt32(4, v.GetField(0)),
 		codec.DecodeSmallInt32(4, v.GetField(1)),
 		codec.DecodeSmallUint32(4, v.GetField(2)),
 		codec.DecodeSmallInt32(4, v.GetField(3)),
-		codec.DecodeSmallInt32(4, v.GetField(4))
+		codec.DecodeSmallInt32(4, v.GetField(4)),
+		codec.DecodeSmallInt32(4, v.GetField(5)),
+		codec.DecodeSmallInt32(4, v.GetField(6))
 }
 
 func (v *BodiesRow) Set(
@@ -56,12 +60,16 @@ func (v *BodiesRow) Set(
 	r uint32,
 	vx int32,
 	vy int32,
+	ax int32,
+	ay int32,
 ) {
 	v.SetField(0, codec.EncodeSmallInt32(4, x))
 	v.SetField(1, codec.EncodeSmallInt32(4, y))
 	v.SetField(2, codec.EncodeSmallUint32(4, r))
 	v.SetField(3, codec.EncodeSmallInt32(4, vx))
 	v.SetField(4, codec.EncodeSmallInt32(4, vy))
+	v.SetField(5, codec.EncodeSmallInt32(4, ax))
+	v.SetField(6, codec.EncodeSmallInt32(4, ay))
 }
 
 func (v *BodiesRow) GetX() int32 {
@@ -112,6 +120,26 @@ func (v *BodiesRow) GetVy() int32 {
 func (v *BodiesRow) SetVy(value int32) {
 	data := codec.EncodeSmallInt32(4, value)
 	v.SetField(4, data)
+}
+
+func (v *BodiesRow) GetAx() int32 {
+	data := v.GetField(5)
+	return codec.DecodeSmallInt32(4, data)
+}
+
+func (v *BodiesRow) SetAx(value int32) {
+	data := codec.EncodeSmallInt32(4, value)
+	v.SetField(5, data)
+}
+
+func (v *BodiesRow) GetAy() int32 {
+	data := v.GetField(6)
+	return codec.DecodeSmallInt32(4, data)
+}
+
+func (v *BodiesRow) SetAy(value int32) {
+	data := codec.EncodeSmallInt32(4, value)
+	v.SetField(6, data)
 }
 
 type Bodies struct {

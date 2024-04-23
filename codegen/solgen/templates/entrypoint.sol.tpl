@@ -9,7 +9,7 @@ import "{{ . }}";
 
 abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {
     function {{.ArchParams.MultiActionMethodName}}(
-        uint8[] memory actionIds,
+        uint32[] memory actionIds,
         uint8[] memory actionCount,
         bytes[] memory actionData
     ) external {
@@ -23,24 +23,35 @@ abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ 
         }
     }
 
-    function _executeAction(uint8 actionId, bytes memory actionData) private {
-        {{- range $index, $schema := .Schemas }}
-        if (actionId == {{$index}}) {
+    function _executeAction(uint32 actionId, bytes memory actionData) private {
+        if (actionId == {{$.ArchParams.TickActionIdHex}}) {
+            {{SolidityActionMethodNameFn $.ArchParams.TickActionName}}();
+        } else 
+        {{- range $schema := .Schemas }}
+        {{- if $schema.Values }}
+        if (actionId == {{ _actionId $schema }}) {
             {{SolidityActionStructNameFn $schema.Name}} memory action = abi.decode(
                 actionData,
                 ({{SolidityActionStructNameFn $schema.Name}})
             );
             {{SolidityActionMethodNameFn $schema.Name}}(action);
-        } else {{- end }} {
+        }
+        {{- else }}
+        if (actionId == {{ _actionId $schema }}) {
+            {{SolidityActionMethodNameFn $schema.Name}}();
+        }
+        {{- end}} else {{- end }} {
             revert("Entrypoint: Invalid action ID");
         }
     }
+
+    function {{SolidityActionMethodNameFn $.ArchParams.TickActionName}}() public virtual;
 
     {{- range $schema := .Schemas }}
     {{ if $schema.Values }}
     function {{SolidityActionMethodNameFn .Name}}({{SolidityActionStructNameFn $schema.Name}} memory action) public virtual;
     {{- else }}
-    function {{SolidityActionMethodNameFn .Name}}() public;
+    function {{SolidityActionMethodNameFn .Name}}() public virtual;
     {{- end }}
     {{- end }}
 }

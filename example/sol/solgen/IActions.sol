@@ -14,5 +14,7 @@ struct ActionData_AddBody {
 interface IActions {
     event ActionExecuted(bytes4 actionId, bytes data);
 
+    function tick() external;
+
     function addBody(ActionData_AddBody memory action) external;
 }

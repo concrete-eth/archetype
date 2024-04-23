@@ -24,6 +24,7 @@ func init() {
         {{- range .Schemas }}
         "{{.Name}}": reflect.TypeOf({{GoActionStructNameFn .Name}}{}),
         {{- end }}
+        // "{{$.ArchParams.TickActionName}}": reflect.TypeOf(arch.CanonicalTickAction{}),
     }
     var err error
 	if ActionSpecs, err = arch.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
@@ -33,6 +34,7 @@ func init() {
 
 type IActions interface {
     {{- range .Schemas }}
-    {{.Name}}(action *{{GoActionStructNameFn .Name}}) error
+    {{ GoActionMethodNameFn .Name }}(action *{{GoActionStructNameFn .Name}}) error
     {{- end }}
+    {{ GoActionMethodNameFn $.ArchParams.TickActionName }}()
 }

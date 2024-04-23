@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"math/big"
 	"time"
 
@@ -48,17 +49,29 @@ func main() {
 	alloc := geth_core.GenesisAlloc{from: {Balance: new(big.Int).SetUint64(1e18)}}
 	sim := sim.NewTickingSimulatedBackend(alloc, 1e8, registry)
 
-	gameAddress, _, gameContract, err := game_contract.DeployContract(auth, sim)
+	gameAddress, tx, gameContract, err := game_contract.DeployContract(auth, sim)
 	if err != nil {
 		panic(err)
 	}
 	sim.Commit()
 
-	_, err = gameContract.Initialize(auth, pcAddress)
+	if receipt, err := sim.TransactionReceipt(context.Background(), tx.Hash()); err != nil {
+		panic(err)
+	} else if receipt.Status != 1 {
+		panic("contract deployment failed")
+	}
+
+	tx, err = gameContract.Initialize(auth, pcAddress)
 	if err != nil {
 		panic(err)
 	}
 	sim.Commit()
+
+	if receipt, err := sim.TransactionReceipt(context.Background(), tx.Hash()); err != nil {
+		panic(err)
+	} else if receipt.Status != 1 {
+		panic("contract deployment failed")
+	}
 
 	coreAddress, err := gameContract.Proxy(nil)
 	if err != nil {
@@ -74,7 +87,7 @@ func main() {
 		blockNumber       uint64               = 0
 	)
 
-	sub := rpc.SubscribeActionBatches(sim, specs.Actions, coreAddress, 0, nil)
+	sub := rpc.SubscribeActionBatches(sim, specs.Actions, coreAddress, 0, actionBatchInChan)
 	defer sub.Unsubscribe()
 
 	sim.Start(blockTime, gameAddress)

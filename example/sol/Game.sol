@@ -20,8 +20,8 @@ contract Game is Entrypoint, ArchProxyAdmin, Initializable {
 
     function _initialize() internal {
         _addBody(0, 0, 30, 0, 0);
-        _addBody(-275, 0, 15, 0, -15);
-        _addBody(275, 0, 15, 0, 15);
+        _addBody(-300, 0, 15, 0, -20);
+        _addBody(300, 0, 15, 0, 20);
     }
 
     function _addBody(int32 x, int32 y, uint32 r, int32 vx, int32 vy) internal {
@@ -31,15 +31,13 @@ contract Game is Entrypoint, ArchProxyAdmin, Initializable {
     }
 
     function addBody(ActionData_AddBody memory action) public override {
-        (int32 x, int32 y) = (action.x, action.y);
-        uint32 r = action.r;
-        (int32 vx, int32 vy) = (action.vx, action.vy);
-        // ... do something with x, y, r, vx, vy
-        _addBody(x, y, r, vx, vy);
+        ICore(proxy).addBody(action);
     }
 
-    function tick() public {
-        // TODO: implement
-        // ICore(proxy).tick();
+    uint256 public lastTickBlockNumber;
+
+    function tick() public override {
+        require(block.number > lastTickBlockNumber, "Game: tick too soon");
+        ICore(proxy).tick();
     }
 }

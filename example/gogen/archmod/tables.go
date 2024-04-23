@@ -29,7 +29,9 @@ var TablesSchemaJson = `{
             "y": "int32",
             "r": "uint32",
             "vx": "int32",
-            "vy": "int32"
+            "vy": "int32",
+            "ax": "int32",
+            "ay": "int32"
         }
     }
 }`

@@ -14,6 +14,8 @@ struct RowData_Bodies {
     uint32 r;
     int32 vx;
     int32 vy;
+    int32 ax;
+    int32 ay;
 }
 
 interface ITables {

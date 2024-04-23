@@ -15,6 +15,9 @@ struct {{SolidityActionStructNameFn $schema.Name}} {
 
 interface {{.Name}} {
     event {{$.ArchParams.ActionExecutedEventName}}(bytes4 actionId, bytes data);
+
+    function {{SolidityActionMethodNameFn $.ArchParams.TickActionName}}() external;
+
 {{ range $schema := .Schemas }}
     {{- if $schema.Values }}
     function {{SolidityActionMethodNameFn $schema.Name}}({{SolidityActionStructNameFn $schema.Name}} memory action) external;

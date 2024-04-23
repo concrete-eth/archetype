@@ -13,7 +13,7 @@ var (
 /*
 Table   KeySize  ValueSize
 Meta    0        2
-Bodies  1        20
+Bodies  1        28
 */
 
 type RowData_Meta struct {
@@ -35,6 +35,8 @@ type RowData_Bodies struct {
 	R  uint32 `json:"r"`
 	Vx int32  `json:"vx"`
 	Vy int32  `json:"vy"`
+	Ax int32  `json:"ax"`
+	Ay int32  `json:"ay"`
 }
 
 func (row *RowData_Bodies) GetX() int32 {
@@ -55,4 +57,12 @@ func (row *RowData_Bodies) GetVx() int32 {
 
 func (row *RowData_Bodies) GetVy() int32 {
 	return row.Vy
+}
+
+func (row *RowData_Bodies) GetAx() int32 {
+	return row.Ax
+}
+
+func (row *RowData_Bodies) GetAy() int32 {
+	return row.Ay
 }

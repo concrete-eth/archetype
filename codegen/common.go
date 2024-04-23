@@ -11,6 +11,7 @@ import (
 
 	"github.com/concrete-eth/archetype/params"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type Config struct {
@@ -68,6 +69,22 @@ func CheckDir(dirPath string) error {
 
 var DefaultFuncMap = template.FuncMap{
 	"_sub": func(a, b int) int { return a - b },
+	"_actionId": func(schema datamod.TableSchema) string {
+		var argsSign string
+		if len(schema.Values) > 0 {
+			solTypes := make([]string, 0, len(schema.Values))
+			for _, field := range schema.Values {
+				solTypes = append(solTypes, field.Type.SolType)
+			}
+			argsSign = "(" + strings.Join(solTypes, ",") + ")"
+		} else {
+			argsSign = ""
+		}
+		methodName := params.SolidityActionMethodName(schema.Name)
+		sign := fmt.Sprintf("%s(%s)", methodName, argsSign)
+		hash := crypto.Keccak256([]byte(sign))
+		return fmt.Sprintf("0x%x", hash[:4])
+	},
 }
 
 // ExecuteTemplate executes a template with the given data and writes the output to a file.
