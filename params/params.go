@@ -61,7 +61,7 @@ func actionStructName(name string) string {
 }
 
 func tableMethodName(name string) string {
-	return "get" + upperFirstChar(name)
+	return "get" + upperFirstChar(name) + "Row"
 }
 
 func tableStructName(name string) string {

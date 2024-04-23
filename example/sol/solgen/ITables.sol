@@ -17,8 +17,8 @@ struct RowData_Bodies {
 }
 
 interface ITables {
-    function getMeta() external view returns (RowData_Meta memory);
-    function getBodies(
+    function getMetaRow() external view returns (RowData_Meta memory);
+    function getBodiesRow(
         uint8 bodyId
     ) external view returns (RowData_Bodies memory);
 }

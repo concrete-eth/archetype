@@ -46,7 +46,7 @@ type RowDataMeta struct {
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"getBodies\",\"inputs\":[{\"name\":\"bodyId\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Bodies\",\"components\":[{\"name\":\"x\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"y\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"r\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"vx\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"vy\",\"type\":\"int32\",\"internalType\":\"int32\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMeta\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Meta\",\"components\":[{\"name\":\"maxBodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"bodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"getBodiesRow\",\"inputs\":[{\"name\":\"bodyId\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Bodies\",\"components\":[{\"name\":\"x\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"y\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"r\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"vx\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"vy\",\"type\":\"int32\",\"internalType\":\"int32\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getMetaRow\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Meta\",\"components\":[{\"name\":\"maxBodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"bodyCount\",\"type\":\"uint8\",\"internalType\":\"uint8\"}]}],\"stateMutability\":\"view\"}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -195,12 +195,12 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
-// GetBodies is a free data retrieval call binding the contract method 0x92975a44.
+// GetBodiesRow is a free data retrieval call binding the contract method 0x9cf3a3a9.
 //
-// Solidity: function getBodies(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
-func (_Contract *ContractCaller) GetBodies(opts *bind.CallOpts, bodyId uint8) (RowDataBodies, error) {
+// Solidity: function getBodiesRow(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
+func (_Contract *ContractCaller) GetBodiesRow(opts *bind.CallOpts, bodyId uint8) (RowDataBodies, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getBodies", bodyId)
+	err := _Contract.contract.Call(opts, &out, "getBodiesRow", bodyId)
 
 	if err != nil {
 		return *new(RowDataBodies), err
@@ -212,26 +212,26 @@ func (_Contract *ContractCaller) GetBodies(opts *bind.CallOpts, bodyId uint8) (R
 
 }
 
-// GetBodies is a free data retrieval call binding the contract method 0x92975a44.
+// GetBodiesRow is a free data retrieval call binding the contract method 0x9cf3a3a9.
 //
-// Solidity: function getBodies(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
-func (_Contract *ContractSession) GetBodies(bodyId uint8) (RowDataBodies, error) {
-	return _Contract.Contract.GetBodies(&_Contract.CallOpts, bodyId)
+// Solidity: function getBodiesRow(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
+func (_Contract *ContractSession) GetBodiesRow(bodyId uint8) (RowDataBodies, error) {
+	return _Contract.Contract.GetBodiesRow(&_Contract.CallOpts, bodyId)
 }
 
-// GetBodies is a free data retrieval call binding the contract method 0x92975a44.
+// GetBodiesRow is a free data retrieval call binding the contract method 0x9cf3a3a9.
 //
-// Solidity: function getBodies(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
-func (_Contract *ContractCallerSession) GetBodies(bodyId uint8) (RowDataBodies, error) {
-	return _Contract.Contract.GetBodies(&_Contract.CallOpts, bodyId)
+// Solidity: function getBodiesRow(uint8 bodyId) view returns((int32,int32,uint32,int32,int32))
+func (_Contract *ContractCallerSession) GetBodiesRow(bodyId uint8) (RowDataBodies, error) {
+	return _Contract.Contract.GetBodiesRow(&_Contract.CallOpts, bodyId)
 }
 
-// GetMeta is a free data retrieval call binding the contract method 0xa79af2ce.
+// GetMetaRow is a free data retrieval call binding the contract method 0x422f7e1d.
 //
-// Solidity: function getMeta() view returns((uint8,uint8))
-func (_Contract *ContractCaller) GetMeta(opts *bind.CallOpts) (RowDataMeta, error) {
+// Solidity: function getMetaRow() view returns((uint8,uint8))
+func (_Contract *ContractCaller) GetMetaRow(opts *bind.CallOpts) (RowDataMeta, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getMeta")
+	err := _Contract.contract.Call(opts, &out, "getMetaRow")
 
 	if err != nil {
 		return *new(RowDataMeta), err
@@ -243,16 +243,16 @@ func (_Contract *ContractCaller) GetMeta(opts *bind.CallOpts) (RowDataMeta, erro
 
 }
 
-// GetMeta is a free data retrieval call binding the contract method 0xa79af2ce.
+// GetMetaRow is a free data retrieval call binding the contract method 0x422f7e1d.
 //
-// Solidity: function getMeta() view returns((uint8,uint8))
-func (_Contract *ContractSession) GetMeta() (RowDataMeta, error) {
-	return _Contract.Contract.GetMeta(&_Contract.CallOpts)
+// Solidity: function getMetaRow() view returns((uint8,uint8))
+func (_Contract *ContractSession) GetMetaRow() (RowDataMeta, error) {
+	return _Contract.Contract.GetMetaRow(&_Contract.CallOpts)
 }
 
-// GetMeta is a free data retrieval call binding the contract method 0xa79af2ce.
+// GetMetaRow is a free data retrieval call binding the contract method 0x422f7e1d.
 //
-// Solidity: function getMeta() view returns((uint8,uint8))
-func (_Contract *ContractCallerSession) GetMeta() (RowDataMeta, error) {
-	return _Contract.Contract.GetMeta(&_Contract.CallOpts)
+// Solidity: function getMetaRow() view returns((uint8,uint8))
+func (_Contract *ContractCallerSession) GetMetaRow() (RowDataMeta, error) {
+	return _Contract.Contract.GetMetaRow(&_Contract.CallOpts)
 }

@@ -25,14 +25,14 @@ contract TestLogic is ICore {
 
     function tick() external {}
 
-    function getMeta() external view returns (RowData_Meta memory) {
+    function getMetaRow() external view returns (RowData_Meta memory) {
         return RowData_Meta({maxBodyCount: 0, bodyCount: uint8(bodies.length)});
     }
 
-    function getBodies(
+    function getBodiesRow(
         uint8 bodyId
     ) external view returns (RowData_Bodies memory) {
-        return bodies[bodyId-1];
+        return bodies[bodyId - 1];
     }
 }
 
@@ -55,8 +55,8 @@ contract GameTest is Test {
             vy: 5
         });
         game.addBody(action);
-        uint8 bodyId = ICore(address(game)).getMeta().bodyCount;
-        RowData_Bodies memory body = ICore(address(game)).getBodies(bodyId);
+        uint8 bodyId = ICore(address(game)).getMetaRow().bodyCount;
+        RowData_Bodies memory body = ICore(address(game)).getBodiesRow(bodyId);
         assertEq(body.x, action.x);
         assertEq(body.y, action.y);
         assertEq(body.r, action.r);
