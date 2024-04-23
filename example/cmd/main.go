@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
 	geth_core "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -38,7 +40,7 @@ func main() {
 		panic(err)
 	}
 	from := auth.From
-	// signerFn := auth.Signer
+	signerFn := auth.Signer
 
 	specs := arch.ArchSpecs{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
 	pc := precompile.NewCorePrecompile(specs, &core.Core{})
@@ -80,15 +82,31 @@ func main() {
 	sim.Commit()
 
 	var (
-		kv                                     = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan                      = make(chan arch.ActionBatch, 1)
-		actionOutChan     chan<- []arch.Action = nil
-		blockTime                              = 1 * time.Second
-		blockNumber       uint64               = 0
+		kv                = kvstore.NewMemoryKeyValueStore()
+		actionBatchInChan = make(chan arch.ActionBatch, 1)
+		actionOutChan     = make(chan []arch.Action, 1)
+		txOutChan         = make(chan *types.Transaction, 1)
+		blockTime         = 1 * time.Second
+		blockNumber       = uint64(0)
 	)
 
 	sub := rpc.SubscribeActionBatches(sim, specs.Actions, coreAddress, 0, actionBatchInChan)
 	defer sub.Unsubscribe()
+
+	nonce, err := sim.PendingNonceAt(context.Background(), from)
+	if err != nil {
+		panic(err)
+	}
+
+	sender := rpc.NewActionSender(sim, specs.Actions, nil, gameAddress, from, nonce, signerFn)
+	_, cancel := sender.StartSendingActions(actionOutChan, txOutChan)
+	defer cancel()
+
+	go func() {
+		for tx := range txOutChan {
+			fmt.Println("tx sent:", tx.Hash().Hex())
+		}
+	}()
 
 	sim.Start(blockTime, gameAddress)
 	defer sim.Stop()

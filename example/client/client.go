@@ -11,6 +11,7 @@ import (
 	"github.com/concrete-eth/archetype/example/gogen/datamod"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -70,8 +71,22 @@ func (c *Client) coreCoordToScreenCoord(x, y int32) (float32, float32) {
 	return screenX, screenY
 }
 
+func (c *Client) screenCoordToCoreCoord(x, y float32) (int32, int32) {
+	coreX := int32((x - ScreenWidth/2) * PixelSize)
+	coreY := int32((y - ScreenHeight/2) * PixelSize)
+	return coreX, coreY
+}
+
 func (c *Client) Core() *core.Core {
 	return c.Client.Core().(*core.Core)
+}
+
+func (c *Client) AddBody(x, y, r int32) {
+	c.SendAction(&archmod.ActionData_AddBody{
+		X: x,
+		Y: y,
+		R: uint32(r),
+	})
 }
 
 func (c *Client) GetMeta() *datamod.MetaRow {
@@ -95,6 +110,13 @@ func (c *Client) Update() error {
 		c.lastTickTime = time.Now()
 		c.updatePositionHistory()
 	}
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		x, y := ebiten.CursorPosition()
+		coreX, coreY := c.screenCoordToCoreCoord(float32(x), float32(y))
+		c.AddBody(coreX, coreY, 10)
+	}
+
 	return nil
 }
 
