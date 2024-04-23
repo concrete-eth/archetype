@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/concrete"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -71,7 +70,7 @@ func TestE2E(t *testing.T) {
 		specs                                       = testutils.NewTestArchSpecs(t)
 		client, _, actionBatchInChan, actionOutChan = newTestClient(t)
 		ethcli                                      = newTestSimulatedBackend(t)
-		txOutChan                                   = make(chan *types.Transaction)
+		txOutChan                                   = make(chan *rpc.ActionTxUpdate)
 	)
 
 	// Subscribe to action batches
@@ -94,7 +93,9 @@ func TestE2E(t *testing.T) {
 	if err := client.SendAction(actionIn); err != nil {
 		t.Fatal(err)
 	}
-	<-txOutChan // Wait for the transaction to be sent
+	// Wait for the transaction to be sent
+	<-txOutChan
+	<-txOutChan
 
 	ethcli.Commit()
 

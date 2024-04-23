@@ -91,15 +91,16 @@ func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
 
 // ActionBatchSubscription is a subscription to action batches emitted by a core contract.
 type ActionBatchSubscription struct {
-	ethcli          EthCli
-	actionSpecs     arch.ActionSpecs
-	coreAddress     common.Address
-	actionBatchChan chan<- arch.ActionBatch
-	unsubChan       chan struct{}
-	errChan         chan error
-	closeUnsubOnce  sync.Once
-	closeErrOnce    sync.Once
-	unsubscribed    bool
+	ethcli            EthCli
+	actionSpecs       arch.ActionSpecs
+	coreAddress       common.Address
+	actionBatchesChan chan<- arch.ActionBatch
+	txHashesChan      chan<- common.Hash
+	unsubChan         chan struct{}
+	errChan           chan error
+	closeUnsubOnce    sync.Once
+	closeErrOnce      sync.Once
+	unsubscribed      bool
 }
 
 var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
@@ -111,14 +112,16 @@ func SubscribeActionBatches(
 	coreAddress common.Address,
 	startingBlockNumber uint64,
 	actionBatchesChan chan<- arch.ActionBatch,
+	txHashesChan chan<- common.Hash,
 ) *ActionBatchSubscription {
 	sub := &ActionBatchSubscription{
-		ethcli:          ethcli,
-		actionSpecs:     actionSpecs,
-		coreAddress:     coreAddress,
-		actionBatchChan: actionBatchesChan,
-		unsubChan:       make(chan struct{}),
-		errChan:         make(chan error, 1),
+		ethcli:            ethcli,
+		actionSpecs:       actionSpecs,
+		coreAddress:       coreAddress,
+		actionBatchesChan: actionBatchesChan,
+		txHashesChan:      txHashesChan,
+		unsubChan:         make(chan struct{}),
+		errChan:           make(chan error, 1),
 	}
 	go sub.runSubscription(startingBlockNumber)
 	return sub
@@ -316,7 +319,15 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 	case <-s.unsubChan:
 		s.unsubscribe()
 		return nil
-	case s.actionBatchChan <- actionBatch:
+	case s.actionBatchesChan <- actionBatch:
+		for _, log := range logBatch {
+			select {
+			case <-s.unsubChan:
+				s.unsubscribe()
+				return nil
+			case s.txHashesChan <- log.TxHash:
+			}
+		}
 	}
 	return nil
 }
@@ -539,7 +550,7 @@ func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transactio
 }
 
 // StartSendingActions starts sending actions from the given channel.
-func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txOutChan chan<- *types.Transaction) (<-chan error, func()) {
+func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txUpdateOutChan chan<- *ActionTxUpdate) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
 	go func() {
@@ -551,6 +562,16 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txO
 				if !ok {
 					return
 				}
+				// Copy nonce as it will be updated during SendActions
+				nonce := a.nonce
+				if txUpdateOutChan != nil {
+					// Announce the actions before sending them
+					txUpdateOutChan <- &ActionTxUpdate{
+						Actions: actions,
+						Nonce:   nonce,
+						Status:  ActionTxStatus_Unsent,
+					}
+				}
 				tx, err := a.SendActions(actions)
 				if err != nil {
 					select {
@@ -558,8 +579,24 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txO
 					default:
 					}
 				}
-				if tx != nil {
-					txOutChan <- tx
+				if txUpdateOutChan != nil {
+					if err != nil {
+						// Announce failure
+						txUpdateOutChan <- &ActionTxUpdate{
+							// Actions: actions,
+							Nonce:  nonce,
+							Status: ActionTxStatus_Failed,
+							Err:    err,
+						}
+					} else {
+						// Announce success
+						txUpdateOutChan <- &ActionTxUpdate{
+							// Actions: actions,
+							TxHash: tx.Hash(),
+							Nonce:  nonce,
+							Status: ActionTxStatus_Pending,
+						}
+					}
 				}
 			}
 		}
@@ -589,8 +626,6 @@ func NewTableReader(
 		contractAddress: coreAddress,
 	}
 }
-
-// TODO: consolidate this with read ops in spec
 
 // TODO: error message
 // TODO: check assumptions about method signatures
@@ -636,4 +671,186 @@ func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, 
 	}
 
 	return row, nil
+}
+
+type TxMonitor struct {
+	client     EthCli
+	txHashes   map[common.Hash]struct{}
+	timestamps map[common.Hash]int64
+}
+
+func NewTxMonitor(ethcli EthCli) *TxMonitor {
+	return &TxMonitor{
+		client:     ethcli,
+		txHashes:   make(map[common.Hash]struct{}),
+		timestamps: make(map[common.Hash]int64),
+	}
+}
+
+func (txm *TxMonitor) AddTxHash(txHash common.Hash) {
+	txm.txHashes[txHash] = struct{}{}
+	txm.timestamps[txHash] = time.Now().Unix()
+}
+
+func (txm *TxMonitor) RemoveTx(txHash common.Hash) {
+	delete(txm.txHashes, txHash)
+	delete(txm.timestamps, txHash)
+}
+
+func (txm *TxMonitor) HasTx(txHash common.Hash) bool {
+	_, ok := txm.txHashes[txHash]
+	return ok
+}
+
+func (txm *TxMonitor) IsPending(tx *types.Transaction) bool {
+	isPending, _ := txm.isPending(tx.Hash())
+	return isPending
+}
+
+func (txm *TxMonitor) isPending(txHash common.Hash) (bool, error) {
+	_, isPending, err := txm.client.TransactionByHash(context.Background(), txHash)
+	if err != nil {
+		return false, err
+	}
+	return isPending, nil
+}
+
+func (txm *TxMonitor) Update() bool {
+	modified := false
+	for txHash := range txm.txHashes {
+		isPending, err := txm.isPending(txHash)
+		if err != nil {
+			// Remove a transaction that cannot be retrieved if it was added more than 6 seconds ago
+			isStale := time.Now().Unix()-txm.timestamps[txHash] > 6
+			if isStale {
+				txm.RemoveTx(txHash)
+				modified = true
+			} else {
+				isPending = true
+			}
+		}
+		if !isPending {
+			txm.RemoveTx(txHash)
+			modified = true
+		}
+	}
+	return modified
+}
+
+func (txm *TxMonitor) PendingTxs() []common.Hash {
+	pendingTxs := make([]common.Hash, 0, len(txm.txHashes))
+	for txHash := range txm.txHashes {
+		pendingTxs = append(pendingTxs, txHash)
+	}
+	return pendingTxs
+}
+
+func (txm *TxMonitor) PendingTxsCount() int {
+	return len(txm.txHashes)
+}
+
+type ActionTxStatus uint8
+
+const (
+	ActionTxStatus_Unsent ActionTxStatus = iota
+	ActionTxStatus_Pending
+	ActionTxStatus_Included
+	ActionTxStatus_Failed
+)
+
+type ActionTxUpdate struct {
+	Actions []arch.Action
+	TxHash  common.Hash
+	Nonce   uint64
+	Status  ActionTxStatus
+	Err     error
+}
+
+type TxHinter struct {
+	txm            *TxMonitor
+	unsentActions  map[uint64][]arch.Action
+	actions        map[common.Hash][]arch.Action
+	hintNonce      uint64
+	txUpdateInChan chan *ActionTxUpdate
+	stopChan       chan struct{}
+	mutex          sync.Mutex
+}
+
+func NewTxHinter(ethcli EthCli, txUpdateInChan chan *ActionTxUpdate) *TxHinter {
+	return &TxHinter{
+		txm:            NewTxMonitor(ethcli),
+		unsentActions:  make(map[uint64][]arch.Action),
+		actions:        make(map[common.Hash][]arch.Action),
+		txUpdateInChan: txUpdateInChan,
+		hintNonce:      1,
+		stopChan:       make(chan struct{}),
+	}
+}
+
+func (txh *TxHinter) GetHints() (uint64, [][]arch.Action) {
+	txh.mutex.Lock()
+	defer txh.mutex.Unlock()
+
+	pendingTxs := txh.txm.PendingTxs()
+	hints := make([][]arch.Action, 0, len(pendingTxs))
+	for _, txHash := range pendingTxs {
+		hints = append(hints, txh.actions[txHash])
+	}
+	for _, action := range txh.unsentActions {
+		hints = append(hints, action)
+	}
+	return txh.hintNonce, hints
+}
+
+func (txh *TxHinter) HintNonce() uint64 {
+	return txh.hintNonce
+}
+
+func (txh *TxHinter) addAction(action *ActionTxUpdate) {
+	txh.mutex.Lock()
+	defer txh.mutex.Unlock()
+
+	if action.Status == ActionTxStatus_Unsent {
+		txh.unsentActions[action.Nonce] = action.Actions
+	} else if action.Status == ActionTxStatus_Pending {
+		actions := txh.unsentActions[action.Nonce]
+		txh.actions[action.TxHash] = actions
+		txh.txm.AddTxHash(action.TxHash)
+		delete(txh.unsentActions, action.Nonce)
+	} else if action.Status == ActionTxStatus_Failed {
+		txh.txm.RemoveTx(action.TxHash)
+		delete(txh.unsentActions, action.Nonce)
+	} else if action.Status == ActionTxStatus_Included {
+		txh.txm.RemoveTx(action.TxHash)
+	}c
+
+	txh.hintNonce++
+}
+
+func (txh *TxHinter) Update() bool {
+	txh.mutex.Lock()
+	defer txh.mutex.Unlock()
+
+	modified := txh.txm.Update()
+	if modified {
+		txh.hintNonce++
+	}
+	return modified
+}
+
+func (txh *TxHinter) Start(updateInterval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(updateInterval)
+		for {
+			select {
+			case <-txh.stopChan:
+				ticker.Stop()
+				return
+			case action := <-txh.txUpdateInChan:
+				txh.addAction(action)
+			case <-ticker.C:
+				txh.Update()
+			}
+		}
+	}()
 }

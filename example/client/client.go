@@ -9,6 +9,7 @@ import (
 	"github.com/concrete-eth/archetype/example/core"
 	"github.com/concrete-eth/archetype/example/gogen/archmod"
 	"github.com/concrete-eth/archetype/example/gogen/datamod"
+	"github.com/concrete-eth/archetype/rpc"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -24,9 +25,14 @@ const (
 
 type Client struct {
 	*client.Client
-	lastTickTime    time.Time
-	positionHistory map[uint8]map[uint64][2]int32
-	_tickTime       time.Duration
+	hinter *rpc.TxHinter
+
+	lastTickTime      time.Time
+	positionHistory   map[uint8]map[uint64][2]int32 // bodyId -> tickIndex -> [x, y]
+	hinterNonce       uint64
+	anticipatedBodies map[uint8][3]int32 // bodyId -> [x, y, r]
+
+	_tickTime time.Duration
 }
 
 func NewClient(
@@ -35,14 +41,21 @@ func NewClient(
 	actionOutChan chan<- []arch.Action,
 	blockTime time.Duration,
 	blockNumber uint64,
+	hinter *rpc.TxHinter,
 ) *Client {
 	specs := arch.ArchSpecs{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
 	c := &core.Core{}
 	cli := client.New(specs, c, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
 	return &Client{
-		Client:          cli,
-		positionHistory: make(map[uint8]map[uint64][2]int32),
-		_tickTime:       cli.BlockTime() / time.Duration(c.TicksPerBlock()),
+		Client: cli,
+		hinter: hinter,
+
+		lastTickTime:      time.Now(),
+		positionHistory:   make(map[uint8]map[uint64][2]int32),
+		hinterNonce:       0,
+		anticipatedBodies: make(map[uint8][3]int32),
+
+		_tickTime: cli.BlockTime() / time.Duration(c.TicksPerBlock()),
 	}
 }
 
@@ -117,6 +130,29 @@ func (c *Client) Update() error {
 		c.AddBody(coreX, coreY, 10)
 	}
 
+	if c.hinter != nil && c.hinter.HintNonce() > c.hinterNonce {
+		actualBodyCount := c.GetBodyCount()
+		c.anticipatedBodies = make(map[uint8][3]int32)
+		_, hints := c.hinter.GetHints()
+
+		c.Simulate(func(_core arch.Core) {
+			core := _core.(*core.Core)
+			for _, actions := range hints {
+				for _, action := range actions {
+					switch action := action.(type) {
+					case *archmod.ActionData_AddBody:
+						core.AddBody(action)
+					}
+				}
+			}
+			simBodyCount := c.GetMeta().GetBodyCount()
+			for i := uint8(actualBodyCount + 1); i <= simBodyCount; i++ {
+				body := c.GetBody(i)
+				c.anticipatedBodies[i] = [3]int32{body.GetX(), body.GetY(), int32(body.GetR())}
+			}
+		})
+	}
+
 	return nil
 }
 
@@ -126,10 +162,16 @@ func (c *Client) drawLine(screen *ebiten.Image, x1, y1, x2, y2 int32) {
 	vector.StrokeLine(screen, sx1, sy1, sx2, sy2, 1, color.White, true)
 }
 
-func (c *Client) drawCircle(screen *ebiten.Image, x, y, r int32) {
+func (c *Client) drawCircle(screen *ebiten.Image, x, y, r int32, anticipated bool) {
 	sx, sy := c.coreCoordToScreenCoord(x, y)
 	sr := float32(r) / PixelSize
-	vector.DrawFilledCircle(screen, sx, sy, sr, color.White, true)
+	var clr color.Color
+	if anticipated {
+		clr = color.RGBA{0x80, 0x80, 0x80, 0xff}
+	} else {
+		clr = color.White
+	}
+	vector.DrawFilledCircle(screen, sx, sy, sr, clr, true)
 }
 
 func (c *Client) drawTrail(screen *ebiten.Image, bodyId uint8, body *datamod.BodiesRow) {
@@ -190,7 +232,16 @@ func (c *Client) Draw(screen *ebiten.Image) {
 		x, y := c.interpolatedPosition(bodyId, body)
 		r := int32(body.GetR())
 		c.drawTrail(screen, bodyId, body)
-		c.drawCircle(screen, x, y, r)
+		c.drawCircle(screen, x, y, r, false)
+	}
+	for bodyId, state := range c.anticipatedBodies {
+		if bodyId <= bodyCount {
+			// Body already exists, don't draw it
+			continue
+		}
+		x, y, _r := state[0], state[1], state[2]
+		r := int32(_r)
+		c.drawCircle(screen, x, y, r, true)
 	}
 }
 

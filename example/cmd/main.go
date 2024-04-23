@@ -19,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
 	geth_core "github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -82,15 +81,17 @@ func main() {
 	sim.Commit()
 
 	var (
-		kv                = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan = make(chan arch.ActionBatch, 1)
-		actionOutChan     = make(chan []arch.Action, 1)
-		txOutChan         = make(chan *types.Transaction, 1)
-		blockTime         = 1 * time.Second
-		blockNumber       = uint64(0)
+		kv               = kvstore.NewMemoryKeyValueStore()
+		actionBatchChan  = make(chan arch.ActionBatch, 1)
+		txHashChan       = make(chan common.Hash, 1) // TODO: better naming
+		actionOutChan    = make(chan []arch.Action, 1)
+		txUpdateOutChan0 = make(chan *rpc.ActionTxUpdate, 1)
+		txUpdateOutChan1 = make(chan *rpc.ActionTxUpdate, 1)
+		blockTime        = 1 * time.Second
+		blockNumber      = uint64(0)
 	)
 
-	sub := rpc.SubscribeActionBatches(sim, specs.Actions, coreAddress, 0, actionBatchInChan)
+	sub := rpc.SubscribeActionBatches(sim, specs.Actions, coreAddress, 0, actionBatchChan, txHashChan)
 	defer sub.Unsubscribe()
 
 	nonce, err := sim.PendingNonceAt(context.Background(), from)
@@ -99,19 +100,32 @@ func main() {
 	}
 
 	sender := rpc.NewActionSender(sim, specs.Actions, nil, gameAddress, from, nonce, signerFn)
-	_, cancel := sender.StartSendingActions(actionOutChan, txOutChan)
+	_, cancel := sender.StartSendingActions(actionOutChan, txUpdateOutChan0)
 	defer cancel()
 
 	go func() {
-		for tx := range txOutChan {
-			fmt.Println("tx sent:", tx.Hash().Hex())
+		for txUpdate := range txUpdateOutChan0 {
+			fmt.Println("tx update:", txUpdate.Nonce, txUpdate.TxHash.Hex(), txUpdate.Status, txUpdate.Err)
+			txUpdateOutChan1 <- txUpdate
 		}
 	}()
 
 	sim.Start(blockTime, gameAddress)
 	defer sim.Stop()
 
-	c := client.NewClient(kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
+	hinter := rpc.NewTxHinter(sim, txUpdateOutChan1)
+	hinter.Start(blockTime / 2)
+
+	go func() {
+		for txHash := range txHashChan {
+			txUpdateOutChan1 <- &rpc.ActionTxUpdate{
+				TxHash: txHash,
+				Status: rpc.ActionTxStatus_Included,
+			}
+		}
+	}()
+
+	c := client.NewClient(kv, actionBatchChan, actionOutChan, blockTime, blockNumber, hinter)
 	w, h := c.Layout(0, 0)
 	ebiten.SetWindowSize(w, h)
 	ebiten.SetWindowTitle("Archetype Example")
