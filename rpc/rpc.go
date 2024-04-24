@@ -858,7 +858,7 @@ func (txh *TxHinter) Start(updateInterval time.Duration) {
 	}()
 }
 
-func DampenLatency[T any](in chan T, out chan T, interval time.Duration, delay time.Duration) {
+func DampenLatency[T any](in <-chan T, out chan<- T, interval time.Duration, delay time.Duration) {
 	go func() {
 		// Send all until interval/2 has passed without any new items
 		for sendUntilEmpty(in, out) {
@@ -912,13 +912,13 @@ func midpoint(t1, t2 time.Time, f float64) time.Time {
 	return midpoint
 }
 
-func sendUntilEmpty[T any](in chan T, out chan T) bool {
+func sendUntilEmpty[T any](in <-chan T, out chan<- T) bool {
 	sent := false
 	for {
 		select {
 		case item, ok := <-in:
 			if !ok {
-				close(out)
+				// close(out)
 				return sent
 			}
 			out <- item
