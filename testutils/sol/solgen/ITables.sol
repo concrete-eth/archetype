@@ -10,5 +10,5 @@ struct RowData_Counter {
 
 
 interface ITables {
-    function getCounter() external view returns (RowData_Counter memory);
+    function getCounterRow() external view returns (RowData_Counter memory);
 }

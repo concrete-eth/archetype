@@ -24,7 +24,8 @@ var ActionSpecs arch.ActionSpecs
 
 func init() {
 	types := map[string]reflect.Type{
-		"Add": reflect.TypeOf(ActionData_Add{}),
+		"Add":  reflect.TypeOf(ActionData_Add{}),
+		"Tick": reflect.TypeOf(arch.CanonicalTickAction{}),
 	}
 	var err error
 	if ActionSpecs, err = arch.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
@@ -34,4 +35,5 @@ func init() {
 
 type IActions interface {
 	Add(action *ActionData_Add) error
+	Tick()
 }

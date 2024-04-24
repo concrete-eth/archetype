@@ -8,7 +8,7 @@ import "./IActions.sol";
 
 abstract contract Entrypoint is IActions {
     function executeMultipleActions(
-        uint8[] memory actionIds,
+        uint32[] memory actionIds,
         uint8[] memory actionCount,
         bytes[] memory actionData
     ) external {
@@ -22,8 +22,11 @@ abstract contract Entrypoint is IActions {
         }
     }
 
-    function _executeAction(uint8 actionId, bytes memory actionData) private {
-        if (actionId == 0) {
+    function _executeAction(uint32 actionId, bytes memory actionData) private {
+        if (actionId == 0x3eaf5d9f) {
+            tick();
+        } else
+        if (actionId == 0x4f70db79) {
             ActionData_Add memory action = abi.decode(
                 actionData,
                 (ActionData_Add)
@@ -33,6 +36,8 @@ abstract contract Entrypoint is IActions {
             revert("Entrypoint: Invalid action ID");
         }
     }
+
+    function tick() public virtual;
     
     function add(ActionData_Add memory action) public virtual;
 }

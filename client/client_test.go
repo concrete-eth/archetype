@@ -1,6 +1,7 @@
 package client
 
 import (
+	"math"
 	"os"
 	"reflect"
 	"testing"
@@ -21,7 +22,7 @@ func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBa
 		kv                       = kvstore.NewMemoryKeyValueStore()
 		actionBatchInChan        = make(chan arch.ActionBatch)
 		actionOutChan            = make(chan []arch.Action)
-		blockTime                = 10 * time.Millisecond
+		blockTime                = 1 * time.Second
 		blockNumber       uint64 = 0
 	)
 	client := New(specs, core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
@@ -196,8 +197,25 @@ func TestSyncUntil(t *testing.T) {
 	}
 }
 
+type testClock struct {
+	t time.Time
+}
+
+func (c *testClock) Now() time.Time {
+	return c.t
+}
+
+func (c *testClock) Advance(d time.Duration) {
+	c.t = c.t.Add(d)
+}
+
 func TestInterpolatedSync(t *testing.T) {
-	client, _, actionBatchInChan, _ := newTestClient(t)
+	client, _, _, _ := newTestClient(t)
+	actionBatchInChan := make(chan arch.ActionBatch, 1)
+	client.actionBatchInChan = actionBatchInChan
+	clock := &testClock{}
+	client.now = clock.Now
+	startTime := clock.Now()
 
 	didReceiveNewBatch, didTick, err := client.InterpolatedSync()
 	if err != nil {
@@ -210,51 +228,50 @@ func TestInterpolatedSync(t *testing.T) {
 		t.Fatal("expected tick")
 	}
 
-	go func() {
-		ticker := time.NewTicker(client.blockTime)
-		defer ticker.Stop()
-		for _, data := range testData {
-			<-ticker.C
-			actionBatchInChan <- data.batch
-		}
-	}()
-
 	var (
 		ticksPerBlock = client.Core().TicksPerBlock()
 		tickPeriod    = client.blockTime / time.Duration(ticksPerBlock)
 	)
 
-	ticker := time.NewTicker(client.blockTime / 4)
+	idx := 0
+	for {
+		var expectReceiveNewBatch bool
+		if clock.Now().Sub(startTime) >= time.Duration(idx)*client.blockTime {
+			if idx >= len(testData) {
+				break
+			}
+			actionBatchInChan <- testData[idx].batch
+			expectReceiveNewBatch = true
+			idx++
+		}
 
-	for range ticker.C {
 		didReceiveNewBatch, _, err := client.InterpolatedSync()
 		if err != nil {
 			t.Fatal(err)
 		}
+		if didReceiveNewBatch != expectReceiveNewBatch {
+			t.Errorf("expected %v, got %v", expectReceiveNewBatch, didReceiveNewBatch)
+		}
+
 		var expectedCoreVal int16
 		if client.Core().BlockNumber() == 0 {
 			expectedCoreVal = 0
 		} else {
 			expectedCoreVal = testData[client.Core().BlockNumber()-1].expCounterValue
 		}
-		if !didReceiveNewBatch {
-			// Adjust expectedCoreVal for interpolated ticks
-			targetTicks := uint(time.Since(client.lastNewBatchTime)/tickPeriod) + 1
-			targetTicks = utils.Min(targetTicks, ticksPerBlock)
-			expectedCoreVal *= int16(2 * targetTicks)
-			if client.core.InBlockTickIndex() != targetTicks-1 {
-				t.Errorf("expected %v, got %v", targetTicks, client.core.InBlockTickIndex())
-			}
+
+		// Adjust expectedCoreVal for interpolated ticks
+		targetTicks := uint(clock.Now().Sub(client.lastNewBatchTime)/tickPeriod) + 1
+		targetTicks = utils.Min(targetTicks, ticksPerBlock)
+		expectedCoreVal *= int16(math.Pow(2, float64(targetTicks)))
+
+		if client.core.InBlockTickIndex() != targetTicks-1 {
+			t.Errorf("expected %v, got %v", targetTicks, client.core.InBlockTickIndex())
 		}
 		if c := client.Core().(*testutils.Core).GetCounter(); c != expectedCoreVal {
 			t.Errorf("expected %v, got %v", expectedCoreVal, c)
 		}
-		if int(client.Core().BlockNumber()) >= len(testData) {
-			break
-		}
-	}
 
-	if c := client.Core().(*testutils.Core).GetCounter(); c != testData[len(testData)-1].expCounterValue {
-		t.Errorf("expected %v, got %v", testData[len(testData)-1].expCounterValue, c)
+		clock.Advance(client.blockTime / time.Duration(ticksPerBlock*2))
 	}
 }

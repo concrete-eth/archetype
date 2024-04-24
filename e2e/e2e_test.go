@@ -70,7 +70,7 @@ func TestE2E(t *testing.T) {
 		specs                                       = testutils.NewTestArchSpecs(t)
 		client, _, actionBatchInChan, actionOutChan = newTestClient(t)
 		ethcli                                      = newTestSimulatedBackend(t)
-		txOutChan                                   = make(chan *rpc.ActionTxUpdate)
+		txUpdateChan                                = make(chan *rpc.ActionTxUpdate)
 	)
 
 	// Subscribe to action batches
@@ -80,7 +80,7 @@ func TestE2E(t *testing.T) {
 	// Create a new action sender
 	from, signerFn := newTestSignerFn(t)
 	sender := rpc.NewActionSender(ethcli, specs.Actions, nil, pcAddress, from, 0, signerFn)
-	sender.StartSendingActions(actionOutChan, txOutChan)
+	sender.StartSendingActions(actionOutChan, txUpdateChan)
 
 	ethcli.Commit()
 
@@ -94,8 +94,12 @@ func TestE2E(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Wait for the transaction to be sent
-	<-txOutChan
-	<-txOutChan
+	if u := <-txUpdateChan; u.Status != rpc.ActionTxStatus_Unsent {
+		t.Fatalf("expected tx status to be pending, got %v", u.Status)
+	}
+	if u := <-txUpdateChan; u.Status != rpc.ActionTxStatus_Pending {
+		t.Fatalf("expected tx status to be success, got %v", u.Status)
+	}
 
 	ethcli.Commit()
 

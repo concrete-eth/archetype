@@ -36,7 +36,7 @@ type RowDataCounter struct {
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"getCounter\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Counter\",\"components\":[{\"name\":\"value\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"stateMutability\":\"view\"}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"getCounterRow\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structRowData_Counter\",\"components\":[{\"name\":\"value\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"stateMutability\":\"view\"}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -185,12 +185,12 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
-// GetCounter is a free data retrieval call binding the contract method 0x8ada066e.
+// GetCounterRow is a free data retrieval call binding the contract method 0x533d77c5.
 //
-// Solidity: function getCounter() view returns((int16))
-func (_Contract *ContractCaller) GetCounter(opts *bind.CallOpts) (RowDataCounter, error) {
+// Solidity: function getCounterRow() view returns((int16))
+func (_Contract *ContractCaller) GetCounterRow(opts *bind.CallOpts) (RowDataCounter, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getCounter")
+	err := _Contract.contract.Call(opts, &out, "getCounterRow")
 
 	if err != nil {
 		return *new(RowDataCounter), err
@@ -202,16 +202,16 @@ func (_Contract *ContractCaller) GetCounter(opts *bind.CallOpts) (RowDataCounter
 
 }
 
-// GetCounter is a free data retrieval call binding the contract method 0x8ada066e.
+// GetCounterRow is a free data retrieval call binding the contract method 0x533d77c5.
 //
-// Solidity: function getCounter() view returns((int16))
-func (_Contract *ContractSession) GetCounter() (RowDataCounter, error) {
-	return _Contract.Contract.GetCounter(&_Contract.CallOpts)
+// Solidity: function getCounterRow() view returns((int16))
+func (_Contract *ContractSession) GetCounterRow() (RowDataCounter, error) {
+	return _Contract.Contract.GetCounterRow(&_Contract.CallOpts)
 }
 
-// GetCounter is a free data retrieval call binding the contract method 0x8ada066e.
+// GetCounterRow is a free data retrieval call binding the contract method 0x533d77c5.
 //
-// Solidity: function getCounter() view returns((int16))
-func (_Contract *ContractCallerSession) GetCounter() (RowDataCounter, error) {
-	return _Contract.Contract.GetCounter(&_Contract.CallOpts)
+// Solidity: function getCounterRow() view returns((int16))
+func (_Contract *ContractCallerSession) GetCounterRow() (RowDataCounter, error) {
+	return _Contract.Contract.GetCounterRow(&_Contract.CallOpts)
 }

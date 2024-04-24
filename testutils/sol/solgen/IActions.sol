@@ -12,6 +12,9 @@ struct ActionData_Add {
 interface IActions {
     event ActionExecuted(bytes4 actionId, bytes data);
 
+    function tick() external;
+
+
     function add(ActionData_Add memory action) external;
 }
 

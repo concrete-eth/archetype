@@ -35,6 +35,8 @@ type Client struct {
 	ticksRunThisBlock uint
 
 	lock sync.Mutex
+
+	now func() time.Time
 }
 
 // New create a new client object.
@@ -49,6 +51,7 @@ func New(specs arch.ArchSpecs, core arch.Core, kv lib.KeyValueStore, actionBatch
 		actionOutChan:     actionOutChan,
 		blockTime:         blockTime,
 		ticksRunThisBlock: 0,
+		now:               time.Now,
 	}
 }
 
@@ -101,7 +104,7 @@ func (c *Client) applyBatchAndCommit(batch arch.ActionBatch) (bool, error) {
 		return false, err
 	}
 	c.kv.Commit()
-	c.lastNewBatchTime = time.Now()
+	c.lastNewBatchTime = c.now()
 	c.core.SetBlockNumber(batch.BlockNumber + 1)
 	return tickActionInBatch, nil
 }
@@ -218,7 +221,7 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		tickPeriod    = c.blockTime / time.Duration(ticksPerBlock) // TODO: Only compute this once
 	)
 
-	targetTicks := uint(time.Since(c.lastNewBatchTime)/tickPeriod) + 1
+	targetTicks := uint(c.now().Sub(c.lastNewBatchTime)/tickPeriod) + 1
 	targetTicks = utils.Min(targetTicks, ticksPerBlock) // Cap index to ticksPerBlock
 
 	if c.ticksRunThisBlock >= targetTicks {
