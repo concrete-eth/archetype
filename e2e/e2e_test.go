@@ -74,7 +74,7 @@ func TestE2E(t *testing.T) {
 	)
 
 	// Subscribe to action batches
-	sub := rpc.SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchInChan)
+	sub := rpc.SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchInChan, nil)
 	defer sub.Unsubscribe()
 
 	// Create a new action sender

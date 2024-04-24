@@ -111,7 +111,7 @@ func TestSubscribeToActionBatches(t *testing.T) {
 
 	// Subscribe to action batches
 	actionBatchesChan := make(chan arch.ActionBatch, 1)
-	sub := SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchesChan)
+	sub := SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchesChan, nil)
 	defer sub.Unsubscribe()
 
 	// Commit and empty block

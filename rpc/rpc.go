@@ -320,12 +320,14 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 		s.unsubscribe()
 		return nil
 	case s.actionBatchesChan <- actionBatch:
-		for _, log := range logBatch {
-			select {
-			case <-s.unsubChan:
-				s.unsubscribe()
-				return nil
-			case s.txHashesChan <- log.TxHash:
+		if s.txHashesChan != nil {
+			for _, log := range logBatch {
+				select {
+				case <-s.unsubChan:
+					s.unsubscribe()
+					return nil
+				case s.txHashesChan <- log.TxHash:
+				}
 			}
 		}
 	}
@@ -566,11 +568,7 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txU
 				nonce := a.nonce
 				if txUpdateOutChan != nil {
 					// Announce the actions before sending them
-					txUpdateOutChan <- &ActionTxUpdate{
-						Actions: actions,
-						Nonce:   nonce,
-						Status:  ActionTxStatus_Unsent,
-					}
+					txUpdateOutChan <- &ActionTxUpdate{Actions: actions, Nonce: nonce, Status: ActionTxStatus_Unsent}
 				}
 				tx, err := a.SendActions(actions)
 				if err != nil {
@@ -582,20 +580,10 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txU
 				if txUpdateOutChan != nil {
 					if err != nil {
 						// Announce failure
-						txUpdateOutChan <- &ActionTxUpdate{
-							// Actions: actions,
-							Nonce:  nonce,
-							Status: ActionTxStatus_Failed,
-							Err:    err,
-						}
+						txUpdateOutChan <- &ActionTxUpdate{Nonce: nonce, Status: ActionTxStatus_Failed, Err: err}
 					} else {
 						// Announce success
-						txUpdateOutChan <- &ActionTxUpdate{
-							// Actions: actions,
-							TxHash: tx.Hash(),
-							Nonce:  nonce,
-							Status: ActionTxStatus_Pending,
-						}
+						txUpdateOutChan <- &ActionTxUpdate{TxHash: tx.Hash(), Nonce: nonce, Status: ActionTxStatus_Pending}
 					}
 				}
 			}
@@ -758,6 +746,21 @@ const (
 	ActionTxStatus_Failed
 )
 
+func (c *ActionTxStatus) String() string {
+	switch *c {
+	case ActionTxStatus_Unsent:
+		return "unsent"
+	case ActionTxStatus_Pending:
+		return "pending"
+	case ActionTxStatus_Included:
+		return "included"
+	case ActionTxStatus_Failed:
+		return "failed"
+	default:
+		return "unknown"
+	}
+}
+
 type ActionTxUpdate struct {
 	Actions []arch.Action
 	TxHash  common.Hash
@@ -771,12 +774,12 @@ type TxHinter struct {
 	unsentActions  map[uint64][]arch.Action
 	actions        map[common.Hash][]arch.Action
 	hintNonce      uint64
-	txUpdateInChan chan *ActionTxUpdate
+	txUpdateInChan <-chan *ActionTxUpdate
 	stopChan       chan struct{}
 	mutex          sync.Mutex
 }
 
-func NewTxHinter(ethcli EthCli, txUpdateInChan chan *ActionTxUpdate) *TxHinter {
+func NewTxHinter(ethcli EthCli, txUpdateInChan <-chan *ActionTxUpdate) *TxHinter {
 	return &TxHinter{
 		txm:            NewTxMonitor(ethcli),
 		unsentActions:  make(map[uint64][]arch.Action),
@@ -822,7 +825,7 @@ func (txh *TxHinter) addAction(action *ActionTxUpdate) {
 		delete(txh.unsentActions, action.Nonce)
 	} else if action.Status == ActionTxStatus_Included {
 		txh.txm.RemoveTx(action.TxHash)
-	}c
+	}
 
 	txh.hintNonce++
 }
@@ -853,4 +856,75 @@ func (txh *TxHinter) Start(updateInterval time.Duration) {
 			}
 		}
 	}()
+}
+
+func DampenLatency[T any](in chan T, out chan T, interval time.Duration, delay time.Duration) {
+	go func() {
+		// Send all until interval/2 has passed without any new items
+		for sendUntilEmpty(in, out) {
+			time.Sleep(interval / 2)
+		}
+
+		// Wait for and send next item
+		item, ok := <-in
+		if !ok {
+			close(out)
+			return
+		}
+		earliestExpectedTime := time.Now().Add(interval)
+		time.Sleep(delay)
+		out <- item
+
+		for {
+			// Send item at the right time
+			item, ok := <-in
+			if !ok {
+				close(out)
+				return
+			}
+			receivedTime := time.Now()
+			time.Sleep(time.Until(earliestExpectedTime.Add(delay)))
+			out <- item
+			// Send all buffered items
+			sendUntilEmpty(in, out)
+
+			// Adjust the next expected time
+
+			// If the item was received before or after the reception window, move the window closer to the received time
+			// Window = [earliestExpectedTime, earliestExpectedTime + delay]
+			// Latency deviation has a floor but no ceiling, so early blocks result in a bigger shift than late blocks.
+
+			if receivedTime.Before(earliestExpectedTime) {
+				// Received early
+				earliestExpectedTime = midpoint(earliestExpectedTime, receivedTime, 0.5)
+			} else if receivedTime.After(earliestExpectedTime.Add(delay)) {
+				// Received late
+				earliestExpectedTime = midpoint(earliestExpectedTime, receivedTime.Add(-delay), 0.25)
+			}
+			earliestExpectedTime = earliestExpectedTime.Add(interval)
+		}
+	}()
+}
+
+func midpoint(t1, t2 time.Time, f float64) time.Time {
+	diff := t2.Sub(t1)
+	midpoint := t1.Add(time.Duration(float64(diff) * f))
+	return midpoint
+}
+
+func sendUntilEmpty[T any](in chan T, out chan T) bool {
+	sent := false
+	for {
+		select {
+		case item, ok := <-in:
+			if !ok {
+				close(out)
+				return sent
+			}
+			out <- item
+			sent = true
+		default:
+			return sent
+		}
+	}
 }
