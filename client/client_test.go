@@ -17,7 +17,7 @@ import (
 
 func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
-		specs                    = testutils.NewTestArchSpecs(t)
+		specs                    = testutils.NewTestArchSchemas(t)
 		core                     = &testutils.Core{}
 		kv                       = kvstore.NewMemoryKeyValueStore()
 		actionBatchInChan        = make(chan arch.ActionBatch)

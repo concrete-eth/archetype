@@ -15,9 +15,9 @@ import (
 
 var ActionsABIJson = contract.ContractABI
 
-var ActionsSchemaJson = `{{.Json}}`
+var ActionSchemasJson = `{{.Json}}`
 
-var ActionSpecs arch.ActionSpecs
+var ActionSchemas arch.ActionSchemas
 
 func init() {
     types := map[string]reflect.Type{
@@ -27,7 +27,7 @@ func init() {
         // "{{$.ArchParams.TickActionName}}": reflect.TypeOf(arch.CanonicalTickAction{}),
     }
     var err error
-	if ActionSpecs, err = arch.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
+	if ActionSchemas, err = arch.NewActionSchemasFromRaw(ActionsABIJson, ActionSchemasJson, types); err != nil {
 		panic(err)
 	}
 }

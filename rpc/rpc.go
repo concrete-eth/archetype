@@ -598,19 +598,19 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txU
 // TableGetter reads a table from the core contract.
 type TableGetter struct {
 	ethcli          EthCli
-	tableSpecs      arch.TableSchemas
+	tableSchemas    arch.TableSchemas
 	contractAddress common.Address
 }
 
 // NewTableReader creates a new TableGetter.
 func NewTableReader(
 	ethcli EthCli,
-	tableSpecs arch.TableSchemas,
+	tableSchemas arch.TableSchemas,
 	coreAddress common.Address,
 ) *TableGetter {
 	return &TableGetter{
 		ethcli:          ethcli,
-		tableSpecs:      tableSpecs,
+		tableSchemas:    tableSchemas,
 		contractAddress: coreAddress,
 	}
 }
@@ -621,14 +621,14 @@ func NewTableReader(
 // ReadTable reads a table from the contract.
 func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, error) {
 	// Get table ID from table name
-	tableId, ok := t.tableSpecs.TableIdFromName(tableName)
+	tableId, ok := t.tableSchemas.TableIdFromName(tableName)
 	if !ok {
 		return nil, errors.New("table name does not match any table")
 	}
 
 	// Get table schema from table ID
-	schema := t.tableSpecs.GetTableSchema(tableId)
-	data, err := t.tableSpecs.ABI().Pack(schema.Method.Name, keys...)
+	schema := t.tableSchemas.GetTableSchema(tableId)
+	data, err := t.tableSchemas.ABI().Pack(schema.Method.Name, keys...)
 	if err != nil {
 		return nil, err
 	}

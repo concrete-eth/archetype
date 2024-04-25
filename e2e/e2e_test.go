@@ -28,7 +28,7 @@ var (
 
 func newTestClient(t *testing.T) (*client.Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
-		specs                    = testutils.NewTestArchSpecs(t)
+		specs                    = testutils.NewTestArchSchemas(t)
 		core                     = &testutils.Core{}
 		kv                       = kvstore.NewMemoryKeyValueStore()
 		actionBatchInChan        = make(chan arch.ActionBatch)
@@ -53,7 +53,7 @@ func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
 }
 
 func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
-	specs := testutils.NewTestArchSpecs(t)
+	specs := testutils.NewTestArchSchemas(t)
 
 	pc := precompile.NewCorePrecompile(specs, &testutils.Core{})
 	registry := concrete.NewRegistry()
@@ -67,7 +67,7 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 
 func TestE2E(t *testing.T) {
 	var (
-		specs                                       = testutils.NewTestArchSpecs(t)
+		specs                                       = testutils.NewTestArchSchemas(t)
 		client, _, actionBatchInChan, actionOutChan = newTestClient(t)
 		ethcli                                      = newTestSimulatedBackend(t)
 		txUpdateChan                                = make(chan *rpc.ActionTxUpdate)

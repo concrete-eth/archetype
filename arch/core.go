@@ -93,16 +93,16 @@ func RunBlockTicks(c Core) {
 
 // ExecuteAction executes the method in the target matching the action name with the given action as argument.
 // The action must either be a canonical actions (i.e. Tick) or be in the action specs.
-func ExecuteAction(spec ActionSchemas, action Action, target interface{}) error {
+func ExecuteAction(schemas ActionSchemas, action Action, target interface{}) error {
 	if _, ok := action.(*CanonicalTickAction); ok {
-		RunBlockTicks(target.(Core))
+		RunBlockTicks(target.(Core)) // TODO: target should be core [?] or this should be removed
 		return nil
 	}
-	actionId, ok := spec.ActionIdFromAction(action)
+	actionId, ok := schemas.ActionIdFromAction(action)
 	if !ok {
 		return ErrInvalidAction
 	}
-	schema := spec.GetActionSchema(actionId)
+	schema := schemas.GetActionSchema(actionId)
 	actionName := schema.Name
 	methodName := actionName
 	targetVal := reflect.ValueOf(target)

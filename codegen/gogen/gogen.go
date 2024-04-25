@@ -56,7 +56,7 @@ func GenerateActionTypes(config Config) error {
 	return codegen.ExecuteTemplate(typesTpl, config.ActionsJsonPath, outPath, data, funcMap)
 }
 
-// GenerateActions generates the go code for the ActionSpecs.
+// GenerateActions generates the go code for the ActionSchemas.
 func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
@@ -78,7 +78,7 @@ func GenerateTableTypes(config Config) error {
 	return codegen.ExecuteTemplate(typesTpl, config.TablesJsonPath, outPath, data, funcMap)
 }
 
-// GenerateTables generates the go code for the TableSpecs.
+// GenerateTables generates the go code for the TableSchemas.
 func GenerateTables(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName

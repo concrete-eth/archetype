@@ -13,7 +13,7 @@ import (
 
 var TablesABIJson = contract.ContractABI
 
-var TablesSchemaJson = `{
+var TableSchemasJson = `{
     "meta": {
         "schema": {
             "maxBodyCount": "uint8",
@@ -36,7 +36,7 @@ var TablesSchemaJson = `{
     }
 }`
 
-var TableSpecs arch.TableSchemas
+var TableSchemas arch.TableSchemas
 
 func init() {
 	types := map[string]reflect.Type{
@@ -48,7 +48,7 @@ func init() {
 		"Bodies": datamod.NewBodies,
 	}
 	var err error
-	if TableSpecs, err = arch.NewTableSchemasFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
+	if TableSchemas, err = arch.NewTableSchemasFromRaw(TablesABIJson, TableSchemasJson, types, getters); err != nil {
 		panic(err)
 	}
 }

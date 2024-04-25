@@ -45,8 +45,8 @@ func main() {
 	from := auth.From
 	signerFn := auth.Signer
 
-	specs := arch.ArchSchemas{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
-	pc := precompile.NewCorePrecompile(specs, &core.Core{})
+	schemas := arch.ArchSchemas{Actions: archmod.ActionSchemas, Tables: archmod.TableSchemas}
+	pc := precompile.NewCorePrecompile(schemas, &core.Core{})
 
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddress, pc)
@@ -103,11 +103,11 @@ func main() {
 		txUpdateChanW           = make(chan *rpc.ActionTxUpdate, 1)
 	)
 
-	sender := rpc.NewActionSender(sim, specs.Actions, nil, gameAddress, from, nonce, signerFn)
+	sender := rpc.NewActionSender(sim, schemas.Actions, nil, gameAddress, from, nonce, signerFn)
 	_, cancel := sender.StartSendingActions(actionChan, txUpdateChanW)
 	defer cancel()
 
-	sub := rpc.SubscribeActionBatches(sim, specs.Actions, coreAddress, 0, actionBatchChan, txHashChan)
+	sub := rpc.SubscribeActionBatches(sim, schemas.Actions, coreAddress, 0, actionBatchChan, txHashChan)
 	defer sub.Unsubscribe()
 	rpc.DampenLatency(actionBatchChan, actionBatchChanDampened, blockTime, 100*time.Millisecond)
 

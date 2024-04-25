@@ -12,7 +12,7 @@ import (
 
 var ActionsABIJson = contract.ContractABI
 
-var ActionsSchemaJson = `{
+var ActionSchemasJson = `{
     "add": {
         "schema": {
             "summand": "int16"
@@ -20,15 +20,15 @@ var ActionsSchemaJson = `{
     }
 }`
 
-var ActionSpecs arch.ActionSchemas
+var ActionSchemas arch.ActionSchemas
 
 func init() {
 	types := map[string]reflect.Type{
-		"Add":  reflect.TypeOf(ActionData_Add{}),
-		"Tick": reflect.TypeOf(arch.CanonicalTickAction{}),
+		"Add": reflect.TypeOf(ActionData_Add{}),
+		// "Tick": reflect.TypeOf(arch.CanonicalTickAction{}),
 	}
 	var err error
-	if ActionSpecs, err = arch.NewActionSchemasFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
+	if ActionSchemas, err = arch.NewActionSchemasFromRaw(ActionsABIJson, ActionSchemasJson, types); err != nil {
 		panic(err)
 	}
 }

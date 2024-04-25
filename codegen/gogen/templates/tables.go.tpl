@@ -15,9 +15,9 @@ import (
 
 var TablesABIJson = contract.ContractABI
 
-var TablesSchemaJson = `{{.Json}}`
+var TableSchemasJson = `{{.Json}}`
 
-var TableSpecs arch.TableSpecs
+var TableSchemas arch.TableSchemas
 
 func init() {
     types := map[string]reflect.Type{
@@ -31,7 +31,7 @@ func init() {
         {{- end }}
     }
     var err error
-    if TableSpecs, err = arch.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
+    if TableSchemas, err = arch.NewTableSchemasFromRaw(TablesABIJson, TableSchemasJson, types, getters); err != nil {
         panic(err)
     }
 }

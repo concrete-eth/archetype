@@ -37,7 +37,7 @@ func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
 }
 
 func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
-	specs := testutils.NewTestArchSpecs(t)
+	specs := testutils.NewTestArchSchemas(t)
 
 	pc := precompile.NewCorePrecompile(specs, &testutils.Core{})
 	registry := concrete.NewRegistry()
@@ -53,7 +53,7 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 
 func TestSendAction(t *testing.T) {
 	var (
-		specs  = testutils.NewTestArchSpecs(t)
+		specs  = testutils.NewTestArchSchemas(t)
 		ethcli = newTestSimulatedBackend(t)
 	)
 
@@ -105,7 +105,7 @@ func waitForActionBatch(t *testing.T, actionBatchesChan <-chan arch.ActionBatch)
 
 func TestSubscribeToActionBatches(t *testing.T) {
 	var (
-		specs  = testutils.NewTestArchSpecs(t)
+		specs  = testutils.NewTestArchSchemas(t)
 		ethcli = newTestSimulatedBackend(t)
 	)
 
