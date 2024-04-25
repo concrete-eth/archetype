@@ -663,30 +663,26 @@ func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, 
 
 type TxMonitor struct {
 	client     EthCli
-	txHashes   map[common.Hash]struct{}
 	timestamps map[common.Hash]int64
 }
 
 func NewTxMonitor(ethcli EthCli) *TxMonitor {
 	return &TxMonitor{
 		client:     ethcli,
-		txHashes:   make(map[common.Hash]struct{}),
 		timestamps: make(map[common.Hash]int64),
 	}
 }
 
 func (txm *TxMonitor) AddTxHash(txHash common.Hash) {
-	txm.txHashes[txHash] = struct{}{}
 	txm.timestamps[txHash] = time.Now().Unix()
 }
 
 func (txm *TxMonitor) RemoveTx(txHash common.Hash) {
-	delete(txm.txHashes, txHash)
 	delete(txm.timestamps, txHash)
 }
 
 func (txm *TxMonitor) HasTx(txHash common.Hash) bool {
-	_, ok := txm.txHashes[txHash]
+	_, ok := txm.timestamps[txHash]
 	return ok
 }
 
@@ -705,11 +701,11 @@ func (txm *TxMonitor) isPending(txHash common.Hash) (bool, error) {
 
 func (txm *TxMonitor) Update() bool {
 	modified := false
-	for txHash := range txm.txHashes {
+	for txHash, timestamp := range txm.timestamps {
 		isPending, err := txm.isPending(txHash)
 		if err != nil {
 			// Remove a transaction that cannot be retrieved if it was added more than 6 seconds ago
-			isStale := time.Now().Unix()-txm.timestamps[txHash] > 6
+			isStale := time.Now().Unix()-timestamp > 6
 			if isStale {
 				txm.RemoveTx(txHash)
 				modified = true
@@ -726,15 +722,15 @@ func (txm *TxMonitor) Update() bool {
 }
 
 func (txm *TxMonitor) PendingTxs() []common.Hash {
-	pendingTxs := make([]common.Hash, 0, len(txm.txHashes))
-	for txHash := range txm.txHashes {
+	pendingTxs := make([]common.Hash, 0, len(txm.timestamps))
+	for txHash := range txm.timestamps {
 		pendingTxs = append(pendingTxs, txHash)
 	}
 	return pendingTxs
 }
 
 func (txm *TxMonitor) PendingTxsCount() int {
-	return len(txm.txHashes)
+	return len(txm.timestamps)
 }
 
 type ActionTxStatus uint8
@@ -809,27 +805,6 @@ func (txh *TxHinter) HintNonce() uint64 {
 	return txh.hintNonce
 }
 
-func (txh *TxHinter) addAction(action *ActionTxUpdate) {
-	txh.mutex.Lock()
-	defer txh.mutex.Unlock()
-
-	if action.Status == ActionTxStatus_Unsent {
-		txh.unsentActions[action.Nonce] = action.Actions
-	} else if action.Status == ActionTxStatus_Pending {
-		actions := txh.unsentActions[action.Nonce]
-		txh.actions[action.TxHash] = actions
-		txh.txm.AddTxHash(action.TxHash)
-		delete(txh.unsentActions, action.Nonce)
-	} else if action.Status == ActionTxStatus_Failed {
-		txh.txm.RemoveTx(action.TxHash)
-		delete(txh.unsentActions, action.Nonce)
-	} else if action.Status == ActionTxStatus_Included {
-		txh.txm.RemoveTx(action.TxHash)
-	}
-
-	txh.hintNonce++
-}
-
 func (txh *TxHinter) Update() bool {
 	txh.mutex.Lock()
 	defer txh.mutex.Unlock()
@@ -850,12 +825,33 @@ func (txh *TxHinter) Start(updateInterval time.Duration) {
 				ticker.Stop()
 				return
 			case action := <-txh.txUpdateInChan:
-				txh.addAction(action)
+				txh.upsertTransaction(action)
 			case <-ticker.C:
 				txh.Update()
 			}
 		}
 	}()
+}
+
+func (txh *TxHinter) upsertTransaction(txUpdate *ActionTxUpdate) {
+	txh.mutex.Lock()
+	defer txh.mutex.Unlock()
+
+	if txUpdate.Status == ActionTxStatus_Unsent {
+		txh.unsentActions[txUpdate.Nonce] = txUpdate.Actions
+	} else if txUpdate.Status == ActionTxStatus_Pending {
+		actions := txh.unsentActions[txUpdate.Nonce]
+		txh.actions[txUpdate.TxHash] = actions
+		txh.txm.AddTxHash(txUpdate.TxHash)
+		delete(txh.unsentActions, txUpdate.Nonce)
+	} else if txUpdate.Status == ActionTxStatus_Failed {
+		txh.txm.RemoveTx(txUpdate.TxHash)
+		delete(txh.unsentActions, txUpdate.Nonce)
+	} else if txUpdate.Status == ActionTxStatus_Included {
+		txh.txm.RemoveTx(txUpdate.TxHash)
+	}
+
+	txh.hintNonce++
 }
 
 func DampenLatency[T any](in <-chan T, out chan<- T, interval time.Duration, delay time.Duration) {
