@@ -24,7 +24,7 @@ var ActionsSchemaJson = `{
     }
 }`
 
-var ActionSpecs arch.ActionSpecs
+var ActionSpecs arch.ActionSchemas
 
 func init() {
 	types := map[string]reflect.Type{
@@ -32,7 +32,7 @@ func init() {
 		"Tick":    reflect.TypeOf(arch.CanonicalTickAction{}),
 	}
 	var err error
-	if ActionSpecs, err = arch.NewActionSpecsFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
+	if ActionSpecs, err = arch.NewActionSchemasFromRaw(ActionsABIJson, ActionsSchemaJson, types); err != nil {
 		panic(err)
 	}
 }

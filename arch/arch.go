@@ -35,14 +35,6 @@ func (v validId) Raw() RawIdType {
 	return v.id
 }
 
-/*
-
-TODO:
-Schema: Spec for a single action or table
-Schemas: Specs for either all actions or all tables
-
-*/
-
 type archSchema struct {
 	datamod.TableSchema
 	Method *abi.Method
@@ -114,66 +106,64 @@ type ActionSchema struct {
 	archSchema
 }
 
-type ActionSpecs struct {
+type ActionSchemas struct {
 	archSchemas
 }
 
-// TODO: Action schemas are table schemas without keys. Is there a better way to portray this [?]
-
-// NewActionSpecs creates a new ActionSpecs instance.
-func NewActionSpecs(
+// NewActionSchemas creates a new ActionSchemas instance.
+func NewActionSchemas(
 	abi *abi.ABI,
 	schemas []datamod.TableSchema,
 	types map[string]reflect.Type,
-) (ActionSpecs, error) {
+) (ActionSchemas, error) {
 	s, err := newArchSchemas(abi, schemas, types, params.SolidityActionMethodName)
 	if err != nil {
-		return ActionSpecs{}, err
+		return ActionSchemas{}, err
 	}
 	for _, schema := range s.schemas {
 		if len(schema.Method.Inputs) > 1 {
-			return ActionSpecs{}, fmt.Errorf("action method %s has more than one argument", schema.Name)
+			return ActionSchemas{}, fmt.Errorf("action method %s has more than one argument", schema.Name)
 		}
 	}
-	return ActionSpecs{archSchemas: s}, nil
+	return ActionSchemas{archSchemas: s}, nil
 }
 
-// NewActionSpecsFromRaw creates a new ActionSpecs instance from raw JSON strings.
-func NewActionSpecsFromRaw(
+// NewActionSchemasFromRaw creates a new ActionSchemas instance from raw JSON strings.
+func NewActionSchemasFromRaw(
 	abiJson string,
 	schemasJson string,
 	types map[string]reflect.Type,
-) (ActionSpecs, error) {
+) (ActionSchemas, error) {
 	// Load the contract ABI
 	ABI, err := abi.JSON(strings.NewReader(abiJson))
 	if err != nil {
-		return ActionSpecs{}, err
+		return ActionSchemas{}, err
 	}
 	// Load the table schemas
 	schemas, err := datamod.UnmarshalTableSchemas([]byte(schemasJson), false)
 	if err != nil {
-		return ActionSpecs{}, err
+		return ActionSchemas{}, err
 	}
 	// Add the canonical Tick action
 	schemas = append(schemas, datamod.TableSchema{Name: "Tick"})
 	types[params.TickActionName] = reflect.TypeOf(CanonicalTickAction{})
-	return NewActionSpecs(&ABI, schemas, types)
+	return NewActionSchemas(&ABI, schemas, types)
 }
 
 // NewActionId wraps a valid ID in a ValidActionId.
-func (a ActionSpecs) NewActionId(id RawIdType) (ValidActionId, bool) {
+func (a ActionSchemas) NewActionId(id RawIdType) (ValidActionId, bool) {
 	validId, ok := a.newId(id)
 	return ValidActionId{validId}, ok
 }
 
-// TODO: rename
-func (a ActionSpecs) ActionIdFromName(name string) (ValidActionId, bool) {
+// ActionIdFromName returns the action ID of the action with the given name.
+func (a ActionSchemas) ActionIdFromName(name string) (ValidActionId, bool) {
 	validId, ok := a.idFromName(name)
 	return ValidActionId{validId}, ok
 }
 
 // ActionIdFromAction returns the action ID of the given action.
-func (a ActionSpecs) ActionIdFromAction(action Action) (ValidActionId, bool) {
+func (a ActionSchemas) ActionIdFromAction(action Action) (ValidActionId, bool) {
 	actionType := reflect.TypeOf(action)
 	if !isStructPtr(actionType) {
 		return ValidActionId{}, false
@@ -188,12 +178,12 @@ func (a ActionSpecs) ActionIdFromAction(action Action) (ValidActionId, bool) {
 }
 
 // GetActionSchema returns the schema of the action with the given ID.
-func (a ActionSpecs) GetActionSchema(actionId ValidActionId) ActionSchema {
+func (a ActionSchemas) GetActionSchema(actionId ValidActionId) ActionSchema {
 	return ActionSchema{a.archSchemas.getSchema(actionId.validId)}
 }
 
 // EncodeAction encodes an action into a byte slice.
-func (a *ActionSpecs) EncodeAction(action Action) (ValidActionId, []byte, error) {
+func (a *ActionSchemas) EncodeAction(action Action) (ValidActionId, []byte, error) {
 	actionId, ok := a.ActionIdFromAction(action)
 	if !ok {
 		return ValidActionId{}, nil, fmt.Errorf("action of type %T does not match any canonical action type", action)
@@ -207,7 +197,7 @@ func (a *ActionSpecs) EncodeAction(action Action) (ValidActionId, []byte, error)
 }
 
 // DecodeAction decodes the given calldata into an action.
-func (a *ActionSpecs) DecodeAction(actionId ValidActionId, data []byte) (Action, error) {
+func (a *ActionSchemas) DecodeAction(actionId ValidActionId, data []byte) (Action, error) {
 	schema := a.GetActionSchema(actionId)
 	args, err := schema.Method.Inputs.Unpack(data)
 	if err != nil {
@@ -227,7 +217,7 @@ func (a *ActionSpecs) DecodeAction(actionId ValidActionId, data []byte) (Action,
 
 // ActionToCalldata converts an action to calldata.
 // The same encoding is used for log data.
-func (a *ActionSpecs) ActionToCalldata(action Action) ([]byte, error) {
+func (a *ActionSchemas) ActionToCalldata(action Action) ([]byte, error) {
 	actionId, ok := a.ActionIdFromAction(action)
 	if !ok {
 		return nil, fmt.Errorf("action of type %T does not match any canonical action type", action)
@@ -244,7 +234,7 @@ func (a *ActionSpecs) ActionToCalldata(action Action) ([]byte, error) {
 }
 
 // CalldataToAction converts calldata to an action.
-func (a *ActionSpecs) CalldataToAction(calldata []byte) (Action, error) {
+func (a *ActionSchemas) CalldataToAction(calldata []byte) (Action, error) {
 	if len(calldata) < 4 {
 		return nil, errors.New("invalid calldata (length < 4)")
 	}
@@ -258,7 +248,7 @@ func (a *ActionSpecs) CalldataToAction(calldata []byte) (Action, error) {
 }
 
 // ActionToLog converts an action to a log.
-func (a *ActionSpecs) ActionToLog(action Action) (types.Log, error) {
+func (a *ActionSchemas) ActionToLog(action Action) (types.Log, error) {
 	data, err := a.ActionToCalldata(action)
 	if err != nil {
 		return types.Log{}, err
@@ -271,7 +261,7 @@ func (a *ActionSpecs) ActionToLog(action Action) (types.Log, error) {
 }
 
 // LogToAction converts a log to an action.
-func (a *ActionSpecs) LogToAction(log types.Log) (Action, error) {
+func (a *ActionSchemas) LogToAction(log types.Log) (Action, error) {
 	if len(log.Topics) != 1 || log.Topics[0] != params.ActionExecutedEventID {
 		return nil, errors.New("log topics do not match action executed event")
 	}
@@ -367,79 +357,79 @@ type TableSchema struct {
 	archSchema
 }
 
-type TableSpecs struct {
+type TableSchemas struct {
 	archSchemas
 	tableGetters map[RawIdType]tableGetter
 }
 
-// NewTableSpecs creates a new TableSpecs instance.
-func NewTableSpecs(
+// NewTableSchemas creates a new TableSchemas instance.
+func NewTableSchemas(
 	abi *abi.ABI,
 	schemas []datamod.TableSchema,
 	types map[string]reflect.Type,
 	getters map[string]interface{},
-) (TableSpecs, error) {
+) (TableSchemas, error) {
 	s, err := newArchSchemas(abi, schemas, types, params.SolidityTableMethodName)
 	if err != nil {
-		return TableSpecs{}, err
+		return TableSchemas{}, err
 	}
 	for _, schema := range s.schemas {
 		if len(schema.Method.Outputs) != 1 {
-			return TableSpecs{}, fmt.Errorf("table method %s does not have exactly one return value", schema.Name)
+			return TableSchemas{}, fmt.Errorf("table method %s does not have exactly one return value", schema.Name)
 		}
 	}
 	tableGetters := make(map[RawIdType]tableGetter, len(getters))
 	for id, schema := range s.schemas {
 		getterFn, ok := getters[schema.Name]
 		if !ok {
-			return TableSpecs{}, fmt.Errorf("no table getter found for schema %s", schema.Name)
+			return TableSchemas{}, fmt.Errorf("no table getter found for schema %s", schema.Name)
 		}
 		tableGetters[id], err = newTableGetter(getterFn, schema.Type)
 		if err != nil {
-			return TableSpecs{}, err
+			return TableSchemas{}, err
 		}
 	}
-	return TableSpecs{archSchemas: s, tableGetters: tableGetters}, nil
+	return TableSchemas{archSchemas: s, tableGetters: tableGetters}, nil
 }
 
-// NewTableSpecsFromRaw creates a new TableSpecs instance from raw JSON strings.
-func NewTableSpecsFromRaw(
+// NewTableSchemasFromRaw creates a new TableSchemas instance from raw JSON strings.
+func NewTableSchemasFromRaw(
 	abiJson string,
 	schemasJson string,
 	types map[string]reflect.Type,
 	getters map[string]interface{},
-) (TableSpecs, error) {
+) (TableSchemas, error) {
 	// Load the contract ABI
 	ABI, err := abi.JSON(strings.NewReader(abiJson))
 	if err != nil {
-		return TableSpecs{}, err
+		return TableSchemas{}, err
 	}
 	// Load the table schemas
 	schemas, err := datamod.UnmarshalTableSchemas([]byte(schemasJson), false)
 	if err != nil {
-		return TableSpecs{}, err
+		return TableSchemas{}, err
 	}
-	return NewTableSpecs(&ABI, schemas, types, getters)
+	return NewTableSchemas(&ABI, schemas, types, getters)
 }
 
 // NewTableId wraps a valid ID in a ValidTableId.
-func (t TableSpecs) NewTableId(id RawIdType) (ValidTableId, bool) {
+func (t TableSchemas) NewTableId(id RawIdType) (ValidTableId, bool) {
 	validId, ok := t.newId(id)
 	return ValidTableId{validId}, ok
 }
 
-func (t TableSpecs) TableIdFromName(name string) (ValidTableId, bool) {
+func (t TableSchemas) TableIdFromName(name string) (ValidTableId, bool) {
 	validId, ok := t.idFromName(name)
 	return ValidTableId{validId}, ok
 }
 
 // GetTableSchema returns the schema of the table with the given ID.
-func (t TableSpecs) GetTableSchema(tableId ValidTableId) TableSchema {
+func (t TableSchemas) GetTableSchema(tableId ValidTableId) TableSchema {
 	return TableSchema{t.archSchemas.getSchema(tableId.validId)}
 }
 
 // read reads a row from the datastore.
-func (t TableSpecs) Read(datastore lib.Datastore, tableId ValidTableId, keys ...interface{}) (interface{}, error) {
+func (t TableSchemas) Read(datastore lib.Datastore, tableId ValidTableId, keys ...interface{}) (interface{}, error) {
 	getter := t.tableGetters[tableId.Raw()]
 	dsRow, err := getter.get(datastore, keys...)
 	if err != nil {
@@ -455,7 +445,7 @@ func (t TableSpecs) Read(datastore lib.Datastore, tableId ValidTableId, keys ...
 
 // TableIdFromCalldata returns the table ID of the table targeted by the given calldata.
 // If the calldata does not encode a table read, the second return value is false.
-func (t *TableSpecs) TargetTableId(calldata []byte) (ValidTableId, bool) {
+func (t *TableSchemas) TargetTableId(calldata []byte) (ValidTableId, bool) {
 	if len(calldata) < 4 {
 		return ValidTableId{}, false
 	}
@@ -466,7 +456,7 @@ func (t *TableSpecs) TargetTableId(calldata []byte) (ValidTableId, bool) {
 }
 
 // ReadPacked reads a row from the datastore and packs it into an ABI-encoded byte slice.
-func (t *TableSpecs) ReadPacked(datastore lib.Datastore, calldata []byte) ([]byte, error) {
+func (t *TableSchemas) ReadPacked(datastore lib.Datastore, calldata []byte) ([]byte, error) {
 	tableId, ok := t.TargetTableId(calldata)
 	if !ok {
 		return nil, errors.New("calldata does not correspond to a table read operation")
@@ -483,7 +473,7 @@ func (t *TableSpecs) ReadPacked(datastore lib.Datastore, calldata []byte) ([]byt
 	return schema.Method.Outputs.Pack(row)
 }
 
-type ArchSpecs struct {
-	Actions ActionSpecs
-	Tables  TableSpecs
+type ArchSchemas struct {
+	Actions ActionSchemas
+	Tables  TableSchemas
 }

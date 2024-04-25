@@ -43,7 +43,7 @@ func NewClient(
 	blockNumber uint64,
 	hinter *rpc.TxHinter,
 ) *Client {
-	specs := arch.ArchSpecs{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
+	specs := arch.ArchSchemas{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
 	c := &core.Core{}
 	cli := client.New(specs, c, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
 	return &Client{

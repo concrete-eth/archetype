@@ -64,8 +64,8 @@ func (c *Core) Tick() {
 	c.mul(2)
 }
 
-func NewTestArchSpecs(t *testing.T) arch.ArchSpecs {
-	return arch.ArchSpecs{
+func NewTestArchSpecs(t *testing.T) arch.ArchSchemas {
+	return arch.ArchSchemas{
 		Actions: archmod.ActionSpecs,
 		Tables:  archmod.TableSpecs,
 	}

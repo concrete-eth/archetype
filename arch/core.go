@@ -93,7 +93,7 @@ func RunBlockTicks(c Core) {
 
 // ExecuteAction executes the method in the target matching the action name with the given action as argument.
 // The action must either be a canonical actions (i.e. Tick) or be in the action specs.
-func ExecuteAction(spec ActionSpecs, action Action, target interface{}) error {
+func ExecuteAction(spec ActionSchemas, action Action, target interface{}) error {
 	if _, ok := action.(*CanonicalTickAction); ok {
 		RunBlockTicks(target.(Core))
 		return nil

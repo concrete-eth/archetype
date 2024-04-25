@@ -45,7 +45,7 @@ func main() {
 	from := auth.From
 	signerFn := auth.Signer
 
-	specs := arch.ArchSpecs{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
+	specs := arch.ArchSchemas{Actions: archmod.ActionSpecs, Tables: archmod.TableSpecs}
 	pc := precompile.NewCorePrecompile(specs, &core.Core{})
 
 	registry := concrete.NewRegistry()

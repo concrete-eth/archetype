@@ -21,7 +21,7 @@ var TablesSchemaJson = `{
     }
 }`
 
-var TableSpecs arch.TableSpecs
+var TableSpecs arch.TableSchemas
 
 func init() {
 	types := map[string]reflect.Type{
@@ -31,7 +31,7 @@ func init() {
 		"Counter": datamod.NewCounter,
 	}
 	var err error
-	if TableSpecs, err = arch.NewTableSpecsFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
+	if TableSpecs, err = arch.NewTableSchemasFromRaw(TablesABIJson, TablesSchemaJson, types, getters); err != nil {
 		panic(err)
 	}
 }

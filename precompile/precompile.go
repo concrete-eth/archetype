@@ -11,14 +11,14 @@ import (
 
 type CorePrecompile struct {
 	lib.BlankPrecompile
-	spec arch.ArchSpecs
+	spec arch.ArchSchemas
 	core arch.Core
 }
 
 var _ concrete.Precompile = (*CorePrecompile)(nil)
 
 // NewCorePrecompile creates a new CorePrecompile.
-func NewCorePrecompile(spec arch.ArchSpecs, core arch.Core) *CorePrecompile {
+func NewCorePrecompile(spec arch.ArchSchemas, core arch.Core) *CorePrecompile {
 	return &CorePrecompile{
 		spec: spec,
 		core: core,
