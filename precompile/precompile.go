@@ -37,7 +37,7 @@ func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValue
 	p.core.SetBlockNumber(env.GetBlockNumber())
 
 	// Execute the action
-	if err := arch.ExecuteAction(p.spec.Actions, action, p.core); err != nil {
+	if err := p.spec.Actions.ExecuteAction(action, p.core); err != nil {
 		return err
 	}
 

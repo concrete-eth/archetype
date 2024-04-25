@@ -268,6 +268,38 @@ func (a *ActionSchemas) LogToAction(log types.Log) (Action, error) {
 	return a.CalldataToAction(log.Data)
 }
 
+func (a *ActionSchemas) ExecuteAction(action Action, target Core) error {
+	if _, ok := action.(*CanonicalTickAction); ok {
+		RunBlockTicks(target)
+		return nil
+	}
+	actionId, ok := a.ActionIdFromAction(action)
+	if !ok {
+		return ErrInvalidAction
+	}
+	schema := a.GetActionSchema(actionId)
+	actionName := schema.Name
+	methodName := actionName
+	targetVal := reflect.ValueOf(target)
+	if !targetVal.IsValid() {
+		return fmt.Errorf("target is invalid")
+	}
+	method := targetVal.MethodByName(methodName)
+	if !method.IsValid() {
+		return fmt.Errorf("method %s not found", methodName)
+	}
+	args := []reflect.Value{reflect.ValueOf(action)}
+	result := method.Call(args)
+	if len(result) == 0 {
+		return nil
+	}
+	errVal := result[len(result)-1]
+	if !errVal.IsNil() {
+		return errVal.Interface().(error)
+	}
+	return nil
+}
+
 func packActionMethodInput(method *abi.Method, arg interface{}) ([]byte, error) {
 	switch len(method.Inputs) {
 	case 0:

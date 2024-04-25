@@ -83,7 +83,7 @@ func (c *Client) applyBatch(batch arch.ActionBatch) (bool, error) {
 	}
 	tickActionInBatch := false
 	for ii, action := range batch.Actions {
-		if err := arch.ExecuteAction(c.specs.Actions, action, c.core); err != nil {
+		if err := c.specs.Actions.ExecuteAction(action, c.core); err != nil {
 			c.error("failed to execute action", "err", err)
 		}
 		if _, ok := action.(*arch.CanonicalTickAction); ok {
@@ -132,7 +132,7 @@ func (c *Client) SendActions(actions []arch.Action) error {
 	actionsToSend := make([]arch.Action, 0)
 	c.Simulate(func(core arch.Core) {
 		for _, action := range actions {
-			if err := arch.ExecuteAction(c.specs.Actions, action, core); err != nil {
+			if err := c.specs.Actions.ExecuteAction(action, core); err != nil {
 				c.error("failed to execute action", "err", err)
 				continue
 			}
