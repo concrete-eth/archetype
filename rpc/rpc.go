@@ -864,10 +864,10 @@ func DampenLatency[T any](in <-chan T, out chan<- T, interval time.Duration, del
 		// Wait for and send next item
 		item, ok := <-in
 		if !ok {
-			close(out)
+			// close(out)
 			return
 		}
-		earliestExpectedTime := time.Now().Add(interval)
+		earliestExpectedTime := time.Now().Add(interval) // Earliest expected time the next item will be received
 		time.Sleep(delay)
 		out <- item
 
@@ -875,9 +875,10 @@ func DampenLatency[T any](in <-chan T, out chan<- T, interval time.Duration, del
 			// Send item at the right time
 			item, ok := <-in
 			if !ok {
-				close(out)
+				// close(out)
 				return
 			}
+
 			receivedTime := time.Now()
 			time.Sleep(time.Until(earliestExpectedTime.Add(delay)))
 			out <- item
@@ -902,12 +903,15 @@ func DampenLatency[T any](in <-chan T, out chan<- T, interval time.Duration, del
 	}()
 }
 
+// midpoint returns the time between t1 and t2 at fraction f.
+// f = 0 returns t1, f = 1 returns t2.
 func midpoint(t1, t2 time.Time, f float64) time.Time {
 	diff := t2.Sub(t1)
 	midpoint := t1.Add(time.Duration(float64(diff) * f))
 	return midpoint
 }
 
+// sendUntilEmpty sends items from in to out until in is empty.
 func sendUntilEmpty[T any](in <-chan T, out chan<- T) bool {
 	sent := false
 	for {
