@@ -15,11 +15,11 @@ struct {{ SolidityTableStructNameFn .Name }} {
 
 interface {{.Name}} {
 {{- range $schema := .Schemas }}
-    function {{SolidityTableMethodNameFn $schema.Name}}(
+    function {{ SolidityTableMethodNameFn $schema.Name }}(
         {{- $length := len $schema.Keys -}}
         {{- range $index, $key := $schema.Keys -}}
         {{- $key.Type.SolType }} {{$key.Name}}{{if lt $index (_sub $length 1)}},{{ end -}}
         {{- end -}}
-    ) external view returns ({{SolidityTableStructNameFn .Name}} memory);
+    ) external view returns ({{ SolidityTableStructNameFn .Name }} memory);
 {{- end }}
 }

@@ -8,8 +8,8 @@ import (
 	"github.com/concrete-eth/archetype/arch"
 
 	{{ range .Imports }}
-	{{- if .Name }}{{ .Name }} "{{ .Path }}"
-    {{- else }}"{{ .Path }}"{{ end }}
+	{{- if .Name }}{{.Name}} "{{.Path}}"
+    {{- else }}"{{.Path}}"{{ end }}
 	{{ end }}
 )
 
@@ -22,9 +22,9 @@ var ActionSchemas arch.ActionSchemas
 func init() {
     types := map[string]reflect.Type{
         {{- range .Schemas }}
-        "{{.Name}}": reflect.TypeOf({{GoActionStructNameFn .Name}}{}),
+        "{{.Name}}": reflect.TypeOf({{ GoActionStructNameFn .Name }}{}),
         {{- end }}
-        // "{{$.ArchParams.TickActionName}}": reflect.TypeOf(arch.CanonicalTickAction{}),
+        // "{{.ArchParams.TickActionName}}": reflect.TypeOf(arch.CanonicalTickAction{}),
     }
     var err error
 	if ActionSchemas, err = arch.NewActionSchemasFromRaw(ActionsABIJson, ActionSchemasJson, types); err != nil {
@@ -34,7 +34,7 @@ func init() {
 
 type IActions interface {
     {{- range .Schemas }}
-    {{ GoActionMethodNameFn .Name }}(action *{{GoActionStructNameFn .Name}}) error
+    {{ GoActionMethodNameFn .Name }}(action *{{ GoActionStructNameFn .Name }}) error
     {{- end }}
-    {{ GoActionMethodNameFn $.ArchParams.TickActionName }}()
+    {{ GoActionMethodNameFn .ArchParams.TickActionName }}()
 }

@@ -17,4 +17,3 @@ interface IActions {
 
     function add(ActionData_Add memory action) external;
 }
-

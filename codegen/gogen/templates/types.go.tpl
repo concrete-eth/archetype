@@ -4,9 +4,10 @@ package {{.Package}}
 
 import (
     "github.com/ethereum/go-ethereum/common"
-    	
+    
     {{ range .Imports }}
-	"{{.}}"
+	{{- if .Name }}{{.Name}} "{{.Path}}"
+    {{- else }}"{{.Path}}"{{ end }}
 	{{ end }}
 )
 
@@ -16,18 +17,18 @@ var (
 
 {{ if .Comment }}
 /*
-{{ .Comment }}
+{{.Comment}}
 */
 {{ end }}
 
 {{ range $schema := .Schemas }}
-type {{StructNameFn $schema.Name}} struct{
+type {{ StructNameFn $schema.Name }} struct{
     {{- range $value := $schema.Values }}
     {{$value.PascalCase}} {{$value.Type.GoType}} `json:"{{$value.Name}}"`
     {{- end }}
 }
 {{ range $value := $schema.Values }}
-func (row *{{StructNameFn $schema.Name}}) Get{{$value.PascalCase}}() {{$value.Type.GoType}} {
+func (row *{{ StructNameFn $schema.Name }}) Get{{$value.PascalCase}}() {{$value.Type.GoType}} {
     return row.{{$value.PascalCase}}
 }
 {{ end }}

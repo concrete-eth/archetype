@@ -8,8 +8,8 @@ import (
 	"github.com/concrete-eth/archetype/arch"
 
 	{{ range .Imports }}
-	{{- if .Name }}{{ .Name }} "{{ .Path }}"
-    {{- else }}"{{ .Path }}"{{ end }}
+	{{- if .Name }}{{.Name}} "{{.Path}}"
+    {{- else }}"{{.Path}}"{{ end }}
 	{{ end }}
 )
 
@@ -22,7 +22,7 @@ var TableSchemas arch.TableSchemas
 func init() {
     types := map[string]reflect.Type{
         {{- range .Schemas }}
-        "{{.Name}}": reflect.TypeOf({{GoTableStructNameFn .Name}}{}),
+        "{{.Name}}": reflect.TypeOf({{ GoTableStructNameFn .Name }}{}),
         {{- end }}
     }
     getters := map[string]interface{}{
