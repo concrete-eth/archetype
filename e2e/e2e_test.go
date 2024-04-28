@@ -28,14 +28,14 @@ var (
 
 func newTestClient(t *testing.T) (*client.Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
-		specs                  = testutils.NewTestArchSchemas(t)
+		schemas                = testutils.NewTestArchSchemas(t)
 		core                   = &testutils.Core{}
 		kv                     = kvstore.NewMemoryKeyValueStore()
 		actionBatchChan        = make(chan arch.ActionBatch)
 		actionOChan            = make(chan []arch.Action)
 		blockTime              = 10 * time.Millisecond
 		blockNumber     uint64 = 0
-		client                 = client.New(specs, core, kv, actionBatchChan, actionOChan, blockTime, blockNumber)
+		client                 = client.New(schemas, core, kv, actionBatchChan, actionOChan, blockTime, blockNumber)
 	)
 	return client, kv, actionBatchChan, actionOChan
 }
@@ -53,9 +53,9 @@ func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
 }
 
 func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
-	specs := testutils.NewTestArchSchemas(t)
+	schemas := testutils.NewTestArchSchemas(t)
 
-	pc := precompile.NewCorePrecompile(specs, &testutils.Core{})
+	pc := precompile.NewCorePrecompile(schemas, &testutils.Core{})
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddress, pc)
 
@@ -67,19 +67,19 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 
 func TestE2E(t *testing.T) {
 	var (
-		specs                                  = testutils.NewTestArchSchemas(t)
+		schemas                                = testutils.NewTestArchSchemas(t)
 		client, _, actionBatchChan, actionChan = newTestClient(t)
 		ethcli                                 = newTestSimulatedBackend(t)
 		txUpdateChan                           = make(chan *rpc.ActionTxUpdate)
 	)
 
 	// Subscribe to action batches
-	sub := rpc.SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchChan, nil)
+	sub := rpc.SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchChan, nil)
 	defer sub.Unsubscribe()
 
 	// Create a new action sender
 	from, signerFn := newTestSignerFn(t)
-	sender := rpc.NewActionSender(ethcli, specs.Actions, nil, pcAddress, from, 0, signerFn)
+	sender := rpc.NewActionSender(ethcli, schemas.Actions, nil, pcAddress, from, 0, signerFn)
 	sender.StartSendingActions(actionChan, txUpdateChan)
 
 	ethcli.Commit()
@@ -131,7 +131,7 @@ func TestE2E(t *testing.T) {
 	}
 
 	// Read the counter from the chain
-	tableGetter := rpc.NewTableReader(ethcli, specs.Tables, pcAddress)
+	tableGetter := rpc.NewTableReader(ethcli, schemas.Tables, pcAddress)
 	_remoteCounter, err := tableGetter.Read("Counter")
 	if err != nil {
 		t.Fatal(err)

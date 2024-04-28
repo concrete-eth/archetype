@@ -263,7 +263,7 @@ func (a *ActionSchemas) ActionToLog(action Action) (types.Log, error) {
 // LogToAction converts a log to an action.
 func (a *ActionSchemas) LogToAction(log types.Log) (Action, error) {
 	if len(log.Topics) != 1 || log.Topics[0] != params.ActionExecutedEventID {
-		return nil, errors.New("log topics do not match action executed event")
+		return nil, errors.New("log topics do not match ActionExecuted event")
 	}
 	return a.CalldataToAction(log.Data)
 }
@@ -336,13 +336,13 @@ func newTableGetter(constructor interface{}, rowType reflect.Type) (tableGetter,
 		return tableGetter{}, errors.New("table constructor is not a function")
 	}
 	if constructorVal.Type().NumIn() != 1 {
-		return tableGetter{}, errors.New("table constructor should take a single argument")
+		return tableGetter{}, errors.New("table constructor does not have exactly one argument")
 	}
 	if constructorVal.Type().In(0) != reflect.TypeOf((*lib.Datastore)(nil)).Elem() {
-		return tableGetter{}, errors.New("table constructor should take a lib.Datastore argument")
+		return tableGetter{}, errors.New("table constructor must take a lib.Datastore argument")
 	}
 	if constructorVal.Type().NumOut() != 1 {
-		return tableGetter{}, errors.New("table constructor should return a single value")
+		return tableGetter{}, errors.New("table constructor must return a single value")
 	}
 
 	tblType := constructorVal.Type().Out(0)
@@ -351,7 +351,7 @@ func newTableGetter(constructor interface{}, rowType reflect.Type) (tableGetter,
 		return tableGetter{}, errors.New("table missing Get method")
 	}
 	if getMth.Type.NumOut() != 1 {
-		return tableGetter{}, errors.New("table Get method should return a single value")
+		return tableGetter{}, errors.New("table Get method must return a single value")
 	}
 
 	retType := getMth.Type.Out(0)

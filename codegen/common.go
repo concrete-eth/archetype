@@ -22,7 +22,7 @@ type Config struct {
 
 func (c Config) Validate() error {
 	if c.ActionsJsonPath == "" {
-		return errors.New("actions schema is required")
+		return errors.New("actions schema path is missing")
 	}
 	if err := CheckFile(c.ActionsJsonPath); err != nil {
 		return errors.New("error validating actions schema file: " + err.Error())

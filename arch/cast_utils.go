@@ -63,7 +63,7 @@ func CanPopulateStruct(srcType reflect.Type, destType reflect.Type) error {
 			return fmt.Errorf("method %s not found", getMethodName)
 		}
 		if srcGetMethod.Type.NumOut() != 1 {
-			return errors.New("method should return a single value")
+			return errors.New("method has more than one return value")
 		}
 		if srcGetMethod.Type.Out(0) != destField.Type {
 			return fmt.Errorf("field %s has different type", destFieldType.Name)
@@ -71,7 +71,6 @@ func CanPopulateStruct(srcType reflect.Type, destType reflect.Type) error {
 	}
 
 	return nil
-
 }
 
 // PopulateStruct sets all the fields in dest to the values returned by the Get<field name> methods in src.

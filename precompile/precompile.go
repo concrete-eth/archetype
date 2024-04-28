@@ -11,17 +11,17 @@ import (
 
 type CorePrecompile struct {
 	lib.BlankPrecompile
-	spec arch.ArchSchemas
-	core arch.Core
+	schemas arch.ArchSchemas
+	core    arch.Core
 }
 
 var _ concrete.Precompile = (*CorePrecompile)(nil)
 
 // NewCorePrecompile creates a new CorePrecompile.
-func NewCorePrecompile(spec arch.ArchSchemas, core arch.Core) *CorePrecompile {
+func NewCorePrecompile(schemas arch.ArchSchemas, core arch.Core) *CorePrecompile {
 	return &CorePrecompile{
-		spec: spec,
-		core: core,
+		schemas: schemas,
+		core:    core,
 	}
 }
 
@@ -37,7 +37,7 @@ func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValue
 	p.core.SetBlockNumber(env.GetBlockNumber())
 
 	// Execute the action
-	if err := p.spec.Actions.ExecuteAction(action, p.core); err != nil {
+	if err := p.schemas.Actions.ExecuteAction(action, p.core); err != nil {
 		return err
 	}
 
@@ -45,7 +45,7 @@ func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValue
 	skv.Commit()
 
 	// Emit the log
-	log, err := p.spec.Actions.ActionToLog(action)
+	log, err := p.schemas.Actions.ActionToLog(action)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValue
 }
 
 func (p *CorePrecompile) IsStatic(input []byte) bool {
-	if _, ok := p.spec.Tables.TargetTableId(input); ok {
+	if _, ok := p.schemas.Tables.TargetTableId(input); ok {
 		return true
 	}
 	return false
@@ -79,12 +79,12 @@ func (p *CorePrecompile) Run(env concrete.Environment, input []byte) (_ret []byt
 	)
 
 	// Return the data if call is a table read
-	if ret, err := p.spec.Tables.ReadPacked(datastore, input); err == nil {
+	if ret, err := p.schemas.Tables.ReadPacked(datastore, input); err == nil {
 		return ret, nil
 	}
 
 	// Execute the action if call is an action
-	action, err := p.spec.Actions.CalldataToAction(input)
+	action, err := p.schemas.Actions.CalldataToAction(input)
 	if err != nil {
 		return nil, err
 	}

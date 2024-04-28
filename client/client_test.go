@@ -17,7 +17,7 @@ import (
 
 func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
-		specs                  = testutils.NewTestArchSchemas(t)
+		schemas                = testutils.NewTestArchSchemas(t)
 		core                   = &testutils.Core{}
 		kv                     = kvstore.NewMemoryKeyValueStore()
 		actionBatchChan        = make(chan arch.ActionBatch)
@@ -25,7 +25,7 @@ func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBa
 		blockTime              = 1 * time.Second
 		blockNumber     uint64 = 0
 	)
-	client := New(specs, core, kv, actionBatchChan, actionChan, blockTime, blockNumber)
+	client := New(schemas, core, kv, actionBatchChan, actionChan, blockTime, blockNumber)
 	return client, kv, actionBatchChan, actionChan
 }
 

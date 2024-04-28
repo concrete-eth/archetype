@@ -21,7 +21,7 @@ var (
 )
 
 type Client struct {
-	specs arch.ArchSchemas
+	schemas arch.ArchSchemas
 
 	core arch.Core
 	kv   *kvstore.StagedKeyValueStore
@@ -40,11 +40,11 @@ type Client struct {
 }
 
 // New create a new client object.
-func New(specs arch.ArchSchemas, core arch.Core, kv lib.KeyValueStore, actionBatchChan <-chan arch.ActionBatch, actionChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) *Client {
+func New(schemas arch.ArchSchemas, core arch.Core, kv lib.KeyValueStore, actionBatchChan <-chan arch.ActionBatch, actionChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) *Client {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	core.SetKV(stagedKv)
 	return &Client{
-		specs:             specs,
+		schemas:           schemas,
 		core:              core,
 		kv:                stagedKv,
 		actionBatchInChan: actionBatchChan,
@@ -83,7 +83,7 @@ func (c *Client) applyBatch(batch arch.ActionBatch) (bool, error) {
 	}
 	tickActionInBatch := false
 	for ii, action := range batch.Actions {
-		if err := c.specs.Actions.ExecuteAction(action, c.core); err != nil {
+		if err := c.schemas.Actions.ExecuteAction(action, c.core); err != nil {
 			c.error("failed to execute action", "err", err)
 		}
 		if _, ok := action.(*arch.CanonicalTickAction); ok {
@@ -132,7 +132,7 @@ func (c *Client) SendActions(actions []arch.Action) error {
 	actionsToSend := make([]arch.Action, 0)
 	c.Simulate(func(core arch.Core) {
 		for _, action := range actions {
-			if err := c.specs.Actions.ExecuteAction(action, core); err != nil {
+			if err := c.schemas.Actions.ExecuteAction(action, core); err != nil {
 				c.error("failed to execute action", "err", err)
 				continue
 			}

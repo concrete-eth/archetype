@@ -37,9 +37,9 @@ func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
 }
 
 func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
-	specs := testutils.NewTestArchSchemas(t)
+	schemas := testutils.NewTestArchSchemas(t)
 
-	pc := precompile.NewCorePrecompile(specs, &testutils.Core{})
+	pc := precompile.NewCorePrecompile(schemas, &testutils.Core{})
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddress, pc)
 
@@ -53,13 +53,13 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 
 func TestSendAction(t *testing.T) {
 	var (
-		specs  = testutils.NewTestArchSchemas(t)
-		ethcli = newTestSimulatedBackend(t)
+		schemas = testutils.NewTestArchSchemas(t)
+		ethcli  = newTestSimulatedBackend(t)
 	)
 
 	// Create a new action sender
 	from, signerFn := newTestSignerFn(t)
-	sender := NewActionSender(ethcli, specs.Actions, nil, pcAddress, from, 0, signerFn)
+	sender := NewActionSender(ethcli, schemas.Actions, nil, pcAddress, from, 0, signerFn)
 
 	// Send an action
 	action := &testutils.ActionData_Add{}
@@ -84,7 +84,7 @@ func TestSendAction(t *testing.T) {
 	}
 
 	// Check the log
-	logAction, err := specs.Actions.LogToAction(*receipt.Logs[0])
+	logAction, err := schemas.Actions.LogToAction(*receipt.Logs[0])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,13 +105,13 @@ func waitForActionBatch(t *testing.T, actionBatchesChan <-chan arch.ActionBatch)
 
 func TestSubscribeToActionBatches(t *testing.T) {
 	var (
-		specs  = testutils.NewTestArchSchemas(t)
-		ethcli = newTestSimulatedBackend(t)
+		schemas = testutils.NewTestArchSchemas(t)
+		ethcli  = newTestSimulatedBackend(t)
 	)
 
 	// Subscribe to action batches
 	actionBatchesChan := make(chan arch.ActionBatch, 1)
-	sub := SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchesChan, nil)
+	sub := SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchesChan, nil)
 	defer sub.Unsubscribe()
 
 	// Commit and empty block
@@ -129,7 +129,7 @@ func TestSubscribeToActionBatches(t *testing.T) {
 
 	// Create a new action sender
 	from, signerFn := newTestSignerFn(t)
-	sender := NewActionSender(ethcli, specs.Actions, nil, pcAddress, from, 0, signerFn)
+	sender := NewActionSender(ethcli, schemas.Actions, nil, pcAddress, from, 0, signerFn)
 
 	// Send an action
 	action := &testutils.ActionData_Add{}
