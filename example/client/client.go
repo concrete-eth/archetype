@@ -6,9 +6,9 @@ import (
 
 	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/client"
-	"github.com/concrete-eth/archetype/example/core"
 	"github.com/concrete-eth/archetype/example/gogen/archmod"
 	"github.com/concrete-eth/archetype/example/gogen/datamod"
+	"github.com/concrete-eth/archetype/example/physics"
 	"github.com/concrete-eth/archetype/rpc"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -37,15 +37,11 @@ type Client struct {
 
 func NewClient(
 	kv lib.KeyValueStore,
-	actionBatchInChan <-chan arch.ActionBatch,
-	actionOutChan chan<- []arch.Action,
-	blockTime time.Duration,
-	blockNumber uint64,
-	hinter *rpc.TxHinter,
+	io *rpc.IO,
 ) *Client {
-	specs := arch.ArchSchemas{Actions: archmod.ActionSchemas, Tables: archmod.TableSchemas}
-	c := &core.Core{}
-	cli := client.New(specs, c, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
+	c := &physics.Core{}
+	cli := io.NewClient(kv, c)
+	hinter := io.Hinter()
 	return &Client{
 		Client: cli,
 		hinter: hinter,
@@ -90,8 +86,8 @@ func (c *Client) screenCoordToCoreCoord(x, y float32) (int32, int32) {
 	return coreX, coreY
 }
 
-func (c *Client) Core() *core.Core {
-	return c.Client.Core().(*core.Core)
+func (c *Client) Core() *physics.Core {
+	return c.Client.Core().(*physics.Core)
 }
 
 func (c *Client) AddBody(x, y, r int32) {
@@ -136,7 +132,7 @@ func (c *Client) Update() error {
 		_, hints := c.hinter.GetHints()
 
 		c.Simulate(func(_core arch.Core) {
-			core := _core.(*core.Core)
+			core := _core.(*physics.Core)
 			for _, actions := range hints {
 				for _, action := range actions {
 					switch action := action.(type) {

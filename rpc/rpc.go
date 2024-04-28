@@ -9,13 +9,20 @@ import (
 	"time"
 
 	"github.com/concrete-eth/archetype/arch"
+	"github.com/concrete-eth/archetype/client"
 	"github.com/concrete-eth/archetype/params"
 	"github.com/concrete-eth/archetype/utils"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/core/types"
 )
+
+// var (
+// 	batchTooEarlyMeter = metrics.NewRegisteredMeter("rpc/dampen/too_early", nil)
+// 	batchTooLateMeter  = metrics.NewRegisteredMeter("rpc/dampen/too_early", nil)
+// )
 
 var (
 	StandardTimeout        = 5 * time.Second // Standard timeout for RPC requests
@@ -927,4 +934,112 @@ func sendUntilEmpty[T any](in <-chan T, out chan<- T) bool {
 			return sent
 		}
 	}
+}
+
+type IO struct {
+	sender    *ActionSender
+	hinter    *TxHinter
+	cancelFns []func()
+
+	actionBatchOutChan <-chan arch.ActionBatch
+	actionInChan       chan<- []arch.Action
+
+	schemas             arch.ArchSchemas
+	blockTime           time.Duration
+	startingBlockNumber uint64
+
+	_txUpdateHook func(*ActionTxUpdate)
+}
+
+func NewIO(
+	ethcli EthCli,
+	blockTime time.Duration,
+	schemas arch.ArchSchemas,
+	auth *bind.TransactOpts,
+	gameAddress, coreAddress common.Address,
+	startingBlockNumber uint64,
+) *IO {
+	var (
+		actionChan              = make(chan []arch.Action, 8)
+		actionBatchChan         = make(chan arch.ActionBatch, 8)
+		actionBatchChanDampened = make(chan arch.ActionBatch, 1)
+		txHashChan              = make(chan common.Hash, 1)
+		txUpdateChanW           = make(chan *ActionTxUpdate, 1)
+	)
+
+	io := &IO{
+		cancelFns:           make([]func(), 0),
+		actionBatchOutChan:  actionBatchChanDampened,
+		actionInChan:        actionChan,
+		schemas:             schemas,
+		blockTime:           blockTime,
+		startingBlockNumber: startingBlockNumber,
+	}
+
+	io.sender = NewActionSender(ethcli, schemas.Actions, nil, gameAddress, auth.From, auth.Nonce.Uint64(), auth.Signer)
+	_, cancel := io.sender.StartSendingActions(actionChan, txUpdateChanW)
+	io.registerCancelFn(cancel)
+
+	sub := SubscribeActionBatches(ethcli, schemas.Actions, coreAddress, startingBlockNumber, actionBatchChan, txHashChan)
+	io.registerCancelFn(sub.unsubscribe)
+	DampenLatency(actionBatchChan, actionBatchChanDampened, blockTime, 100*time.Millisecond)
+
+	go func() {
+		for txHash := range txHashChan {
+			txUpdateChanW <- &ActionTxUpdate{
+				TxHash: txHash,
+				Status: ActionTxStatus_Included,
+			}
+		}
+	}()
+
+	txUpdateChanR := utils.ProbeChannel(txUpdateChanW, io.txUpdateHook)
+
+	io.hinter = NewTxHinter(ethcli, txUpdateChanR)
+	io.hinter.Start(blockTime / 2)
+
+	return io
+}
+
+func (io *IO) registerCancelFn(fn func()) {
+	io.cancelFns = append(io.cancelFns, fn)
+}
+
+func (io *IO) cancel() {
+	for _, fn := range io.cancelFns {
+		fn()
+	}
+}
+
+func (io *IO) txUpdateHook(txUpdate *ActionTxUpdate) {
+	if io._txUpdateHook != nil {
+		io._txUpdateHook(txUpdate)
+	}
+}
+
+func (io *IO) SetTxUpdateHook(fn func(*ActionTxUpdate)) {
+	io._txUpdateHook = fn
+}
+
+func (io *IO) ActionBatchOutChan() <-chan arch.ActionBatch {
+	return io.actionBatchOutChan
+}
+
+func (io *IO) ActionInChan() chan<- []arch.Action {
+	return io.actionInChan
+}
+
+func (io *IO) Stop() {
+	io.cancel()
+}
+
+func (io *IO) Hinter() *TxHinter {
+	return io.hinter
+}
+
+func (io *IO) NewClient(
+	kv lib.KeyValueStore,
+	core arch.Core,
+) *client.Client {
+	return client.New(io.schemas, core, kv, io.actionBatchOutChan, io.actionInChan, io.blockTime, io.startingBlockNumber)
 }
