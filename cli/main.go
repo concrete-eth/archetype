@@ -78,16 +78,15 @@ func logDebug(a ...any) {
 }
 
 func logWarning(warning string) {
-	yellow.Print("Warning: ")
-	fmt.Println(warning)
+	yellow.Fprint(os.Stderr, "Warning: ")
+	fmt.Fprintln(os.Stderr, warning)
 }
 
 func logError(err error) {
-	fmt.Println("Error:")
-	red.Println(err)
-	fmt.Println("\nContext:")
-	logDebug(string(debug.Stack()))
-	os.Exit(1)
+	fmt.Fprintln(os.Stderr, "Error:")
+	red.Fprint(os.Stderr, err)
+	fmt.Fprintln(os.Stderr, "\nContext:")
+	gray.Fprintln(os.Stderr, string(debug.Stack()))
 }
 
 func logFatal(err error) {
