@@ -20,7 +20,7 @@ const (
 	TrailLength  = uint64(16)
 	ScreenWidth  = 640
 	ScreenHeight = 720
-	PixelSize    = 2.0
+	PixelSize    = 25
 )
 
 type Client struct {
@@ -123,7 +123,7 @@ func (c *Client) Update() error {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
 		coreX, coreY := c.screenCoordToCoreCoord(float32(x), float32(y))
-		c.AddBody(coreX, coreY, 10)
+		c.AddBody(coreX, coreY, 1*physics.SCALE)
 	}
 
 	if c.hinter != nil && c.hinter.HintNonce() > c.hinterNonce {

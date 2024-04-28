@@ -12,11 +12,41 @@ import (
 )
 
 const (
-	G_NUMERATOR          int32 = 200
-	G_DENOMINATOR        int32 = 1
-	INTERVAL_NUMERATOR   int32 = 1
-	INTERVAL_DENOMINATOR int32 = 1
+	SCALE          = 100
+	GRAV     int32 = 40 * SCALE
+	INTERVAL int32 = 0.25 * SCALE
 )
+
+// mul multiplies multiple int32 fixed-point numbers and caps the result at int32 limits.
+func mul(m ...int32) int32 {
+	product := int32(SCALE)
+	for _, num := range m {
+		if num == 0 {
+			return 0
+		}
+		if utils.Abs(product) > math.MaxInt32/utils.Abs(num) {
+			if utils.Abs(product) > math.MaxInt32/utils.Abs(num)/SCALE {
+				panic("overflow")
+			} else {
+				product = product / SCALE * num
+				continue
+			}
+		}
+		product = product * num / SCALE
+	}
+	return product
+}
+
+// div divides two int32 fixed-point numbers and adjusts for overflows.
+func div(a, b int32) int32 {
+	if b == 0 {
+		panic("division by zero")
+	}
+	if a > math.MaxInt32/SCALE || a < math.MinInt32/SCALE {
+		panic("overflow")
+	}
+	return a * SCALE / b
+}
 
 type Core struct {
 	arch.BaseCore
@@ -38,7 +68,7 @@ func (c *Core) GetBody(bodyId uint8) *datamod.BodiesRow {
 
 // TODO: should this be a method [?]
 func (c *Core) Mass(r int32) int32 {
-	return r * r
+	return mul(r, r)
 }
 
 func (c *Core) NextPosition(body *datamod.BodiesRow) (int32, int32) {
@@ -66,25 +96,39 @@ func (c *Core) Acceleration(bodyId uint8, body *datamod.BodiesRow) (int32, int32
 		jm := c.Mass(jr)
 
 		d := Distance(x, y, jx, jy)
-		if d == 0 || d < r+jr {
+		if d == 0 || d < r+jr || d > math.MaxInt16 {
 			continue
 		}
 
 		// Compute force, note that we adjust calculations to avoid overflow and maintain precision
-		f := G_NUMERATOR * m * jm / (d * d) / G_DENOMINATOR
+		f := div(mul(GRAV, m, jm), mul(d, d))
 
 		dx := jx - x
 		dy := jy - y
+		dxy := utils.Abs(dx) + utils.Abs(dy)
 
 		// Calculate acceleration components
-		ax += f * dx / d / m // Normalize dx and multiply by force to get acceleration component
-		ay += f * dy / d / m // Normalize dy and multiply by force to get acceleration component
+		ax += div(mul(f, dx), mul(dxy, m)) // Normalize dx and multiply by force to get acceleration component
+		ay += div(mul(f, dy), mul(dxy, m)) // Normalize dy and multiply by force to get acceleration component
 	}
 
 	return ax, ay
 }
 
 func (c *Core) AddBody(action *archmod.ActionData_AddBody) error {
+	if utils.Abs(action.X) > math.MaxInt16 || utils.Abs(action.Y) > math.MaxInt16 {
+		return errors.New("position out of bounds")
+	}
+	if action.R == 0 {
+		return errors.New("radius too small")
+	}
+	if action.R > 100*SCALE {
+		return errors.New("radius too large")
+	}
+	if utils.Abs(action.Vx) > 100*SCALE || utils.Abs(action.Vy) > 100*SCALE {
+		return errors.New("velocity too large")
+	}
+
 	meta := c.GetMeta()
 	bodyCount := meta.GetBodyCount()
 	if bodyCount == math.MaxUint8 {
@@ -121,8 +165,8 @@ func (c *Core) Tick() {
 		iBody.SetAy(ay)
 
 		// Update velocities
-		vx := iBody.GetVx() + INTERVAL_NUMERATOR*ax/INTERVAL_DENOMINATOR
-		vy := iBody.GetVy() + INTERVAL_NUMERATOR*ay/INTERVAL_DENOMINATOR
+		vx := iBody.GetVx() + mul(INTERVAL, ax)
+		vy := iBody.GetVy() + mul(INTERVAL, ay)
 		iBody.SetVx(vx)
 		iBody.SetVy(vy)
 	}
@@ -139,6 +183,5 @@ func Distance[T constraints.Integer](x1, y1, x2, y2 T) T {
 }
 
 func IntervalDisplacement(v, a int32) int32 {
-	return INTERVAL_NUMERATOR*v/INTERVAL_DENOMINATOR +
-		a*INTERVAL_NUMERATOR*INTERVAL_NUMERATOR/(2*INTERVAL_DENOMINATOR*INTERVAL_DENOMINATOR)
+	return mul(INTERVAL, v) + div(mul(a, INTERVAL, INTERVAL), 2*SCALE)
 }

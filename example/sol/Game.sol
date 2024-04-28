@@ -10,6 +10,8 @@ import {Entrypoint} from "./solgen/EntryPoint.sol";
 import "./solgen/ICore.sol";
 
 contract Game is Entrypoint, ArchProxyAdmin, Initializable {
+    int32 internal constant scale = 100;
+
     function initialize(address _logic) public initializer {
         address proxyAddress = address(
             new ArchProxy(address(this), _logic, "")
@@ -19,9 +21,9 @@ contract Game is Entrypoint, ArchProxyAdmin, Initializable {
     }
 
     function _initialize() internal {
-        _addBody(0, 0, 30, 0, 0);
-        _addBody(-300, 0, 15, 0, -20);
-        _addBody(300, 0, 15, 0, 20);
+        _addBody(0, 0, uint32(6 * scale), 0, 0);
+        _addBody(-60 * scale, 0, uint32(2 * scale), 0, -4 * scale);
+        _addBody(60 * scale, 0, uint32(2 * scale), 0, 4 * scale);
     }
 
     function _addBody(int32 x, int32 y, uint32 r, int32 vx, int32 vy) internal {
