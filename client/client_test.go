@@ -17,16 +17,16 @@ import (
 
 func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
-		specs                    = testutils.NewTestArchSchemas(t)
-		core                     = &testutils.Core{}
-		kv                       = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan        = make(chan arch.ActionBatch)
-		actionOutChan            = make(chan []arch.Action)
-		blockTime                = 1 * time.Second
-		blockNumber       uint64 = 0
+		specs                  = testutils.NewTestArchSchemas(t)
+		core                   = &testutils.Core{}
+		kv                     = kvstore.NewMemoryKeyValueStore()
+		actionBatchChan        = make(chan arch.ActionBatch)
+		actionChan             = make(chan []arch.Action)
+		blockTime              = 1 * time.Second
+		blockNumber     uint64 = 0
 	)
-	client := New(specs, core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
-	return client, kv, actionBatchInChan, actionOutChan
+	client := New(specs, core, kv, actionBatchChan, actionChan, blockTime, blockNumber)
+	return client, kv, actionBatchChan, actionChan
 }
 
 func TestSimulate(t *testing.T) {
@@ -45,13 +45,13 @@ func TestSimulate(t *testing.T) {
 
 func TestSendActions(t *testing.T) {
 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlError, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
-	client, _, _, actionOutChan := newTestClient(t)
+	client, _, _, actionChan := newTestClient(t)
 	actionsIn := []arch.Action{&arch.CanonicalTickAction{}, &testutils.ActionData_Add{}}
 	go client.SendActions(actionsIn)
 	select {
 	case <-time.After(10 * time.Millisecond):
 		t.Fatal("timeout")
-	case actionsOut := <-actionOutChan:
+	case actionsOut := <-actionChan:
 		if !reflect.DeepEqual(actionsIn, actionsOut) {
 			t.Fatal("unexpected actions")
 		}
@@ -59,13 +59,13 @@ func TestSendActions(t *testing.T) {
 }
 
 func TestSendAction(t *testing.T) {
-	client, _, _, actionOutChan := newTestClient(t)
+	client, _, _, actionChan := newTestClient(t)
 	actionIn := &testutils.ActionData_Add{}
 	go client.SendAction(actionIn)
 	select {
 	case <-time.After(10 * time.Millisecond):
 		t.Fatal("timeout")
-	case actionsOut := <-actionOutChan:
+	case actionsOut := <-actionChan:
 		if len(actionsOut) != 1 {
 			t.Fatal("unexpected actions")
 		}
@@ -131,8 +131,8 @@ func init() {
 
 func TestSync(t *testing.T) {
 	client, _, _, _ := newTestClient(t)
-	actionBatchInChan := make(chan arch.ActionBatch, 1)
-	client.actionBatchInChan = actionBatchInChan
+	actionBatchChan := make(chan arch.ActionBatch, 1)
+	client.actionBatchInChan = actionBatchChan
 
 	didReceiveNewBatch, didTick, err := client.Sync()
 	if err != nil {
@@ -152,7 +152,7 @@ func TestSync(t *testing.T) {
 	}
 
 	for _, actionBatch := range testData {
-		actionBatchInChan <- actionBatch.batch
+		actionBatchChan <- actionBatch.batch
 		_, didTick, err = client.Sync()
 		if err != nil {
 			t.Fatal(err)
@@ -170,7 +170,7 @@ func TestSync(t *testing.T) {
 }
 
 func TestSyncUntil(t *testing.T) {
-	client, _, actionBatchInChan, _ := newTestClient(t)
+	client, _, actionBatchChan, _ := newTestClient(t)
 
 	err := client.SyncUntil(0)
 	if err != nil {
@@ -179,7 +179,7 @@ func TestSyncUntil(t *testing.T) {
 
 	go func() {
 		for _, actionBatch := range testData {
-			actionBatchInChan <- actionBatch.batch
+			actionBatchChan <- actionBatch.batch
 		}
 	}()
 
@@ -211,8 +211,8 @@ func (c *testClock) Advance(d time.Duration) {
 
 func TestInterpolatedSync(t *testing.T) {
 	client, _, _, _ := newTestClient(t)
-	actionBatchInChan := make(chan arch.ActionBatch, 1)
-	client.actionBatchInChan = actionBatchInChan
+	actionBatchChan := make(chan arch.ActionBatch, 1)
+	client.actionBatchInChan = actionBatchChan
 	clock := &testClock{}
 	client.now = clock.Now
 	startTime := clock.Now()
@@ -240,7 +240,7 @@ func TestInterpolatedSync(t *testing.T) {
 			if idx >= len(testData) {
 				break
 			}
-			actionBatchInChan <- testData[idx].batch
+			actionBatchChan <- testData[idx].batch
 			expectReceiveNewBatch = true
 			idx++
 		}

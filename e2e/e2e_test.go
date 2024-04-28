@@ -28,16 +28,16 @@ var (
 
 func newTestClient(t *testing.T) (*client.Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
 	var (
-		specs                    = testutils.NewTestArchSchemas(t)
-		core                     = &testutils.Core{}
-		kv                       = kvstore.NewMemoryKeyValueStore()
-		actionBatchInChan        = make(chan arch.ActionBatch)
-		actionOutChan            = make(chan []arch.Action)
-		blockTime                = 10 * time.Millisecond
-		blockNumber       uint64 = 0
+		specs                  = testutils.NewTestArchSchemas(t)
+		core                   = &testutils.Core{}
+		kv                     = kvstore.NewMemoryKeyValueStore()
+		actionBatchChan        = make(chan arch.ActionBatch)
+		actionOChan            = make(chan []arch.Action)
+		blockTime              = 10 * time.Millisecond
+		blockNumber     uint64 = 0
+		client                 = client.New(specs, core, kv, actionBatchChan, actionOChan, blockTime, blockNumber)
 	)
-	client := client.New(specs, core, kv, actionBatchInChan, actionOutChan, blockTime, blockNumber)
-	return client, kv, actionBatchInChan, actionOutChan
+	return client, kv, actionBatchChan, actionOChan
 }
 
 func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
@@ -67,20 +67,20 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 
 func TestE2E(t *testing.T) {
 	var (
-		specs                                       = testutils.NewTestArchSchemas(t)
-		client, _, actionBatchInChan, actionOutChan = newTestClient(t)
-		ethcli                                      = newTestSimulatedBackend(t)
-		txUpdateChan                                = make(chan *rpc.ActionTxUpdate)
+		specs                                  = testutils.NewTestArchSchemas(t)
+		client, _, actionBatchChan, actionChan = newTestClient(t)
+		ethcli                                 = newTestSimulatedBackend(t)
+		txUpdateChan                           = make(chan *rpc.ActionTxUpdate)
 	)
 
 	// Subscribe to action batches
-	sub := rpc.SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchInChan, nil)
+	sub := rpc.SubscribeActionBatches(ethcli, specs.Actions, pcAddress, 0, actionBatchChan, nil)
 	defer sub.Unsubscribe()
 
 	// Create a new action sender
 	from, signerFn := newTestSignerFn(t)
 	sender := rpc.NewActionSender(ethcli, specs.Actions, nil, pcAddress, from, 0, signerFn)
-	sender.StartSendingActions(actionOutChan, txUpdateChan)
+	sender.StartSendingActions(actionChan, txUpdateChan)
 
 	ethcli.Commit()
 

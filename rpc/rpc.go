@@ -98,16 +98,16 @@ func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
 
 // ActionBatchSubscription is a subscription to action batches emitted by a core contract.
 type ActionBatchSubscription struct {
-	ethcli            EthCli
-	actionSchemas     arch.ActionSchemas
-	coreAddress       common.Address
-	actionBatchesChan chan<- arch.ActionBatch
-	txHashesChan      chan<- common.Hash
-	unsubChan         chan struct{}
-	errChan           chan error
-	closeUnsubOnce    sync.Once
-	closeErrOnce      sync.Once
-	unsubscribed      bool
+	ethcli               EthCli
+	actionSchemas        arch.ActionSchemas
+	coreAddress          common.Address
+	actionBatchesOutChan chan<- arch.ActionBatch
+	txHashesOutChan      chan<- common.Hash
+	unsubChan            chan struct{}
+	errChan              chan error
+	closeUnsubOnce       sync.Once
+	closeErrOnce         sync.Once
+	unsubscribed         bool
 }
 
 var _ ethereum.Subscription = (*ActionBatchSubscription)(nil)
@@ -122,13 +122,13 @@ func SubscribeActionBatches(
 	txHashesChan chan<- common.Hash,
 ) *ActionBatchSubscription {
 	sub := &ActionBatchSubscription{
-		ethcli:            ethcli,
-		actionSchemas:     actionSchemas,
-		coreAddress:       coreAddress,
-		actionBatchesChan: actionBatchesChan,
-		txHashesChan:      txHashesChan,
-		unsubChan:         make(chan struct{}),
-		errChan:           make(chan error, 1),
+		ethcli:               ethcli,
+		actionSchemas:        actionSchemas,
+		coreAddress:          coreAddress,
+		actionBatchesOutChan: actionBatchesChan,
+		txHashesOutChan:      txHashesChan,
+		unsubChan:            make(chan struct{}),
+		errChan:              make(chan error, 1),
 	}
 	go sub.runSubscription(startingBlockNumber)
 	return sub
@@ -326,14 +326,14 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 	case <-s.unsubChan:
 		s.unsubscribe()
 		return nil
-	case s.actionBatchesChan <- actionBatch:
-		if s.txHashesChan != nil {
+	case s.actionBatchesOutChan <- actionBatch:
+		if s.txHashesOutChan != nil {
 			for _, log := range logBatch {
 				select {
 				case <-s.unsubChan:
 					s.unsubscribe()
 					return nil
-				case s.txHashesChan <- log.TxHash:
+				case s.txHashesOutChan <- log.TxHash:
 				}
 			}
 		}
@@ -559,7 +559,7 @@ func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transactio
 }
 
 // StartSendingActions starts sending actions from the given channel.
-func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txUpdateOutChan chan<- *ActionTxUpdate) (<-chan error, func()) {
+func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txUpdateChan chan<- *ActionTxUpdate) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
 	go func() {
@@ -573,9 +573,9 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txU
 				}
 				// Copy nonce as it will be updated during SendActions
 				nonce := a.nonce
-				if txUpdateOutChan != nil {
+				if txUpdateChan != nil {
 					// Announce the actions before sending them
-					txUpdateOutChan <- &ActionTxUpdate{Actions: actions, Nonce: nonce, Status: ActionTxStatus_Unsent}
+					txUpdateChan <- &ActionTxUpdate{Actions: actions, Nonce: nonce, Status: ActionTxStatus_Unsent}
 				}
 				tx, err := a.SendActions(actions)
 				if err != nil {
@@ -584,13 +584,13 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txU
 					default:
 					}
 				}
-				if txUpdateOutChan != nil {
+				if txUpdateChan != nil {
 					if err != nil {
 						// Announce failure
-						txUpdateOutChan <- &ActionTxUpdate{Nonce: nonce, Status: ActionTxStatus_Failed, Err: err}
+						txUpdateChan <- &ActionTxUpdate{Nonce: nonce, Status: ActionTxStatus_Failed, Err: err}
 					} else {
 						// Announce success
-						txUpdateOutChan <- &ActionTxUpdate{TxHash: tx.Hash(), Nonce: nonce, Status: ActionTxStatus_Pending}
+						txUpdateChan <- &ActionTxUpdate{TxHash: tx.Hash(), Nonce: nonce, Status: ActionTxStatus_Pending}
 					}
 				}
 			}
@@ -782,12 +782,12 @@ type TxHinter struct {
 	mutex          sync.Mutex
 }
 
-func NewTxHinter(ethcli EthCli, txUpdateInChan <-chan *ActionTxUpdate) *TxHinter {
+func NewTxHinter(ethcli EthCli, txUpdateChan <-chan *ActionTxUpdate) *TxHinter {
 	return &TxHinter{
 		txm:            NewTxMonitor(ethcli),
 		unsentActions:  make(map[uint64][]arch.Action),
 		actions:        make(map[common.Hash][]arch.Action),
-		txUpdateInChan: txUpdateInChan,
+		txUpdateInChan: txUpdateChan,
 		hintNonce:      1,
 		stopChan:       make(chan struct{}),
 	}

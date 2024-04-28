@@ -40,15 +40,15 @@ type Client struct {
 }
 
 // New create a new client object.
-func New(specs arch.ArchSchemas, core arch.Core, kv lib.KeyValueStore, actionBatchInChan <-chan arch.ActionBatch, actionOutChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) *Client {
+func New(specs arch.ArchSchemas, core arch.Core, kv lib.KeyValueStore, actionBatchChan <-chan arch.ActionBatch, actionChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) *Client {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	core.SetKV(stagedKv)
 	return &Client{
 		specs:             specs,
 		core:              core,
 		kv:                stagedKv,
-		actionBatchInChan: actionBatchInChan,
-		actionOutChan:     actionOutChan,
+		actionBatchInChan: actionBatchChan,
+		actionOutChan:     actionChan,
 		blockTime:         blockTime,
 		ticksRunThisBlock: 0,
 		now:               time.Now,
