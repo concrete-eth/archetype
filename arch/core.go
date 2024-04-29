@@ -19,8 +19,6 @@ type Core interface {
 	InBlockTickIndex() uint   // Get the in-block tick index
 }
 
-// TODO: force actions to be valid like ids [?]
-
 type BaseCore struct {
 	kv               lib.KeyValueStore
 	ds               lib.Datastore

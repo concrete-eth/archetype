@@ -364,9 +364,6 @@ type ActionSender struct {
 	signerFn        bind.SignerFn
 }
 
-// TODO: Make these methods of action specs
-// TODO: Rename action specs to something more self-explanatory
-
 // NewActionSender creates a new ActionSender.
 func NewActionSender(
 	ethcli EthCli,
@@ -621,9 +618,6 @@ func NewTableReader(
 		contractAddress: coreAddress,
 	}
 }
-
-// TODO: error message
-// TODO: check assumptions about method signatures
 
 // ReadTable reads a table from the contract.
 func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, error) {
