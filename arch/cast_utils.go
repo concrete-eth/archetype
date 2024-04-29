@@ -6,59 +6,59 @@ import (
 	"reflect"
 )
 
-// ConvertStruct copies the fields from src to dest if they have the same name and type.
-// All fields in dest must be set.
-func ConvertStruct(src interface{}, dest interface{}) error {
+// ConvertStruct copies the fields from src to dst if they have the same name and type.
+// All fields in dst must be set.
+func ConvertStruct(dst interface{}, src interface{}) error {
 	srcVal := reflect.ValueOf(src)
 	if !isStruct(srcVal.Type()) {
 		return fmt.Errorf("expected src to be a struct, got %v", srcVal.Type())
 	}
 
-	destVal := reflect.ValueOf(dest)
-	if !isStructPtr(destVal.Type()) {
-		return fmt.Errorf("expected dest to be a pointer to a struct, got %v", destVal.Type())
+	dstVal := reflect.ValueOf(dst)
+	if !isStructPtr(dstVal.Type()) {
+		return fmt.Errorf("expected dst to be a pointer to a struct, got %v", dstVal.Type())
 	}
 
-	destElem := destVal.Elem()
-	destType := destElem.Type()
+	dstElem := dstVal.Elem()
+	dstType := dstElem.Type()
 
-	for i := 0; i < destElem.NumField(); i++ {
-		destField := destElem.Field(i)
-		destFieldType := destType.Field(i)
-		if !destField.CanSet() {
-			return fmt.Errorf("field %s is not settable", destFieldType.Name)
+	for i := 0; i < dstElem.NumField(); i++ {
+		dstField := dstElem.Field(i)
+		dstFieldType := dstType.Field(i)
+		if !dstField.CanSet() {
+			return fmt.Errorf("field %s is not settable", dstFieldType.Name)
 		}
-		srcField := srcVal.FieldByName(destFieldType.Name)
+		srcField := srcVal.FieldByName(dstFieldType.Name)
 		if !srcField.IsValid() {
-			return fmt.Errorf("field %s not found", destFieldType.Name)
+			return fmt.Errorf("field %s not found", dstFieldType.Name)
 		}
-		if srcField.Type() != destField.Type() {
-			return fmt.Errorf("field %s has different type", destFieldType.Name)
+		if srcField.Type() != dstField.Type() {
+			return fmt.Errorf("field %s has different type", dstFieldType.Name)
 		}
-		destField.Set(srcField)
+		dstField.Set(srcField)
 	}
 
 	return nil
 }
 
 // CanPopulateStruct returns an error if it is not possible to populate a struct with the values returned by the Get<field name> methods in src.
-func CanPopulateStruct(srcType reflect.Type, destType reflect.Type) error {
+func CanPopulateStruct(dstType reflect.Type, srcType reflect.Type) error {
 	if !isStruct(srcType) && !isStructPtr(srcType) {
 		return errors.New("src is not a struct or a pointer to a struct")
 	}
-	if !isStructPtr(destType) {
-		return errors.New("dest is not a pointer to a struct")
+	if !isStructPtr(dstType) {
+		return errors.New("dst is not a pointer to a struct")
 	}
 
-	destElemType := destType.Elem()
+	dstElemType := dstType.Elem()
 
 	// TODO: checks to avoid panics
-	// TODO: dest vs dst
+	// TODO: dst vs dst
 
-	for i := 0; i < destElemType.NumField(); i++ {
-		destField := destElemType.Field(i)
-		destFieldType := destElemType.Field(i)
-		getMethodName := "Get" + destFieldType.Name
+	for i := 0; i < dstElemType.NumField(); i++ {
+		dstField := dstElemType.Field(i)
+		dstFieldType := dstElemType.Field(i)
+		getMethodName := "Get" + dstFieldType.Name
 		srcGetMethod, ok := srcType.MethodByName(getMethodName)
 		if !ok {
 			return fmt.Errorf("method %s not found", getMethodName)
@@ -66,35 +66,35 @@ func CanPopulateStruct(srcType reflect.Type, destType reflect.Type) error {
 		if srcGetMethod.Type.NumOut() != 1 {
 			return errors.New("method has more than one return value")
 		}
-		if srcGetMethod.Type.Out(0) != destField.Type {
-			return fmt.Errorf("field %s has different type", destFieldType.Name)
+		if srcGetMethod.Type.Out(0) != dstField.Type {
+			return fmt.Errorf("field %s has different type", dstFieldType.Name)
 		}
 	}
 
 	return nil
 }
 
-// PopulateStruct sets all the fields in dest to the values returned by the Get<field name> methods in src.
-func PopulateStruct(src interface{}, dest interface{}) error {
-	if err := CanPopulateStruct(reflect.TypeOf(src), reflect.TypeOf(dest)); err != nil {
+// PopulateStruct sets all the fields in dst to the values returned by the Get<field name> methods in src.
+func PopulateStruct(dst interface{}, src interface{}) error {
+	if err := CanPopulateStruct(reflect.TypeOf(dst), reflect.TypeOf(src)); err != nil {
 		return err
 	}
 	var (
-		srcVal       = reflect.ValueOf(src)
-		destVal      = reflect.ValueOf(dest)
-		destElem     = destVal.Elem()
-		destElemType = destElem.Type()
+		srcVal      = reflect.ValueOf(src)
+		dstVal      = reflect.ValueOf(dst)
+		dstElem     = dstVal.Elem()
+		dstElemType = dstElem.Type()
 	)
-	for i := 0; i < destElem.NumField(); i++ {
+	for i := 0; i < dstElem.NumField(); i++ {
 		var (
-			destField     = destElem.Field(i)
-			destTypeField = destElemType.Field(i)
-			getMethodName = "Get" + destTypeField.Name
+			dstField      = dstElem.Field(i)
+			dstTypeField  = dstElemType.Field(i)
+			getMethodName = "Get" + dstTypeField.Name
 			srcGetMethod  = srcVal.MethodByName(getMethodName)
 			values        = srcGetMethod.Call(nil)
 			value         = values[0]
 		)
-		destField.Set(value)
+		dstField.Set(value)
 	}
 	return nil
 }

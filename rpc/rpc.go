@@ -661,7 +661,7 @@ func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, 
 
 	// Convert result to canonical type
 	row := reflect.New(schema.Type).Interface()
-	if err := arch.ConvertStruct(ret, row); err != nil {
+	if err := arch.ConvertStruct(row, ret); err != nil {
 		return nil, err
 	}
 
