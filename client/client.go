@@ -37,6 +37,8 @@ type Client struct {
 	lock sync.Mutex
 
 	now func() time.Time
+
+	_tickTime time.Duration
 }
 
 // New create a new client object.
@@ -52,6 +54,8 @@ func New(schemas arch.ArchSchemas, core arch.Core, kv lib.KeyValueStore, actionB
 		blockTime:         blockTime,
 		ticksRunThisBlock: 0,
 		now:               time.Now,
+
+		_tickTime: blockTime / time.Duration(core.TicksPerBlock()),
 	}
 }
 
@@ -63,6 +67,10 @@ func (c *Client) Core() arch.Core {
 // BlockTime returns the block time.
 func (c *Client) BlockTime() time.Duration {
 	return c.blockTime
+}
+
+func (c *Client) TickTime() time.Duration {
+	return c._tickTime
 }
 
 // func (c *Client) debug(msg string, ctx ...interface{}) {
@@ -220,10 +228,10 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 
 	var (
 		ticksPerBlock = c.core.TicksPerBlock()
-		tickPeriod    = c.blockTime / time.Duration(ticksPerBlock) // TODO: Only compute this once
+		tickTime      = c.TickTime()
 	)
 
-	targetTicks := uint(c.now().Sub(c.lastNewBatchTime)/tickPeriod) + 1
+	targetTicks := uint(c.now().Sub(c.lastNewBatchTime)/tickTime) + 1
 	targetTicks = utils.Min(targetTicks, ticksPerBlock) // Cap index to ticksPerBlock
 
 	if c.ticksRunThisBlock >= targetTicks {

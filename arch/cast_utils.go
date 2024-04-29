@@ -52,9 +52,6 @@ func CanPopulateStruct(dstType reflect.Type, srcType reflect.Type) error {
 
 	dstElemType := dstType.Elem()
 
-	// TODO: checks to avoid panics
-	// TODO: dst vs dst
-
 	for i := 0; i < dstElemType.NumField(); i++ {
 		dstField := dstElemType.Field(i)
 		dstFieldType := dstElemType.Field(i)

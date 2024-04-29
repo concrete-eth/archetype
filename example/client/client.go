@@ -31,8 +31,6 @@ type Client struct {
 	positionHistory   map[uint8]map[uint64][2]int32 // bodyId -> tickIndex -> [x, y]
 	hinterNonce       uint64
 	anticipatedBodies map[uint8][3]int32 // bodyId -> [x, y, r]
-
-	_tickTime time.Duration
 }
 
 func NewClient(
@@ -50,8 +48,6 @@ func NewClient(
 		positionHistory:   make(map[uint8]map[uint64][2]int32),
 		hinterNonce:       0,
 		anticipatedBodies: make(map[uint8][3]int32),
-
-		_tickTime: cli.BlockTime() / time.Duration(c.TicksPerBlock()),
 	}
 }
 
@@ -214,7 +210,7 @@ func (c *Client) drawTrail(screen *ebiten.Image, bodyId uint8, body *datamod.Bod
 func (c *Client) interpolatedPosition(bodyId uint8, body *datamod.BodiesRow) (int32, int32) {
 	x, y := body.GetX(), body.GetY()
 	nx, ny := c.Core().NextPosition(body)
-	tickFraction := time.Since(c.lastTickTime).Seconds() / float64(c._tickTime.Seconds())
+	tickFraction := time.Since(c.lastTickTime).Seconds() / float64(c.TickTime().Seconds())
 	ix := x + int32(float64(nx-x)*tickFraction)
 	iy := y + int32(float64(ny-y)*tickFraction)
 	return ix, iy
