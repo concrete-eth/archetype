@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	simulated "github.com/concrete-eth/archetype/sim"
+	"github.com/concrete-eth/archetype/simulated"
 	snapshot_types "github.com/concrete-eth/archetype/snapshot/types"
 	"github.com/concrete-eth/archetype/snapshot/utils"
 	"github.com/ethereum/go-ethereum"

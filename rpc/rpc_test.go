@@ -9,7 +9,7 @@ import (
 
 	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/precompile"
-	"github.com/concrete-eth/archetype/sim"
+	"github.com/concrete-eth/archetype/simulated"
 	"github.com/concrete-eth/archetype/testutils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -36,7 +36,7 @@ func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
 	return opts.From, opts.Signer
 }
 
-func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
+func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
 	schemas := testutils.NewTestArchSchemas(t)
 
 	pc := precompile.NewCorePrecompile(schemas, &testutils.Core{})
@@ -46,7 +46,7 @@ func newTestSimulatedBackend(t *testing.T) *sim.SimulatedBackend {
 	from, _ := newTestSignerFn(t)
 	alloc := core.GenesisAlloc{from: {Balance: big.NewInt(1e18)}}
 
-	return sim.NewSimulatedBackend(alloc, 1e8, registry)
+	return simulated.NewSimulatedBackend(alloc, 1e8, registry)
 }
 
 // TODO: test for bad inputs, unsubscribing, etc.

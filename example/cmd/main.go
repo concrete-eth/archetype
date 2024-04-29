@@ -15,7 +15,7 @@ import (
 	"github.com/concrete-eth/archetype/kvstore"
 	"github.com/concrete-eth/archetype/precompile"
 	"github.com/concrete-eth/archetype/rpc"
-	"github.com/concrete-eth/archetype/sim"
+	"github.com/concrete-eth/archetype/simulated"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
@@ -32,7 +32,7 @@ var (
 	pcAddr        = common.HexToAddress("0x1234")
 )
 
-func newSimulatedBackend(schemas arch.ArchSchemas, devAddresses ...common.Address) *sim.TickingSimulatedBackend {
+func newSimulatedBackend(schemas arch.ArchSchemas, devAddresses ...common.Address) *simulated.TickingSimulatedBackend {
 	pc := precompile.NewCorePrecompile(schemas, &physics.Core{})
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddr, pc)
@@ -40,10 +40,10 @@ func newSimulatedBackend(schemas arch.ArchSchemas, devAddresses ...common.Addres
 	for _, addr := range devAddresses {
 		alloc[addr] = geth_core.GenesisAccount{Balance: new(big.Int).SetUint64(1e18)}
 	}
-	return sim.NewTickingSimulatedBackend(alloc, 1e8, registry)
+	return simulated.NewTickingSimulatedBackend(alloc, 1e8, registry)
 }
 
-func deployGame(ethcli *sim.TickingSimulatedBackend, auth *bind.TransactOpts) (gameAddr common.Address, coreAddr common.Address, err error) {
+func deployGame(ethcli *simulated.TickingSimulatedBackend, auth *bind.TransactOpts) (gameAddr common.Address, coreAddr common.Address, err error) {
 	var tx *types.Transaction
 	var gameContract *game_contract.Contract
 	gameAddr, tx, gameContract, err = game_contract.DeployContract(auth, ethcli)

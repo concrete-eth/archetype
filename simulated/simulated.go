@@ -1,4 +1,4 @@
-package sim
+package simulated
 
 import (
 	"context"
