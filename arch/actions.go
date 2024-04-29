@@ -10,6 +10,7 @@ type ActionBatch struct {
 	Actions     []Action
 }
 
+// Len returns the number of actions in the batch.
 func (a ActionBatch) Len() int {
 	return len(a.Actions)
 }

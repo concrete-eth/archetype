@@ -28,6 +28,7 @@ type validId struct {
 	valid bool
 }
 
+// Raw returns the raw ID.
 func (v validId) Raw() RawIdType {
 	if !v.valid {
 		panic("Invalid id")
@@ -268,6 +269,7 @@ func (a *ActionSchemas) LogToAction(log types.Log) (Action, error) {
 	return a.CalldataToAction(log.Data)
 }
 
+// ExecuteAction executes the given action on the given target.
 func (a *ActionSchemas) ExecuteAction(action Action, target Core) error {
 	if _, ok := action.(*CanonicalTickAction); ok {
 		RunBlockTicks(target)
@@ -450,6 +452,7 @@ func (t TableSchemas) NewTableId(id RawIdType) (ValidTableId, bool) {
 	return ValidTableId{validId}, ok
 }
 
+// TableIdFromName returns the table ID for the given name, if valid.
 func (t TableSchemas) TableIdFromName(name string) (ValidTableId, bool) {
 	validId, ok := t.idFromName(name)
 	return ValidTableId{validId}, ok

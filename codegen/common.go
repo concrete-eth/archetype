@@ -20,6 +20,7 @@ type Config struct {
 	Out             string
 }
 
+// Validate validates the contents of the Config.
 func (c Config) Validate() error {
 	if c.ActionsJsonPath == "" {
 		return errors.New("actions schema path is missing")
@@ -45,6 +46,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// CheckFile checks if the given path is a file.
 func CheckFile(filePath string) error {
 	info, err := os.Stat(filePath)
 	if err != nil {
@@ -56,6 +58,7 @@ func CheckFile(filePath string) error {
 	return nil
 }
 
+// CheckDir checks if the given path is a directory.
 func CheckDir(dirPath string) error {
 	info, err := os.Stat(dirPath)
 	if err != nil {
@@ -147,6 +150,7 @@ func ExecuteTemplate(tplStr string, jsonSchemaPath, outPath string, data map[str
 	return nil
 }
 
+// GenerateSchemaDescriptionString generates a string with the description of the schemas.
 func GenerateSchemaDescriptionString(schemas []datamod.TableSchema) string {
 	sizeData := [][]string{{"Table", "KeySize", "ValueSize"}}
 	for _, schema := range schemas {

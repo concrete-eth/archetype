@@ -66,15 +66,14 @@ func (c *Core) GetBody(bodyId uint8) *datamod.BodiesRow {
 	return datamod.NewBodies(c.Datastore()).Get(bodyId)
 }
 
-// TODO: should this be a method [?]
-func (c *Core) Mass(r int32) int32 {
-	return mul(r, r)
-}
-
 func (c *Core) NextPosition(body *datamod.BodiesRow) (int32, int32) {
 	x := body.GetX() + IntervalDisplacement(body.GetVx(), body.GetAx())
 	y := body.GetY() + IntervalDisplacement(body.GetVy(), body.GetAy())
 	return x, y
+}
+
+func (c *Core) Mass(r int32) int32 {
+	return mul(r, r)
 }
 
 func (c *Core) Acceleration(bodyId uint8, body *datamod.BodiesRow) (int32, int32) {
@@ -172,16 +171,18 @@ func (c *Core) Tick() {
 	}
 }
 
+// Distance calculates the distance between two points.
+func Distance[T constraints.Integer](x1, y1, x2, y2 T) T {
+	return T(distance(int(x1), int(y1), int(x2), int(y2)))
+}
+
 func distance(x1, y1, x2, y2 int) int {
 	dx := utils.Abs(x2 - x1)
 	dy := utils.Abs(y2 - y1)
 	return (960*utils.Max(dx, dy) + 398*utils.Min(dx, dy)) / 1000
 }
 
-func Distance[T constraints.Integer](x1, y1, x2, y2 T) T {
-	return T(distance(int(x1), int(y1), int(x2), int(y2)))
-}
-
+// IntervalDisplacement calculates the displacement of an object over an interval.
 func IntervalDisplacement(v, a int32) int32 {
 	return mul(INTERVAL, v) + div(mul(a, INTERVAL, INTERVAL), 2*SCALE)
 }

@@ -673,6 +673,8 @@ type TxMonitor struct {
 	timestamps map[common.Hash]int64
 }
 
+// NewTxMonitor creates a new TxMonitor.
+// The TxMonitor is used to monitor the status of transactions. All included or stale transactions are discarded.
 func NewTxMonitor(ethcli EthCli) *TxMonitor {
 	return &TxMonitor{
 		client:     ethcli,
@@ -680,19 +682,23 @@ func NewTxMonitor(ethcli EthCli) *TxMonitor {
 	}
 }
 
+// AddTxHash adds a transaction hash to be monitored.
 func (txm *TxMonitor) AddTxHash(txHash common.Hash) {
 	txm.timestamps[txHash] = time.Now().Unix()
 }
 
+// RemoveTx removes a transaction hash from the monitor.
 func (txm *TxMonitor) RemoveTx(txHash common.Hash) {
 	delete(txm.timestamps, txHash)
 }
 
+// HasTx returns whether a transaction is being monitored.
 func (txm *TxMonitor) HasTx(txHash common.Hash) bool {
 	_, ok := txm.timestamps[txHash]
 	return ok
 }
 
+// IsPending returns whether a transaction is pending.
 func (txm *TxMonitor) IsPending(tx *types.Transaction) bool {
 	isPending, _ := txm.isPending(tx.Hash())
 	return isPending
@@ -706,6 +712,7 @@ func (txm *TxMonitor) isPending(txHash common.Hash) (bool, error) {
 	return isPending, nil
 }
 
+// Update triggers and update of the status of all monitored transactions.
 func (txm *TxMonitor) Update() bool {
 	modified := false
 	for txHash, timestamp := range txm.timestamps {
@@ -728,6 +735,7 @@ func (txm *TxMonitor) Update() bool {
 	return modified
 }
 
+// PendingTxs returns the hash all of monitored transactions that are currently pending.
 func (txm *TxMonitor) PendingTxs() []common.Hash {
 	pendingTxs := make([]common.Hash, 0, len(txm.timestamps))
 	for txHash := range txm.timestamps {
@@ -736,6 +744,7 @@ func (txm *TxMonitor) PendingTxs() []common.Hash {
 	return pendingTxs
 }
 
+// PendingTxsCount returns the number of transactions monitored that are currently pending.
 func (txm *TxMonitor) PendingTxsCount() int {
 	return len(txm.timestamps)
 }
@@ -782,6 +791,8 @@ type TxHinter struct {
 	mutex          sync.Mutex
 }
 
+// NewTxHinter creates a new TxHinter.
+// The TxHinter is used to get the actions sent by all monitored pending transactions.
 func NewTxHinter(ethcli EthCli, txUpdateChan <-chan *ActionTxUpdate) *TxHinter {
 	return &TxHinter{
 		txm:            NewTxMonitor(ethcli),
@@ -793,6 +804,7 @@ func NewTxHinter(ethcli EthCli, txUpdateChan <-chan *ActionTxUpdate) *TxHinter {
 	}
 }
 
+// GetHints returns the actions sent by all monitored pending transactions.
 func (txh *TxHinter) GetHints() (uint64, [][]arch.Action) {
 	txh.mutex.Lock()
 	defer txh.mutex.Unlock()
@@ -808,10 +820,12 @@ func (txh *TxHinter) GetHints() (uint64, [][]arch.Action) {
 	return txh.hintNonce, hints
 }
 
+// HintNonce returns the nonce of the last hint. The hint is incremented every time the hints change.
 func (txh *TxHinter) HintNonce() uint64 {
 	return txh.hintNonce
 }
 
+// Update triggers an update in the underlying TxMonitor.
 func (txh *TxHinter) Update() bool {
 	txh.mutex.Lock()
 	defer txh.mutex.Unlock()
@@ -823,6 +837,7 @@ func (txh *TxHinter) Update() bool {
 	return modified
 }
 
+// Start starts updating the TxHinter at the given interval.
 func (txh *TxHinter) Start(updateInterval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(updateInterval)
@@ -861,6 +876,7 @@ func (txh *TxHinter) upsertTransaction(txUpdate *ActionTxUpdate) {
 	txh.hintNonce++
 }
 
+// DampenLatency dampens the latency of a channel by adding a delay to cushion latency variability.
 func DampenLatency[T any](in <-chan T, out chan<- T, interval time.Duration, delay time.Duration) {
 	go func() {
 		// Send all until interval/2 has passed without any new items
@@ -951,6 +967,7 @@ type IO struct {
 	_txUpdateHook func(*ActionTxUpdate)
 }
 
+// NewIO creates a new IO.
 func NewIO(
 	ethcli EthCli,
 	blockTime time.Duration,
@@ -1037,6 +1054,7 @@ func (io *IO) Hinter() *TxHinter {
 	return io.hinter
 }
 
+// Create a new client.Client using IO for sending and receiving transactions.
 func (io *IO) NewClient(
 	kv lib.KeyValueStore,
 	core arch.Core,

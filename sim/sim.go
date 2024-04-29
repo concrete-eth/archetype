@@ -21,10 +21,12 @@ type SimulatedBackend struct {
 	db ethdb.Database
 }
 
+// NewSimulatedBackend creates a new simulated blockchain, pre-funded with the given accounts and with the given gas limit.
 func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64, concreteRegistry concrete.PrecompileRegistry) *SimulatedBackend {
 	return NewSimulatedBackendWithDatabase(rawdb.NewMemoryDatabase(), alloc, gasLimit, concreteRegistry)
 }
 
+// NewSimulatedBackendWithDatabase creates a new simulated blockchain, pre-funded with the given accounts and with the given gas limit.
 func NewSimulatedBackendWithDatabase(db ethdb.Database, alloc core.GenesisAlloc, gasLimit uint64, concreteRegistry concrete.PrecompileRegistry) *SimulatedBackend {
 	sim := &SimulatedBackend{
 		SimulatedBackend: backends.NewSimulatedBackendWithDatabase(db, alloc, gasLimit),
@@ -56,6 +58,8 @@ type TickingSimulatedBackend struct {
 	tickTarget common.Address
 }
 
+// NewTickingSimulatedBackend creates a new simulated blockchain, pre-funded with the given accounts and with the given gas limit.
+// It will automatically send a transaction to the tickTarget address every block once it is started.
 func NewTickingSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64, concreteRegistry concrete.PrecompileRegistry) *TickingSimulatedBackend {
 	tickPrivateKey, err := crypto.HexToECDSA(TickDepositorKeyHex)
 	if err != nil {

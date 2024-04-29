@@ -41,6 +41,7 @@ func ConvertStruct(src interface{}, dest interface{}) error {
 	return nil
 }
 
+// CanPopulateStruct returns an error if it is not possible to populate a struct with the values returned by the Get<field name> methods in src.
 func CanPopulateStruct(srcType reflect.Type, destType reflect.Type) error {
 	if !isStruct(srcType) && !isStructPtr(srcType) {
 		return errors.New("src is not a struct or a pointer to a struct")

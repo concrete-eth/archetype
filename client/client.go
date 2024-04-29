@@ -55,21 +55,23 @@ func New(schemas arch.ArchSchemas, core arch.Core, kv lib.KeyValueStore, actionB
 	}
 }
 
+// Core returns the core.
 func (c *Client) Core() arch.Core {
 	return c.core
 }
 
+// BlockTime returns the block time.
 func (c *Client) BlockTime() time.Duration {
 	return c.blockTime
 }
 
-func (c *Client) debug(msg string, ctx ...interface{}) {
-	log.Debug(msg, ctx...)
-}
+// func (c *Client) debug(msg string, ctx ...interface{}) {
+// 	log.Debug(msg, ctx...)
+// }
 
-func (c *Client) warn(msg string, ctx ...interface{}) {
-	log.Warn(msg, ctx...)
-}
+// func (c *Client) warn(msg string, ctx ...interface{}) {
+// 	log.Warn(msg, ctx...)
+// }
 
 func (c *Client) error(msg string, ctx ...interface{}) {
 	log.Error(msg, ctx...)

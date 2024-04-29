@@ -64,6 +64,7 @@ func (c *Core) Tick() {
 	c.mul(2)
 }
 
+// NewTestArchSchemas returns test schemas for actions and tables.
 func NewTestArchSchemas(t *testing.T) arch.ArchSchemas {
 	return arch.ArchSchemas{
 		Actions: archmod.ActionSchemas,
@@ -71,6 +72,7 @@ func NewTestArchSchemas(t *testing.T) arch.ArchSchemas {
 	}
 }
 
+// NewTestCore returns a new Core instance for testing.
 func NewTestCore(t *testing.T) *Core {
 	return &Core{}
 }
