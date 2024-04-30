@@ -196,8 +196,8 @@ func getPackageImportPath(path string) (string, error) {
 
 /* Verbose */
 
-// loadSchemaFromFile loads a table schema from a json file.
-func loadSchemaFromFile(filePath string) ([]datamod.TableSchema, error) {
+// loadSchemasFromFile loads table schemas from a json file.
+func loadSchemasFromFile(filePath string) ([]datamod.TableSchema, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -205,9 +205,9 @@ func loadSchemaFromFile(filePath string) ([]datamod.TableSchema, error) {
 	return datamod.UnmarshalTableSchemas(data, false)
 }
 
-// printSchemaDescription prints a description of a table schema.
-func printSchemaDescription(title string, schema []datamod.TableSchema) {
-	description := codegen.GenerateSchemaDescriptionString(schema)
+// printSchemasDescription prints a description of table schemas.
+func printSchemasDescription(title string, schemas []datamod.TableSchema) {
+	description := codegen.GenerateSchemasDescriptionString(schemas)
 	bold.Println(title)
 	fmt.Println(description)
 }
@@ -376,16 +376,16 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	}
 
 	// Validate schema files
-	actionsSchema, err := loadSchemaFromFile(gogenConfig.ActionsJsonPath)
+	actionsSchemas, err := loadSchemasFromFile(gogenConfig.ActionsJsonPath)
 	if err != nil {
 		logFatal(err)
 	}
-	tablesSchema, err := loadSchemaFromFile(gogenConfig.TablesJsonPath)
+	tablesSchemas, err := loadSchemasFromFile(gogenConfig.TablesJsonPath)
 	if err != nil {
 		logFatal(err)
 	}
 
-	for _, schema := range actionsSchema {
+	for _, schema := range actionsSchemas {
 		if len(schema.Keys) > 0 {
 			logWarning(fmt.Sprintf("Action %s has keys defined. Keys are not supported in actions.", schema.Name))
 			hasPreliminaryWarnings = true
@@ -398,9 +398,9 @@ func runCodegen(cmd *cobra.Command, args []string) {
 
 	if verbose {
 		// Print schema descriptions
-		printSchemaDescription("Actions", actionsSchema)
+		printSchemasDescription("Actions", actionsSchemas)
 		fmt.Println("")
-		printSchemaDescription("Tables", tablesSchema)
+		printSchemasDescription("Tables", tablesSchemas)
 		fmt.Println("")
 	}
 

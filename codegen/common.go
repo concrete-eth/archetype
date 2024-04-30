@@ -105,7 +105,7 @@ func ExecuteTemplate(tplStr string, jsonSchemaPath, outPath string, data map[str
 		}
 		data["Schemas"] = schemas
 		data["Json"] = string(jsonContent)
-		data["Comment"] = GenerateSchemaDescriptionString(schemas)
+		data["Comment"] = GenerateSchemasDescriptionString(schemas)
 	}
 
 	data["ArchParams"] = params.ValueParams
@@ -150,8 +150,8 @@ func ExecuteTemplate(tplStr string, jsonSchemaPath, outPath string, data map[str
 	return nil
 }
 
-// GenerateSchemaDescriptionString generates a string with the description of the schemas.
-func GenerateSchemaDescriptionString(schemas []datamod.TableSchema) string {
+// GenerateSchemasDescriptionString generates a string with the description of the schemas.
+func GenerateSchemasDescriptionString(schemas []datamod.TableSchema) string {
 	sizeData := [][]string{{"Table", "KeySize", "ValueSize"}}
 	for _, schema := range schemas {
 		keySize := 0
