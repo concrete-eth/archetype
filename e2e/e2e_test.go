@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/concrete-eth/archetype/arch"
-	"github.com/concrete-eth/archetype/client"
 	"github.com/concrete-eth/archetype/kvstore"
 	"github.com/concrete-eth/archetype/precompile"
 	"github.com/concrete-eth/archetype/rpc"
@@ -15,41 +13,27 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
-	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var (
-	chainId       = big.NewInt(1337)
-	pcAddress     = common.HexToAddress("0x1234")
-	privateKeyHex = "b6caec81f24a057222a99f925671a845f5f27944e627e4097e5d7689b8981511"
+	testChainId       = big.NewInt(1337)
+	testPcAddress     = common.HexToAddress("0x1234")
+	testPrivateKeyHex = "b6caec81f24a057222a99f925671a845f5f27944e627e4097e5d7689b8981511"
 )
 
-func newTestClient(t *testing.T) (*client.Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
-	var (
-		schemas                = testutils.NewTestArchSchemas(t)
-		core                   = &testutils.Core{}
-		kv                     = kvstore.NewMemoryKeyValueStore()
-		actionBatchChan        = make(chan arch.ActionBatch)
-		actionOChan            = make(chan []arch.Action)
-		blockTime              = 10 * time.Millisecond
-		blockNumber     uint64 = 0
-		client                 = client.New(schemas, core, kv, actionBatchChan, actionOChan, blockTime, blockNumber)
-	)
-	return client, kv, actionBatchChan, actionOChan
-}
-
-func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
-	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+func newTestTxOpts(t *testing.T) *bind.TransactOpts {
+	privateKey, err := crypto.HexToECDSA(testPrivateKeyHex)
 	if err != nil {
 		t.Fatal(err)
 	}
-	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, chainId)
+	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, testChainId)
+	opts.Nonce = common.Big0
 	if err != nil {
 		t.Fatal(err)
 	}
-	return opts.From, opts.Signer
+	return opts
 }
 
 func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
@@ -57,9 +41,9 @@ func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
 
 	pc := precompile.NewCorePrecompile(schemas, &testutils.Core{})
 	registry := concrete.NewRegistry()
-	registry.AddPrecompile(0, pcAddress, pc)
+	registry.AddPrecompile(0, testPcAddress, pc)
 
-	from, _ := newTestSignerFn(t)
+	from := newTestTxOpts(t).From
 	alloc := core.GenesisAlloc{from: {Balance: big.NewInt(1e18)}}
 
 	return simulated.NewSimulatedBackend(alloc, 1e8, registry)
@@ -67,23 +51,27 @@ func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
 
 func TestE2E(t *testing.T) {
 	var (
-		schemas                                = testutils.NewTestArchSchemas(t)
-		client, _, actionBatchChan, actionChan = newTestClient(t)
-		ethcli                                 = newTestSimulatedBackend(t)
-		txUpdateChan                           = make(chan *rpc.ActionTxUpdate)
+		blockTime                  = 10 * time.Millisecond
+		startingBlockNumber uint64 = 0
+		kv                         = kvstore.NewMemoryKeyValueStore()
+		core                       = &testutils.Core{}
+	)
+	var (
+		ethcli  = newTestSimulatedBackend(t)
+		auth    = newTestTxOpts(t)
+		schemas = testutils.NewTestArchSchemas(t)
+		io      = rpc.NewIO(ethcli, blockTime, schemas, auth, testPcAddress, testPcAddress, startingBlockNumber)
+		client  = io.NewClient(kv, core)
 	)
 
-	// Subscribe to action batches
-	sub := rpc.SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchChan, nil)
-	defer sub.Unsubscribe()
-
-	// Create a new action sender
-	from, signerFn := newTestSignerFn(t)
-	sender := rpc.NewActionSender(ethcli, schemas.Actions, nil, pcAddress, from, 0, signerFn)
-	sender.StartSendingActions(actionChan, txUpdateChan)
+	txUpdateChan := make(chan *rpc.ActionTxUpdate, 1)
+	io.SetTxUpdateHook(func(txUpdate *rpc.ActionTxUpdate) {
+		txUpdateChan <- txUpdate
+	})
 
 	ethcli.Commit()
 
+	// Sync
 	if err := client.SyncUntil(2); err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +119,7 @@ func TestE2E(t *testing.T) {
 	}
 
 	// Read the counter from the chain
-	tableGetter := rpc.NewTableReader(ethcli, schemas.Tables, pcAddress)
+	tableGetter := rpc.NewTableReader(ethcli, schemas.Tables, testPcAddress)
 	_remoteCounter, err := tableGetter.Read("Counter")
 	if err != nil {
 		t.Fatal(err)
