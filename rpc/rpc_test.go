@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"reflect"
 	"testing"
@@ -49,8 +50,6 @@ func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
 	return simulated.NewSimulatedBackend(alloc, 1e8, registry)
 }
 
-// TODO: test for bad inputs, unsubscribing, etc.
-
 func TestSendAction(t *testing.T) {
 	var (
 		schemas = testutils.NewTestArchSchemas(t)
@@ -90,6 +89,27 @@ func TestSendAction(t *testing.T) {
 	}
 	if !reflect.DeepEqual(logAction, action) {
 		t.Fatalf("expected action, got %v", logAction)
+	}
+}
+
+func TestSendBadAction(t *testing.T) {
+	var (
+		schemas = testutils.NewTestArchSchemas(t)
+		ethcli  = newTestSimulatedBackend(t)
+	)
+
+	// Create a new action sender
+	from, signerFn := newTestSignerFn(t)
+	sender := NewActionSender(ethcli, schemas.Actions, nil, pcAddress, from, 0, signerFn)
+
+	// Send an action
+	action := &struct{}{}
+	tx, err := sender.SendAction(action)
+	if tx != nil {
+		t.Fatal("expected nil tx")
+	}
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
 
@@ -147,5 +167,37 @@ func TestSubscribeToActionBatches(t *testing.T) {
 	}
 	if !reflect.DeepEqual(batch.Actions[0], action) {
 		t.Fatalf("expected action, got %v", batch.Actions[0])
+	}
+}
+
+var errBadEthcli = errors.New("bad ethcli")
+
+type badEthcli struct {
+	EthCli
+}
+
+func (b *badEthcli) BlockNumber(ctx context.Context) (uint64, error) {
+	return 0, errBadEthcli
+}
+
+func TestSubscribeToActionBatchesError(t *testing.T) {
+	var (
+		schemas = testutils.NewTestArchSchemas(t)
+		ethcli  = &badEthcli{EthCli: newTestSimulatedBackend(t)}
+	)
+
+	// Subscribe to action batches
+	actionBatchesChan := make(chan arch.ActionBatch, 1)
+	sub := SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchesChan, nil)
+	defer sub.Unsubscribe()
+
+	timeout := time.After(10 * time.Millisecond)
+	select {
+	case <-timeout:
+		t.Fatal("timeout")
+	case err := <-sub.Err():
+		if err != errBadEthcli {
+			t.Fatalf("expected errBadEthcli, got %v", err)
+		}
 	}
 }
