@@ -1,63 +1,24 @@
-Todo
-
-- Clean concrete CLI and more
-- Port from ark: evm, gas, rpc, headless, precompile, snapshot, kvstore, sol proxy and tick master, snapshot sidecar
-- Port lib from ark: ebiten renderer, decren, utils, simulated, web play
-
-# How it works
-
-# Cli
-
-## Codegen
-
-Given a definition for tables where data is stored and pre-defined actions 
-
-Generate Solidity and Golang bindings for a Concrete Datamod definition
-
-Takes a tables.json and actions.json and generates Solidity and Golang.
-
-tables.json: Defines one or more tables e.g.,
-
-```json
-{
-    "config": {
-        "schema": {
-            "startBlock": "uint64",
-            "maxPlayers": "uint8"
-        }
-    },
-    "players": {
-        "keySchema": {
-            "playerId": "uint8"
-        },
-        "schema": {
-            "x": "int16",
-            "y": "int16",
-            "health": "uint8"
-        }
-    }
-}
 ```
+Core
+- client     : headless client keeping local state in sync
+- rpc        : objects that interact with the chain (action subs, tx sender, tx hinter)
+- arch       : the arch interface
+- precompile : wrapper to put core logic in a precompile
 
-actions.json: Defines one or more actions e.g.,
+Libs
+- kvstore : key-value store
+- utils   : math (max, min, abs, etc) and channel (fork, probe) utils
+- sol     : solidity contracts (proxy and proxy admin)
 
-```json
-{
-    "tick": {
-        "schema": {}
-    },
-    "move": {
-        "schema": {
-            "playerId": "uint8",
-            "direction": "uint8"
-        }
-    }
-}
+CLI
+- cli     : cli tool
+- codegen : code generation
+
+Testing
+- e2e       : end-to-end test
+- simulated : extended geth simulated backend for testing
+- testutils : counter app for testing
+
+Example
+- example : example app
 ```
-
-Built in actions
-Tick
-
-Built in tables
-Tick config
-- TicksPerBlock
