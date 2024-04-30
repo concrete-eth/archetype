@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="robots" content="noindex, nofollow">
+    <title>Archetype</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        .loader-container,
+        .error-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: black;
+        }
+
+        .loader-spinner {
+            border: 5px solid black;
+            border-top-color: white;
+            border-radius: 100%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            -webkit-animation: spin 1s ease-in-out infinite;
+        }
+
+        .loader-status {
+            margin-top: 25px;
+            color: white;
+            text-align: center;
+            font-family: monospace;
+        }
+
+        .error-status {
+            color: white;
+            text-align: left;
+            font-family: monospace;
+            max-width: 500px;
+        }
+
+        .error-status>p {
+            line-height: 1.5;
+        }
+
+        @keyframes spin {
+            to {
+                -webkit-transform: rotate(360deg);
+            }
+        }
+
+        @-webkit-keyframes spin {
+            to {
+                -webkit-transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="wasm_exec.js"></script>
+
+    <script>
+        (function () {
+            if (!WebAssembly.instantiateStreaming) {
+                WebAssembly.instantiateStreaming = async (resp, importObject) => {
+                    const source = await (await resp).arrayBuffer();
+                    return await WebAssembly.instantiate(source, importObject);
+                };
+            }
+
+            const go = new Go();
+            WebAssembly.instantiateStreaming(fetch("play.wasm", { mode: 'cors' }), go.importObject).then(result => {
+                go.run(result.instance);
+            });
+
+            window.addEventListener("load", function () {
+                document.body.focus();
+            });
+        })();
+    </script>
+
+    <div id="loader-container-main" class="loader-container">
+        <div class="loader-spinner"></div>
+        <div id="loader-status-main" class="loader-status">Loading WebAssembly...</div>
+    </div>
+</body>
+
+</html>

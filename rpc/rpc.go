@@ -973,6 +973,7 @@ func NewIO(
 	auth *bind.TransactOpts,
 	gameAddress, coreAddress common.Address,
 	startingBlockNumber uint64,
+	dampenDelay time.Duration,
 ) *IO {
 	var (
 		actionChan              = make(chan []arch.Action, 8)
@@ -997,7 +998,7 @@ func NewIO(
 
 	sub := SubscribeActionBatches(ethcli, schemas.Actions, coreAddress, startingBlockNumber, actionBatchChan, txHashChan)
 	io.registerCancelFn(sub.unsubscribe)
-	DampenLatency(actionBatchChan, actionBatchChanDampened, blockTime, 100*time.Millisecond)
+	DampenLatency(actionBatchChan, actionBatchChanDampened, blockTime, dampenDelay)
 
 	go func() {
 		for txHash := range txHashChan {

@@ -120,7 +120,7 @@ func main() {
 		blockTime           = 1 * time.Second
 		startingBlockNumber = uint64(0)
 	)
-	io := rpc.NewIO(ethcli, blockTime, schemas, auth, gameAddr, coreAddr, startingBlockNumber)
+	io := rpc.NewIO(ethcli, blockTime, schemas, auth, gameAddr, coreAddr, startingBlockNumber, 0)
 	io.SetTxUpdateHook(func(txUpdate *rpc.ActionTxUpdate) {
 		log.Info("Transaction "+txUpdate.Status.String(), "nonce", txUpdate.Nonce, "txHash", txUpdate.TxHash.Hex())
 	})

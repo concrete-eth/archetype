@@ -60,7 +60,7 @@ func TestE2E(t *testing.T) {
 		ethcli  = newTestSimulatedBackend(t)
 		auth    = newTestTxOpts(t)
 		schemas = testutils.NewTestArchSchemas(t)
-		io      = rpc.NewIO(ethcli, blockTime, schemas, auth, testPcAddress, testPcAddress, startingBlockNumber)
+		io      = rpc.NewIO(ethcli, blockTime, schemas, auth, testPcAddress, testPcAddress, startingBlockNumber, 0)
 		client  = io.NewClient(kv, core)
 	)
 

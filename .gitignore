@@ -1,5 +1,5 @@
 cache
 out
 bin
-.wasm
+*.wasm
 node_modules
