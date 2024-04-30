@@ -344,7 +344,9 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 // Unsubscribe unsubscribes from the action batch subscription and closes the error channel.
 // It does not close the action batch channel.
 func (s *ActionBatchSubscription) Unsubscribe() {
-	s.unsubChan <- struct{}{}
+	if !s.hasUnsubscribed() {
+		s.unsubChan <- struct{}{}
+	}
 }
 
 // Err returns the subscription error channel. Only one value will ever be sent.
@@ -960,6 +962,8 @@ type IO struct {
 
 	_txUpdateHook func(*ActionTxUpdate)
 }
+
+// TODO: use context instead of cancel funcs
 
 // NewIO creates a new IO.
 func NewIO(
