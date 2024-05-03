@@ -32,7 +32,7 @@ type SnapshotResponse struct {
 	Storage []byte `json:"storage"`
 }
 
-type FilterQuery struct {
+type SnapshotQuery struct {
 	BlockHash common.Hash      `json:"blockHash"`
 	Addresses []common.Address `json:"addresses"`
 }

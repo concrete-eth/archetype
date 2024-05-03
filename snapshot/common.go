@@ -16,7 +16,8 @@ type (
 	SnapshotMetadata           = snapshot_types.SnapshotMetadata
 	SnapshotMetadataWithStatus = snapshot_types.SnapshotMetadataWithStatus
 	SnapshotResponse           = snapshot_types.SnapshotResponse
-	FilterQuery                = snapshot_types.FilterQuery
+	SnapshotQuery              = snapshot_types.SnapshotQuery
+	Schedule                   = snapshot_types.Schedule
 )
 
 const (

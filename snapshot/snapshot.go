@@ -31,9 +31,9 @@ var (
 )
 
 type SnapshotWriter interface {
-	New(addresses []common.Address, blockHash common.Hash) ([]SnapshotMetadataWithStatus, error)
-	Update(addresses []common.Address, blockHash common.Hash) ([]SnapshotMetadataWithStatus, error)
-	Delete(query FilterQuery) error
+	New(query SnapshotQuery) ([]SnapshotMetadataWithStatus, error)
+	Update(query SnapshotQuery) ([]SnapshotMetadataWithStatus, error)
+	Delete(query SnapshotQuery) error
 	Prune() error
 	AddSchedule(schedule snapshot_types.Schedule) (snapshot_types.ScheduleResponse, error)
 	DeleteSchedule(id uint64) error
@@ -343,10 +343,14 @@ func (s *snapshotReaderWriter) runScheduler() {
 	s.scheduler.RunSchedule(blockNumber, func(schedule snapshot_types.Schedule) {
 		var res []SnapshotMetadataWithStatus
 		var err error
+		query := SnapshotQuery{
+			Addresses: schedule.Addresses,
+			BlockHash: blockHash,
+		}
 		if schedule.Replace {
-			res, err = s.Update(schedule.Addresses, blockHash)
+			res, err = s.Update(query)
 		} else {
-			res, err = s.New(schedule.Addresses, blockHash)
+			res, err = s.New(query)
 		}
 		if err != nil {
 			logger.Error("Scheduled snapshot generation failed", "err", err)
@@ -375,15 +379,19 @@ func (s *snapshotReaderWriter) snapshotStatus(metadata SnapshotMetadata) (Snapsh
 	}
 }
 
-func (s *snapshotReaderWriter) New(addresses []common.Address, blockHash common.Hash) (r []SnapshotMetadataWithStatus, err error) {
-	return s.newOrUpdate(addresses, blockHash, false)
+func (s *snapshotReaderWriter) New(query SnapshotQuery) (r []SnapshotMetadataWithStatus, err error) {
+	return s.newOrUpdate(query, false)
 }
 
-func (s *snapshotReaderWriter) Update(addresses []common.Address, blockHash common.Hash) (r []SnapshotMetadataWithStatus, err error) {
-	return s.newOrUpdate(addresses, blockHash, true)
+func (s *snapshotReaderWriter) Update(query SnapshotQuery) (r []SnapshotMetadataWithStatus, err error) {
+	return s.newOrUpdate(query, true)
 }
 
-func (s *snapshotReaderWriter) newOrUpdate(addresses []common.Address, blockHash common.Hash, replace bool) (r []SnapshotMetadataWithStatus, err error) {
+func (s *snapshotReaderWriter) newOrUpdate(query SnapshotQuery, replace bool) (r []SnapshotMetadataWithStatus, err error) {
+	var (
+		addresses = query.Addresses
+		blockHash = query.BlockHash
+	)
 	defer func() {
 		if err == nil {
 			logger.Info("New snapshots", "blockHash", blockHash, "addresses", len(addresses))
@@ -496,7 +504,7 @@ func (s *snapshotReaderWriter) queueSnapshotGeneration(metadata SnapshotMetadata
 	}
 }
 
-func (s *snapshotReaderWriter) Delete(query FilterQuery) (err error) {
+func (s *snapshotReaderWriter) Delete(query SnapshotQuery) (err error) {
 	defer func() {
 		if err == nil {
 			logger.Info("Deleted snapshots", "blockHash", query.BlockHash, "addresses", len(query.Addresses))
@@ -517,7 +525,7 @@ func (s *snapshotReaderWriter) Delete(query FilterQuery) (err error) {
 	return s.deleteAll()
 }
 
-func (s *snapshotReaderWriter) deleteByAddressAndBlock(query FilterQuery) error {
+func (s *snapshotReaderWriter) deleteByAddressAndBlock(query SnapshotQuery) error {
 	found, _ := s.lookupSnapshots(query.Addresses, query.BlockHash)
 	batch := s.db.NewBatch()
 	for address := range found {

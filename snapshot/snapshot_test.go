@@ -285,7 +285,7 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	// New snapshot
-	mm, err := writer.New([]common.Address{address}, blockHash)
+	mm, err := writer.New(SnapshotQuery{Addresses: []common.Address{address}, BlockHash: blockHash})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -312,7 +312,7 @@ func TestSnapshot(t *testing.T) {
 	blockHash = sim.BlockChain().CurrentBlock().Hash()
 
 	// Update snapshot
-	mm, err = writer.Update([]common.Address{address}, blockHash)
+	mm, err = writer.Update(SnapshotQuery{Addresses: []common.Address{address}, BlockHash: blockHash})
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -342,7 +342,7 @@ func TestSnapshot(t *testing.T) {
 	blockHash = sim.BlockChain().CurrentBlock().Hash()
 
 	// New snapshot
-	mm, err = writer.New([]common.Address{contractAddress}, blockHash)
+	mm, err = writer.New(SnapshotQuery{Addresses: []common.Address{contractAddress}, BlockHash: blockHash})
 	checkError(t, err)
 	if len(mm) != 1 {
 		t.Errorf("expected 1 metadata, got %v", len(mm))
@@ -464,7 +464,7 @@ func TestScheduler(t *testing.T) {
 
 	// New snapshots
 	blockHash = sim.BlockChain().CurrentBlock().Hash()
-	_, err = writer.New([]common.Address{contractAddress}, blockHash)
+	_, err = writer.New(SnapshotQuery{Addresses: []common.Address{contractAddress}, BlockHash: blockHash})
 	checkError(t, err)
 	sim.Commit()
 

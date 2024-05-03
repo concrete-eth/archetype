@@ -14,6 +14,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const (
+	SnapshotNamespace = "arch"
+)
+
 func NewRegistry() concrete.PrecompileRegistry {
 	schemas := arch.ArchSchemas{Actions: archmod.ActionSchemas, Tables: archmod.TableSchemas}
 	core := &physics.Core{}
@@ -27,7 +31,7 @@ func NewRegistry() concrete.PrecompileRegistry {
 
 func SnapshotWriterConstructor(ethereum *eth.Ethereum) rpc.ConcreteRPC {
 	return rpc.ConcreteRPC{
-		Namespace:     "arch",
+		Namespace:     SnapshotNamespace,
 		Authenticated: true,
 		Service:       snapshot.Root.NewWriter(ethereum),
 	}
@@ -37,7 +41,7 @@ var _ rpc.ConcreteRPCConstructor = SnapshotWriterConstructor
 
 func SnapshotReaderConstructor(ethereum *eth.Ethereum) rpc.ConcreteRPC {
 	return rpc.ConcreteRPC{
-		Namespace:     "arch",
+		Namespace:     SnapshotNamespace,
 		Authenticated: false,
 		Service:       snapshot.Root.NewReader(ethereum),
 	}
