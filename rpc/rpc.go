@@ -570,6 +570,9 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txU
 				if !ok {
 					return
 				}
+				if len(actions) == 0 {
+					continue
+				}
 				// Copy nonce as it will be updated during SendActions
 				nonce := a.nonce
 				if txUpdateChan != nil {
