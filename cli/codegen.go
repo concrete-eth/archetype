@@ -267,7 +267,6 @@ func getForgeBuildOut() string {
 // runCodegen runs the full code generation process.
 func runCodegen(cmd *cobra.Command, args []string) {
 	startTime := time.Now()
-	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
 	verbose := viper.GetBool("verbose")
 
 	if verbose {
@@ -437,6 +436,7 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	// Done
 	logInfo("\nCode generation completed successfully.")
 	logInfo("Files written to: " + gogenConfig.Out + ", " + solgenConfig.Out)
+	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
 }
 
 // runCommand runs a command and logs it as a task, returning an error if the command fails.
