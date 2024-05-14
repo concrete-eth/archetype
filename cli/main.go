@@ -21,15 +21,22 @@ func logWarning(warning string) {
 	fmt.Fprintln(os.Stderr, warning)
 }
 
-func logError(err error) {
+func logError(err error, context bool) {
 	fmt.Fprintln(os.Stderr, "Error:")
-	red.Fprint(os.Stderr, err)
-	fmt.Fprintln(os.Stderr, "\nContext:")
-	gray.Fprintln(os.Stderr, string(debug.Stack()))
+	red.Fprintln(os.Stderr, err)
+	if context {
+		fmt.Fprintln(os.Stderr, "Context:")
+		gray.Fprintln(os.Stderr, string(debug.Stack()))
+	}
 }
 
 func logFatal(err error) {
-	logError(err)
+	logError(err, true)
+	os.Exit(1)
+}
+
+func logFatalNoContext(err error) {
+	logError(err, false)
 	os.Exit(1)
 }
 

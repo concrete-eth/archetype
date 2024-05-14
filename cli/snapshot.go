@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 
 	"github.com/concrete-eth/archetype/example/engine"
 	"github.com/concrete-eth/archetype/snapshot"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/spf13/cobra"
@@ -37,12 +39,23 @@ func methodName(name string) string {
 }
 
 func newRpcClient(cmd *cobra.Command) *rpc.Client {
-	// TODO: secret
+	opts := make([]rpc.ClientOption, 0)
+
+	jwtSecretHex, err := cmd.Flags().GetString("jwt-secret")
+	if err != nil {
+		logFatal(err)
+	}
+	if jwtSecretHex != "" {
+		jwtSecret := common.HexToHash(jwtSecretHex)
+		opts = append(opts, rpc.WithHTTPAuth(node.NewJWTAuth(jwtSecret)))
+	}
+
 	rpcUrl, err := cmd.Flags().GetString("rpc-url")
 	if err != nil {
 		logFatal(err)
 	}
-	rpcClient, err := rpc.Dial(rpcUrl)
+
+	rpcClient, err := rpc.DialOptions(context.Background(), rpcUrl, opts...)
 	if err != nil {
 		logFatal(err)
 	}
@@ -54,9 +67,15 @@ func getSnapshotQuery(cmd *cobra.Command) *snapshot.SnapshotQuery {
 	if err != nil {
 		logFatal(err)
 	}
+	if blockHashHex == "" {
+		logFatalNoContext(errors.New("block hash is required"))
+	}
 	addressesHex, err := cmd.Flags().GetStringSlice("address")
 	if err != nil {
 		logFatal(err)
+	}
+	if len(addressesHex) == 0 {
+		logFatalNoContext(errors.New("at least one address is required"))
 	}
 
 	blockHash := common.HexToHash(blockHashHex)
@@ -76,7 +95,7 @@ func runNewSnapshot(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
 	query := getSnapshotQuery(cmd)
 	if err := rpcClient.Call(nil, methodName("new"), query); err != nil {
-		logFatal(err)
+		logFatalNoContext(err)
 	}
 }
 
@@ -84,14 +103,14 @@ func runDeleteSnapshot(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
 	query := getSnapshotQuery(cmd)
 	if err := rpcClient.Call(nil, methodName("delete"), query); err != nil {
-		logFatal(err)
+		logFatalNoContext(err)
 	}
 }
 
 func runPruneSnapshots(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
 	if err := rpcClient.Call(nil, methodName("prune")); err != nil {
-		logFatal(err)
+		logFatalNoContext(err)
 	}
 }
 
@@ -100,6 +119,11 @@ func runAddSchedule(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logFatal(err)
 	}
+
+	if len(addressesHex) == 0 {
+		logFatalNoContext(errors.New("at least one address is required"))
+	}
+
 	addresses := make([]common.Address, len(addressesHex))
 	for _, addressHex := range addressesHex {
 		addresses = append(addresses, common.HexToAddress(addressHex))
@@ -110,7 +134,7 @@ func runAddSchedule(cmd *cobra.Command, args []string) {
 		logFatal(err)
 	}
 	if blockPeriod == 0 {
-		logFatal(errors.New("block period must be at least 1"))
+		logFatalNoContext(errors.New("block period must be at least 1"))
 	}
 
 	replace, err := cmd.Flags().GetBool("replace")
@@ -126,7 +150,7 @@ func runAddSchedule(cmd *cobra.Command, args []string) {
 
 	rpcClient := newRpcClient(cmd)
 	if err := rpcClient.Call(nil, methodName("addSchedule"), schedule); err != nil {
-		logFatal(err)
+		logFatalNoContext(err)
 	}
 }
 
@@ -138,7 +162,7 @@ func runDeleteSchedule(cmd *cobra.Command, args []string) {
 
 	rpcClient := newRpcClient(cmd)
 	if err := rpcClient.Call(nil, methodName("deleteSchedule"), id); err != nil {
-		logFatal(err)
+		logFatalNoContext(err)
 	}
 }
 
@@ -175,25 +199,24 @@ func runSnapshotGet(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logFatal(err)
 	}
+	if addressHex == "" {
+		logFatalNoContext(errors.New("address is required"))
+	}
+	address := common.HexToAddress(addressHex)
+
 	hasBlockHash := cmd.Flags().Changed("block-hash")
 	blockHashHex, err := cmd.Flags().GetString("block-hash")
 	if err != nil {
 		logFatal(err)
 	}
-
-	address := common.HexToAddress(addressHex)
-
-	var blockHash common.Hash
-	if hasBlockHash {
-		blockHash = common.HexToHash(blockHashHex)
-	}
+	blockHash := common.HexToHash(blockHashHex)
 
 	rpcClient := newRpcClient(cmd)
 
 	if hasBlockHash {
 		var resp snapshot.SnapshotResponse
 		if err := rpcClient.Call(&resp, methodName("get"), address, blockHash); err != nil {
-			logFatal(err)
+			logFatalNoContext(err)
 		}
 		printSnapshotResponse(resp)
 	} else {
@@ -204,13 +227,13 @@ func runSnapshotGet(cmd *cobra.Command, args []string) {
 		if listAll {
 			var resp []snapshot.SnapshotMetadataWithStatus
 			if err := rpcClient.Call(&resp, methodName("list"), address); err != nil {
-				logFatal(err)
+				logFatalNoContext(err)
 			}
 			printSnapshotMetadataWithStatus(resp...)
 		} else {
 			var resp snapshot.SnapshotMetadataWithStatus
 			if err := rpcClient.Call(&resp, methodName("last"), address); err != nil {
-				logFatal(err)
+				logFatalNoContext(err)
 			}
 			printSnapshotMetadataWithStatus(resp)
 		}
@@ -220,9 +243,8 @@ func runSnapshotGet(cmd *cobra.Command, args []string) {
 func runSnapshotSchedulesGet(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
 	var resp []snapshot.Schedule
-	err := rpcClient.Call(&resp, methodName("getSchedules"))
-	if err != nil {
-		logFatal(err)
+	if err := rpcClient.Call(&resp, methodName("getSchedules")); err != nil {
+		logFatalNoContext(err)
 	}
 	for _, schedule := range resp {
 		printSnapshotSchedules(schedule)
@@ -270,6 +292,8 @@ func AddSnapshotCommand(parent *cobra.Command) {
 	snapshotScheduleGet := &cobra.Command{Use: "schedules", Short: "get schedules", Run: runSnapshotSchedulesGet}
 	snapshotScheduleGet.Flags().String("address", "", "contract address")
 	snapshotGetCmd.AddCommand(snapshotScheduleGet)
+
+	snapshotCmd.AddCommand(snapshotGetCmd)
 
 	parent.AddCommand(snapshotCmd)
 }
