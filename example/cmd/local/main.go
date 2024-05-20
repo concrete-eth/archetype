@@ -32,7 +32,7 @@ var (
 )
 
 func newSimulatedBackend(schemas arch.ArchSchemas, devAddresses ...common.Address) *simulated.TickingSimulatedBackend {
-	pc := precompile.NewCorePrecompile(schemas, &physics.Core{})
+	pc := precompile.NewCorePrecompile(schemas, func() arch.Core { return &physics.Core{} })
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddr, pc)
 	alloc := types.GenesisAlloc{}
@@ -77,7 +77,7 @@ func deployGame(ethcli *simulated.TickingSimulatedBackend, auth *bind.TransactOp
 	if err != nil {
 		return
 	}
-	ethcli.Commit()
+	// ethcli.Commit()
 
 	return gameAddr, coreAddr, nil
 }
