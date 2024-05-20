@@ -9,8 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/geth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
-	"github.com/ethereum/go-ethereum/concrete/rpc"
+	concrete_rpc "github.com/ethereum/go-ethereum/concrete/rpc"
 	"github.com/ethereum/go-ethereum/eth"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,29 +30,29 @@ func NewRegistry() concrete.PrecompileRegistry {
 	return registry
 }
 
-func SnapshotWriterConstructor(ethereum *eth.Ethereum) rpc.ConcreteRPC {
-	return rpc.ConcreteRPC{
+func SnapshotWriterConstructor(ethereum *eth.Ethereum) rpc.API {
+	return rpc.API{
 		Namespace:     SnapshotNamespace,
 		Authenticated: true,
 		Service:       snapshot.Root.NewWriter(ethereum),
 	}
 }
 
-var _ rpc.ConcreteRPCConstructor = SnapshotWriterConstructor
+var _ concrete_rpc.APIConstructor = SnapshotWriterConstructor
 
-func SnapshotReaderConstructor(ethereum *eth.Ethereum) rpc.ConcreteRPC {
-	return rpc.ConcreteRPC{
+func SnapshotReaderConstructor(ethereum *eth.Ethereum) rpc.API {
+	return rpc.API{
 		Namespace:     SnapshotNamespace,
 		Authenticated: false,
 		Service:       snapshot.Root.NewReader(ethereum),
 	}
 }
 
-var _ rpc.ConcreteRPCConstructor = SnapshotReaderConstructor
+var _ concrete_rpc.APIConstructor = SnapshotReaderConstructor
 
 func NewGeth() *cli.App {
 	registry := NewRegistry()
-	apis := []rpc.ConcreteRPCConstructor{
+	apis := []concrete_rpc.APIConstructor{
 		SnapshotWriterConstructor,
 		SnapshotReaderConstructor,
 	}

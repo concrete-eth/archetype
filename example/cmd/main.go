@@ -19,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
-	geth_core "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -36,9 +35,9 @@ func newSimulatedBackend(schemas arch.ArchSchemas, devAddresses ...common.Addres
 	pc := precompile.NewCorePrecompile(schemas, &physics.Core{})
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddr, pc)
-	alloc := geth_core.GenesisAlloc{}
+	alloc := types.GenesisAlloc{}
 	for _, addr := range devAddresses {
-		alloc[addr] = geth_core.GenesisAccount{Balance: new(big.Int).SetUint64(1e18)}
+		alloc[addr] = types.Account{Balance: new(big.Int).SetUint64(1e18)}
 	}
 	return simulated.NewTickingSimulatedBackend(alloc, 1e8, registry)
 }
@@ -84,7 +83,7 @@ func deployGame(ethcli *simulated.TickingSimulatedBackend, auth *bind.TransactOp
 }
 
 func main() {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
+	log.SetDefault(log.NewLogger(log.NewTerminalHandlerWithLevel(os.Stderr, log.LevelInfo, true)))
 
 	// Load tx opts
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)

@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state/snapshot"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -148,7 +147,7 @@ var (
 
 func NewTestSnapshotMaker() (*SnapshotMaker, SnapshotWriter, SnapshotReader, *simulated.SimulatedBackend) {
 	gasLimit := uint64(1e7)
-	sim := simulated.NewSimulatedBackend(core.GenesisAlloc{
+	sim := simulated.NewSimulatedBackend(types.GenesisAlloc{
 		testSenderAddress: {Balance: math.MaxBig256},
 	}, gasLimit, nil)
 	m := NewSnapshotMaker(true)

@@ -74,7 +74,7 @@ func (p *CorePrecompile) Run(env concrete.Environment, input []byte) (_ret []byt
 
 	// Wrap env in a kv store and datastore
 	var (
-		kv        = lib.NewEnvPersistentKeyValueStore(env)
+		kv        = lib.NewEnvStorageKeyValueStore(env)
 		datastore = lib.NewKVDatastore(kv)
 	)
 

@@ -2,7 +2,6 @@ package client
 
 import (
 	"math"
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -12,7 +11,6 @@ import (
 	"github.com/concrete-eth/archetype/testutils"
 	"github.com/concrete-eth/archetype/utils"
 	"github.com/ethereum/go-ethereum/concrete/lib"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 func newTestClient(t *testing.T) (*Client, lib.KeyValueStore, chan arch.ActionBatch, chan []arch.Action) {
@@ -44,7 +42,6 @@ func TestSimulate(t *testing.T) {
 }
 
 func TestSendActions(t *testing.T) {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlError, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 	client, _, _, actionChan := newTestClient(t)
 	actionsIn := []arch.Action{&arch.CanonicalTickAction{}, &testutils.ActionData_Add{}}
 	go client.SendActions(actionsIn)

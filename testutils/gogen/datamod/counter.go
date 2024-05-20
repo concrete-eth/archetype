@@ -3,20 +3,18 @@
 package datamod
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod/codec"
 	"github.com/ethereum/go-ethereum/concrete/crypto"
 	"github.com/ethereum/go-ethereum/concrete/lib"
+	"github.com/holiman/uint256"
 )
 
 // Reference imports to suppress errors if they are not used.
 var (
-	_ = crypto.Keccak256
-	_ = big.NewInt
 	_ = common.Big1
 	_ = codec.EncodeAddress
+	_ = uint256.NewInt
 )
 
 // var (
@@ -28,33 +26,33 @@ func CounterDefaultKey() []byte {
 }
 
 type CounterRow struct {
-	lib.IDatastoreStruct
+	lib.DatastoreStruct
 }
 
 func NewCounterRow(dsSlot lib.DatastoreSlot) *CounterRow {
 	sizes := []int{2}
-	return &CounterRow{lib.NewDatastoreStruct(dsSlot, sizes)}
+	return &CounterRow{*lib.NewDatastoreStruct(dsSlot, sizes)}
 }
 
 func (v *CounterRow) Get() (
 	value int16,
 ) {
-	return codec.DecodeSmallInt16(2, v.GetField(0))
+	return codec.DecodeInt16(2, v.GetField(0))
 }
 
 func (v *CounterRow) Set(
 	value int16,
 ) {
-	v.SetField(0, codec.EncodeSmallInt16(2, value))
+	v.SetField(0, codec.EncodeInt16(2, value))
 }
 
 func (v *CounterRow) GetValue() int16 {
 	data := v.GetField(0)
-	return codec.DecodeSmallInt16(2, data)
+	return codec.DecodeInt16(2, data)
 }
 
 func (v *CounterRow) SetValue(value int16) {
-	data := codec.EncodeSmallInt16(2, value)
+	data := codec.EncodeInt16(2, value)
 	v.SetField(0, data)
 }
 

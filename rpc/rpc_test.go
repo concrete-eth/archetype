@@ -15,7 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete"
-	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -45,7 +45,7 @@ func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
 	registry.AddPrecompile(0, pcAddress, pc)
 
 	from, _ := newTestSignerFn(t)
-	alloc := core.GenesisAlloc{from: {Balance: big.NewInt(1e18)}}
+	alloc := types.GenesisAlloc{from: {Balance: big.NewInt(1e18)}}
 
 	return simulated.NewSimulatedBackend(alloc, 1e8, registry)
 }

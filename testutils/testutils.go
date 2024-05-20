@@ -9,8 +9,10 @@ import (
 	"github.com/concrete-eth/archetype/testutils/gogen/datamod"
 )
 
-type ActionData_Add = archmod.ActionData_Add
-type RowData_Counter = archmod.RowData_Counter
+type (
+	ActionData_Add  = archmod.ActionData_Add
+	RowData_Counter = archmod.RowData_Counter
+)
 
 func safeAddInt16(a, b int16) (int16, bool) {
 	if b > 0 && a > math.MaxInt16-b {

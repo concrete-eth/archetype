@@ -3,20 +3,18 @@
 package datamod
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod/codec"
 	"github.com/ethereum/go-ethereum/concrete/crypto"
 	"github.com/ethereum/go-ethereum/concrete/lib"
+	"github.com/holiman/uint256"
 )
 
 // Reference imports to suppress errors if they are not used.
 var (
-	_ = crypto.Keccak256
-	_ = big.NewInt
 	_ = common.Big1
 	_ = codec.EncodeAddress
+	_ = uint256.NewInt
 )
 
 // var (
@@ -28,47 +26,47 @@ func MetaDefaultKey() []byte {
 }
 
 type MetaRow struct {
-	lib.IDatastoreStruct
+	lib.DatastoreStruct
 }
 
 func NewMetaRow(dsSlot lib.DatastoreSlot) *MetaRow {
 	sizes := []int{1, 1}
-	return &MetaRow{lib.NewDatastoreStruct(dsSlot, sizes)}
+	return &MetaRow{*lib.NewDatastoreStruct(dsSlot, sizes)}
 }
 
 func (v *MetaRow) Get() (
 	maxBodyCount uint8,
 	bodyCount uint8,
 ) {
-	return codec.DecodeSmallUint8(1, v.GetField(0)),
-		codec.DecodeSmallUint8(1, v.GetField(1))
+	return codec.DecodeUint8(1, v.GetField(0)),
+		codec.DecodeUint8(1, v.GetField(1))
 }
 
 func (v *MetaRow) Set(
 	maxBodyCount uint8,
 	bodyCount uint8,
 ) {
-	v.SetField(0, codec.EncodeSmallUint8(1, maxBodyCount))
-	v.SetField(1, codec.EncodeSmallUint8(1, bodyCount))
+	v.SetField(0, codec.EncodeUint8(1, maxBodyCount))
+	v.SetField(1, codec.EncodeUint8(1, bodyCount))
 }
 
 func (v *MetaRow) GetMaxBodyCount() uint8 {
 	data := v.GetField(0)
-	return codec.DecodeSmallUint8(1, data)
+	return codec.DecodeUint8(1, data)
 }
 
 func (v *MetaRow) SetMaxBodyCount(value uint8) {
-	data := codec.EncodeSmallUint8(1, value)
+	data := codec.EncodeUint8(1, value)
 	v.SetField(0, data)
 }
 
 func (v *MetaRow) GetBodyCount() uint8 {
 	data := v.GetField(1)
-	return codec.DecodeSmallUint8(1, data)
+	return codec.DecodeUint8(1, data)
 }
 
 func (v *MetaRow) SetBodyCount(value uint8) {
-	data := codec.EncodeSmallUint8(1, value)
+	data := codec.EncodeUint8(1, value)
 	v.SetField(1, data)
 }
 
