@@ -17,7 +17,6 @@ import (
 	"github.com/concrete-eth/archetype/codegen/solgen"
 	"github.com/concrete-eth/archetype/params"
 	"github.com/ethereum/go-ethereum/concrete/codegen/datamod"
-	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -30,14 +29,6 @@ const (
 	PRETTIER_SOL_PLUGIN = "prettier-plugin-solidity"
 	FORGE_BIN           = "forge"
 	ABIGEN_BIN          = "abigen"
-)
-
-var (
-	green  = color.New(color.FgGreen)
-	red    = color.New(color.FgRed)
-	gray   = color.New(color.FgHiBlack)
-	yellow = color.New(color.FgYellow)
-	bold   = color.New(color.Bold)
 )
 
 /* Logging */
@@ -435,8 +426,8 @@ func runCodegen(cmd *cobra.Command, args []string) {
 
 	// Done
 	logInfo("\nCode generation completed successfully.")
-	logInfo("Files written to: " + gogenConfig.Out + ", " + solgenConfig.Out)
-	logDebug(fmt.Sprintf("\nDone in %v", time.Since(startTime)))
+	logInfo("Files written to: %s, %s", gogenConfig.Out, solgenConfig.Out)
+	logDebug("\nDone in %v", time.Since(startTime))
 }
 
 // runCommand runs a command and logs it as a task, returning an error if the command fails.
@@ -614,7 +605,7 @@ func initConfig(cfgFile string) {
 			// Otherwise, print the relative path
 			configFilePathToPrint = "./" + configFileRelPath
 		}
-		logDebug("Using config file:", configFilePathToPrint)
+		logDebug("Using config file: %s", configFilePathToPrint)
 		fmt.Println("")
 	} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 		logFatal(err)
