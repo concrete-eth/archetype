@@ -136,4 +136,4 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/ethereum/go-ethereum => ../framework/concrete-geth
+replace github.com/ethereum/go-ethereum => github.com/concrete-eth/concrete-geth v0.0.0-20240520141307-8bfd9147170e
