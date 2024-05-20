@@ -995,6 +995,10 @@ func NewIO(
 		startingBlockNumber: startingBlockNumber,
 	}
 
+	if auth.Nonce == nil {
+		auth.Nonce = new(big.Int).SetUint64(0)
+	}
+
 	io.sender = NewActionSender(ethcli, schemas.Actions, nil, gameAddress, auth.From, auth.Nonce.Uint64(), auth.Signer)
 	_, cancel := io.sender.StartSendingActions(actionChan, txUpdateChanW)
 	io.registerCancelFn(cancel)

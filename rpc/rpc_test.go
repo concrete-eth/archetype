@@ -40,7 +40,7 @@ func newTestSignerFn(t *testing.T) (common.Address, bind.SignerFn) {
 func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
 	schemas := testutils.NewTestArchSchemas(t)
 
-	pc := precompile.NewCorePrecompile(schemas, &testutils.Core{})
+	pc := precompile.NewCorePrecompile(schemas, func() arch.Core { return &testutils.Core{} })
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, pcAddress, pc)
 

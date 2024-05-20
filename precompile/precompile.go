@@ -1,8 +1,6 @@
 package precompile
 
 import (
-	"fmt"
-
 	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/kvstore"
 	"github.com/ethereum/go-ethereum/concrete"
@@ -11,17 +9,17 @@ import (
 
 type CorePrecompile struct {
 	lib.BlankPrecompile
-	schemas arch.ArchSchemas
-	core    arch.Core
+	schemas         arch.ArchSchemas
+	coreConstructor func() arch.Core
 }
 
 var _ concrete.Precompile = (*CorePrecompile)(nil)
 
 // NewCorePrecompile creates a new CorePrecompile.
-func NewCorePrecompile(schemas arch.ArchSchemas, core arch.Core) *CorePrecompile {
+func NewCorePrecompile(schemas arch.ArchSchemas, coreConstructor func() arch.Core) *CorePrecompile {
 	return &CorePrecompile{
-		schemas: schemas,
-		core:    core,
+		schemas:         schemas,
+		coreConstructor: coreConstructor,
 	}
 }
 
@@ -31,13 +29,16 @@ func (p *CorePrecompile) executeAction(env concrete.Environment, kv lib.KeyValue
 	// Wrap the cached kv store in a staged kv store to save gas when writing multiple times to the same slot
 	skv := kvstore.NewStagedKeyValueStore(ckv)
 
+	// Create a new core
+	core := p.coreConstructor()
+
 	// Set the staged kv store in the core
-	p.core.SetKV(skv)
+	core.SetKV(skv)
 	// Set the block number in the core
-	p.core.SetBlockNumber(env.GetBlockNumber())
+	core.SetBlockNumber(env.GetBlockNumber())
 
 	// Execute the action
-	if err := p.schemas.Actions.ExecuteAction(action, p.core); err != nil {
+	if err := p.schemas.Actions.ExecuteAction(action, core); err != nil {
 		return err
 	}
 
@@ -62,16 +63,6 @@ func (p *CorePrecompile) IsStatic(input []byte) bool {
 }
 
 func (p *CorePrecompile) Run(env concrete.Environment, input []byte) (_ret []byte, _err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			_ret = nil
-			_err = fmt.Errorf("panic: %v", r)
-		}
-		if _err != nil {
-			fmt.Println(_err)
-		}
-	}()
-
 	// Wrap env in a kv store and datastore
 	var (
 		kv        = lib.NewEnvStorageKeyValueStore(env)
@@ -84,11 +75,9 @@ func (p *CorePrecompile) Run(env concrete.Environment, input []byte) (_ret []byt
 	}
 
 	// Execute the action if call is an action
-	action, err := p.schemas.Actions.CalldataToAction(input)
-	if err != nil {
+	if action, err := p.schemas.Actions.CalldataToAction(input); err != nil {
 		return nil, err
-	}
-	if err := p.executeAction(env, kv, action); err != nil {
+	} else if err := p.executeAction(env, kv, action); err != nil {
 		return nil, err
 	}
 

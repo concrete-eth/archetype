@@ -21,8 +21,7 @@ const (
 
 func NewRegistry() concrete.PrecompileRegistry {
 	schemas := arch.ArchSchemas{Actions: archmod.ActionSchemas, Tables: archmod.TableSchemas}
-	core := &physics.Core{}
-	pc := precompile.NewCorePrecompile(schemas, core)
+	pc := precompile.NewCorePrecompile(schemas, func() arch.Core { return &physics.Core{} })
 	address := common.HexToAddress("0x80")
 	startingBlock := uint64(0)
 	registry := concrete.NewRegistry()

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/kvstore"
 	"github.com/concrete-eth/archetype/precompile"
 	"github.com/concrete-eth/archetype/rpc"
@@ -39,7 +40,7 @@ func newTestTxOpts(t *testing.T) *bind.TransactOpts {
 func newTestSimulatedBackend(t *testing.T) *simulated.SimulatedBackend {
 	schemas := testutils.NewTestArchSchemas(t)
 
-	pc := precompile.NewCorePrecompile(schemas, &testutils.Core{})
+	pc := precompile.NewCorePrecompile(schemas, func() arch.Core { return &testutils.Core{} })
 	registry := concrete.NewRegistry()
 	registry.AddPrecompile(0, testPcAddress, pc)
 
