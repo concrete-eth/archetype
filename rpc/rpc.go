@@ -3,8 +3,10 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -462,7 +464,7 @@ func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
 		defer cancel()
 		estimatedGas, err := a.gasEstimator.EstimateGas(ctx, msg)
 		if err != nil {
-			errChan <- err
+			errChan <- errors.New("failed to estimate gas:" + err.Error())
 			return
 		}
 		estGasCostChan <- estimatedGas
@@ -498,7 +500,8 @@ func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
 	tx, err := a.signAndSend(txData)
 
 	// Retry if nonce too low or too high
-	if err != nil && (err.Error() == "nonce too low" || err.Error() == "nonce too high") {
+	if err != nil && strings.HasPrefix(err.Error(), "invalid transaction nonce:") {
+		fmt.Println("Retrying with new nonce")
 		a.nonce, err = getPendingNonce(a.ethcli, a.from)
 		if err != nil {
 			return nil, err
@@ -547,8 +550,10 @@ func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transactio
 	if len(actionBatch) == 0 {
 		return nil, nil
 	} else if len(actionBatch) == 1 {
+		fmt.Println("Sending single action")
 		return a.SendAction(actionBatch[0])
 	} else {
+		fmt.Println("Sending multiple actions")
 		data, err := a.packMultiActionCall(actionBatch)
 		if err != nil {
 			return nil, err

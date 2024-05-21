@@ -24,12 +24,12 @@ var (
 {{ range $schema := .Schemas }}
 type {{ StructNameFn $schema.Name }} struct{
     {{- range $value := $schema.Values }}
-    {{$value.PascalCase}} {{$value.Type.GoType}} `json:"{{$value.Name}}"`
+    {{$value.Title}} {{$value.Type.GoType}} `json:"{{$value.Name}}"`
     {{- end }}
 }
 {{ range $value := $schema.Values }}
-func (row *{{ StructNameFn $schema.Name }}) Get{{$value.PascalCase}}() {{$value.Type.GoType}} {
-    return row.{{$value.PascalCase}}
+func (row *{{ StructNameFn $schema.Name }}) Get{{$value.Title}}() {{$value.Type.GoType}} {
+    return row.{{$value.Title}}
 }
 {{ end }}
 {{ end }}

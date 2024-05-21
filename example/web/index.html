@@ -74,7 +74,7 @@
     <script src="wasm_exec.js"></script>
 
     <script>
-        (function () {
+        (async function () {
             if (!WebAssembly.instantiateStreaming) {
                 WebAssembly.instantiateStreaming = async (resp, importObject) => {
                     const source = await (await resp).arrayBuffer();

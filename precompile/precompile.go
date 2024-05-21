@@ -1,6 +1,8 @@
 package precompile
 
 import (
+	"fmt"
+
 	"github.com/concrete-eth/archetype/arch"
 	"github.com/concrete-eth/archetype/kvstore"
 	"github.com/ethereum/go-ethereum/concrete"
@@ -72,12 +74,17 @@ func (p *CorePrecompile) Run(env concrete.Environment, input []byte) (_ret []byt
 	// Return the data if call is a table read
 	if ret, err := p.schemas.Tables.ReadPacked(datastore, input); err == nil {
 		return ret, nil
+	} else if err != arch.ErrCalldataIsNotTableRead {
+		fmt.Println("Error reading table", err)
+		return nil, err
 	}
 
 	// Execute the action if call is an action
 	if action, err := p.schemas.Actions.CalldataToAction(input); err != nil {
+		fmt.Println("Error converting calldata to action", err)
 		return nil, err
 	} else if err := p.executeAction(env, kv, action); err != nil {
+		fmt.Println("Error executing action", err)
 		return nil, err
 	}
 

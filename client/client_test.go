@@ -258,7 +258,7 @@ func TestInterpolatedSync(t *testing.T) {
 		}
 
 		// Adjust expectedCoreVal for interpolated ticks
-		targetTicks := uint(clock.Now().Sub(client.lastNewBatchTime)/tickPeriod) + 1
+		targetTicks := uint64(clock.Now().Sub(client.lastNewBatchTime)/tickPeriod) + 1
 		targetTicks = utils.Min(targetTicks, ticksPerBlock)
 		expectedCoreVal *= int16(math.Pow(2, float64(targetTicks)))
 

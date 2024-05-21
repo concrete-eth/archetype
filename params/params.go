@@ -133,6 +133,12 @@ var EntrypointContract = ContractSpecs{
 	PackageName:  "entrypoint",
 }
 
+var ArchContract = ContractSpecs{
+	FileName:     "Arch.sol",
+	ContractName: "Arch",
+	PackageName:  "arch",
+}
+
 var (
 	TickActionName  = "Tick"
 	TickActionId    = crypto.Keccak256([]byte(SolidityActionMethodName(TickActionName) + "()"))[:4]

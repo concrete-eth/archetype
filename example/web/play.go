@@ -46,21 +46,23 @@ func getURLParams() (URLParams, error) {
 		return URLParams{}, err
 	}
 
-	path := parsedUrl.Path
-	segments := strings.Split(path, "/")
-	if len(segments) != 3 {
-		return URLParams{}, fmt.Errorf("invalid path")
-	}
-
-	// Game contract address
-	gameAddressHex := segments[2]
-	if gameAddressHex == "" {
-		return URLParams{}, fmt.Errorf("address parameter is required")
-	}
-	gameAddress := common.HexToAddress(gameAddressHex)
-
 	queryParams := parsedUrl.Query()
 	var paramValue string
+
+	var gameAddressHex string
+	paramValue = queryParams.Get("address")
+
+	if common.IsHexAddress(paramValue) {
+		gameAddressHex = paramValue
+	} else {
+		path := parsedUrl.Path
+		segments := strings.Split(path, "/")
+		gameAddressHex := segments[len(segments)-1]
+		if !common.IsHexAddress(gameAddressHex) {
+			return URLParams{}, fmt.Errorf("game address not provided or not valid")
+		}
+	}
+	gameAddress := common.HexToAddress(gameAddressHex)
 
 	// RPC URL
 	paramValue = queryParams.Get("ws")
@@ -109,7 +111,7 @@ func getURLParams() (URLParams, error) {
 }
 
 func getPrivateKey() (string, error) {
-	return "", nil
+	return "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", nil
 }
 
 func setLoadStatus(status string) {
@@ -147,14 +149,14 @@ func logCrit(err error) {
 func runGameClient(params URLParams, privateKeyHex string) {
 	// Connect to rpc
 	setLoadStatus("Connecting...")
-	rpcClient, err := ethclient.Dial(params.WsURL)
+	ethcli, err := ethclient.Dial(params.WsURL)
 	if err != nil {
 		logCrit(fmt.Errorf("Failed to connect to RPC: %v", err))
 	}
 	log.Info("Connected to RPC", "url", params.WsURL)
 
 	// Create signer
-	chainId, err := rpcClient.ChainID(context.Background())
+	chainId, err := ethcli.ChainID(context.Background())
 	if err != nil {
 		logCrit(fmt.Errorf("Failed to get chain ID: %v", err))
 	}
@@ -170,14 +172,14 @@ func runGameClient(params URLParams, privateKeyHex string) {
 	from := opts.From
 
 	// Set nonce
-	nonce, err := rpcClient.PendingNonceAt(context.Background(), from)
+	nonce, err := ethcli.PendingNonceAt(context.Background(), from)
 	if err != nil {
 		panic(err)
 	}
 	opts.Nonce = new(big.Int).SetUint64(nonce)
 
 	// Get core address
-	gameContract, err := game_contract.NewContract(params.GameAddress, rpcClient)
+	gameContract, err := game_contract.NewContract(params.GameAddress, ethcli)
 	if err != nil {
 		logCrit(err)
 	}
@@ -193,14 +195,27 @@ func runGameClient(params URLParams, privateKeyHex string) {
 		startingBlockNumber = uint64(0) // TODO
 	)
 
-	io := rpc.NewIO(rpcClient, blockTime, schemas, opts, params.GameAddress, coreAddress, startingBlockNumber, params.DampeningDelay)
+	io := rpc.NewIO(ethcli, blockTime, schemas, opts, params.GameAddress, coreAddress, startingBlockNumber, params.DampeningDelay)
 	io.SetTxUpdateHook(func(txUpdate *rpc.ActionTxUpdate) {
 		log.Info("Transaction "+txUpdate.Status.String(), "nonce", txUpdate.Nonce, "txHash", txUpdate.TxHash.Hex())
 	})
+	defer io.Stop()
 
 	// Create and start client
+	setLoadStatus("Starting...")
 	kv := kvstore.NewMemoryKeyValueStore()
 	c := client.NewClient(kv, io)
+
+	setLoadStatus("Syncing...")
+	if bn, err := ethcli.BlockNumber(context.Background()); err != nil {
+		panic(err)
+	} else {
+		c.SyncUntil(bn)
+	}
+
+	setLoadStatus("Done.")
+	hideLoadStatus()
+
 	w, h := c.Layout(-1, -1)
 	ebiten.SetWindowSize(w, h)
 	ebiten.SetTPS(60)

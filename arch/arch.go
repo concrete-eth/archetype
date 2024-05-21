@@ -16,9 +16,10 @@ import (
 )
 
 var (
-	ErrInvalidAction   = errors.New("invalid action")
-	ErrInvalidActionId = errors.New("invalid action ID")
-	ErrInvalidTableId  = errors.New("invalid table ID")
+	ErrInvalidAction          = errors.New("invalid action")
+	ErrInvalidActionId        = errors.New("invalid action ID")
+	ErrInvalidTableId         = errors.New("invalid table ID")
+	ErrCalldataIsNotTableRead = errors.New("calldata is not a table read operation")
 )
 
 type RawIdType = [4]byte
@@ -377,8 +378,8 @@ func (t *tableGetter) get(datastore lib.Datastore, keys ...interface{}) (interfa
 	rowArgs := make([]reflect.Value, len(keys))
 	for i, arg := range keys {
 		argVal := reflect.ValueOf(arg)
-		if argVal.Type() != t.rowGetterType.In(i) {
-			return nil, fmt.Errorf("argument %d has wrong type", i)
+		if argVal.Type() != t.rowGetterType.In(i+1) { // First argument is the receiver
+			return nil, fmt.Errorf("argument %d has wrong type: expected %v, got %v", i, t.rowGetterType.In(i), argVal.Type())
 		}
 		rowArgs[i] = argVal
 	}
@@ -494,7 +495,7 @@ func (t *TableSchemas) TargetTableId(calldata []byte) (ValidTableId, bool) {
 func (t *TableSchemas) ReadPacked(datastore lib.Datastore, calldata []byte) ([]byte, error) {
 	tableId, ok := t.TargetTableId(calldata)
 	if !ok {
-		return nil, errors.New("calldata does not correspond to a table read operation")
+		return nil, ErrCalldataIsNotTableRead
 	}
 	schema := t.GetTableSchema(tableId)
 	keys, err := schema.Method.Inputs.UnpackValues(calldata[4:])

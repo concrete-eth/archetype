@@ -32,7 +32,7 @@ type Client struct {
 	blockTime time.Duration
 
 	lastNewBatchTime  time.Time
-	ticksRunThisBlock uint
+	ticksRunThisBlock uint64
 
 	lock sync.Mutex
 
@@ -71,6 +71,10 @@ func (c *Client) BlockTime() time.Duration {
 
 func (c *Client) TickTime() time.Duration {
 	return c._tickTime
+}
+
+func (c *Client) LastNewBatchTime() time.Time {
+	return c.lastNewBatchTime
 }
 
 // func (c *Client) debug(msg string, ctx ...interface{}) {
@@ -231,7 +235,7 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		tickTime      = c.TickTime()
 	)
 
-	targetTicks := uint(c.now().Sub(c.lastNewBatchTime)/tickTime) + 1
+	targetTicks := uint64(c.now().Sub(c.lastNewBatchTime)/tickTime) + 1
 	targetTicks = utils.Min(targetTicks, ticksPerBlock) // Cap index to ticksPerBlock
 
 	if c.ticksRunThisBlock >= targetTicks {

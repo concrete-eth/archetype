@@ -58,6 +58,7 @@ func main() {
 	io.SetTxUpdateHook(func(txUpdate *rpc.ActionTxUpdate) {
 		log.Info("Transaction "+txUpdate.Status.String(), "nonce", txUpdate.Nonce, "txHash", txUpdate.TxHash.Hex())
 	})
+	defer io.Stop()
 
 	// Create and start client
 	kv := kvstore.NewMemoryKeyValueStore()

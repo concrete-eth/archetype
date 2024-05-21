@@ -54,7 +54,7 @@ type Core struct {
 
 var _ archmod.IActions = &Core{}
 
-func (c *Core) TicksPerBlock() uint {
+func (c *Core) TicksPerBlock() uint64 {
 	return 8
 }
 

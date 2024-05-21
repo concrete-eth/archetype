@@ -21,6 +21,9 @@ var coreTpl string
 //go:embed templates/entrypoint.sol.tpl
 var entrypointTpl string
 
+//go:embed templates/arch.sol.tpl
+var archTpl string
+
 type Config struct {
 	codegen.Config
 }
@@ -67,6 +70,23 @@ func GenerateEntrypoint(config Config) error {
 	return codegen.ExecuteTemplate(entrypointTpl, config.ActionsJsonPath, outPath, data, nil)
 }
 
+// GenerateEntrypoint generates the entrypoint solidity abstract contract.
+func GenerateArch(config Config) error {
+	data := make(map[string]interface{})
+	data["Name"] = params.ArchContract.ContractName
+	data["Imports"] = []string{
+		"./" + params.ICoreContract.FileName,
+		"./" + params.EntrypointContract.FileName,
+	}
+	data["Interfaces"] = []string{
+		params.EntrypointContract.ContractName,
+		"ArchProxyAdmin",
+		"Initializable",
+	}
+	outPath := filepath.Join(config.Out, params.ArchContract.FileName)
+	return codegen.ExecuteTemplate(archTpl, "", outPath, data, nil)
+}
+
 // Codegen generates the solidity code from the given config.
 func Codegen(config Config) error {
 	if err := config.Validate(); err != nil {
@@ -83,6 +103,9 @@ func Codegen(config Config) error {
 	}
 	if err := GenerateEntrypoint(config); err != nil {
 		return errors.New("error generating solidity entrypoint: " + err.Error())
+	}
+	if err := GenerateArch(config); err != nil {
+		return errors.New("error generating solidity arch: " + err.Error())
 	}
 	return nil
 }

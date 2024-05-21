@@ -58,7 +58,7 @@ func (c *Core) Add(action *archmod.ActionData_Add) error {
 	return c.add(action.Summand)
 }
 
-func (c *Core) TicksPerBlock() uint {
+func (c *Core) TicksPerBlock() uint64 {
 	return 2
 }
 
