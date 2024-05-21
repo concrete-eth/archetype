@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/concrete-eth/archetype/example/cmd"
+	"github.com/concrete-eth/archetype/deploy"
+	game_contract "github.com/concrete-eth/archetype/example/gogen/abigen/game"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -18,7 +20,7 @@ var (
 func main() {
 	// Connect to rpc
 	fmt.Println("Connecting to", rpcUrl)
-	ethcli, chainId, err := cmd.NewEthClient(rpcUrl)
+	ethcli, chainId, err := deploy.NewEthClient(rpcUrl)
 	if err != nil {
 		panic(err)
 	}
@@ -36,7 +38,9 @@ func main() {
 
 	// Deploy game
 	fmt.Println("Deploying game")
-	gameAddr, coreAddr, err := cmd.DeployGame(ethcli, auth, pcAddr)
+	gameAddr, coreAddr, err := deploy.DeployGame(auth, ethcli, func(auth *bind.TransactOpts, ethcli bind.ContractBackend) (common.Address, *types.Transaction, deploy.InitializableProxyAdmin, error) {
+		return game_contract.DeployContract(auth, ethcli)
+	}, pcAddr, false)
 	if err != nil {
 		panic(err)
 	}

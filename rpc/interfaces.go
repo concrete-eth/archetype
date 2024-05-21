@@ -11,6 +11,7 @@ type EthCli interface {
 	bind.ContractBackend
 	ethereum.ChainReader
 	ethereum.ChainStateReader
+	ethereum.PendingStateReader
 	ethereum.LogFilterer
 	ethereum.TransactionReader
 	ethereum.TransactionSender

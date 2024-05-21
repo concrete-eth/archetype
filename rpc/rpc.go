@@ -1044,6 +1044,10 @@ func (io *IO) SetTxUpdateHook(fn func(*ActionTxUpdate)) {
 	io._txUpdateHook = fn
 }
 
+func (io *IO) RegisterCancelFn(fn func()) {
+	io.registerCancelFn(fn)
+}
+
 func (io *IO) ActionBatchOutChan() <-chan arch.ActionBatch {
 	return io.actionBatchOutChan
 }

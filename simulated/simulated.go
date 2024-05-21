@@ -464,6 +464,27 @@ func (b *SimulatedBackend) PendingNonceAt(ctx context.Context, account common.Ad
 	return b.pendingState.GetNonce(account), nil
 }
 
+func (b *SimulatedBackend) PendingBalanceAt(ctx context.Context, account common.Address) (*big.Int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.pendingState.GetBalance(account).ToBig(), nil
+}
+func (b *SimulatedBackend) PendingStorageAt(ctx context.Context, account common.Address, key common.Hash) ([]byte, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	val := b.pendingState.GetState(account, key)
+	return val[:], nil
+}
+
+func (b *SimulatedBackend) PendingTransactionCount(ctx context.Context) (uint, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return uint(b.pendingBlock.Transactions().Len()), nil
+}
+
 // SuggestGasPrice implements ContractTransactor.SuggestGasPrice. Since the simulated
 // chain doesn't have miners, we just return a gas price of 1 for any call.
 func (b *SimulatedBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
