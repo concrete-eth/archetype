@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
@@ -500,20 +499,35 @@ func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
 	tx, err := a.signAndSend(txData)
 
 	// Retry if nonce too low or too high
-	if err != nil && strings.HasPrefix(err.Error(), "invalid transaction nonce:") {
-		fmt.Println("Retrying with new nonce")
-		a.nonce, err = getPendingNonce(a.ethcli, a.from)
+	if err != nil {
+		// fmt.Println("Error sending transaction:", err)
+		if isUnexpectedNonceError(err) {
+			// fmt.Println("Retrying with new nonce")
+			a.nonce, err = getPendingNonce(a.ethcli, a.from)
+			if err != nil {
+				return nil, err
+			}
+			txData.Nonce = a.nonce
+			tx, err = a.signAndSend(txData)
+		}
 		if err != nil {
 			return nil, err
 		}
-		txData.Nonce = a.nonce
-		tx, err = a.signAndSend(txData)
 	}
 
 	// Increment nonce
 	a.nonce++
 
 	return tx, err
+}
+
+func isUnexpectedNonceError(err error) bool {
+	// Check the error message for the nonce error
+	// errors.Is(core.ErrNonceTooLow, err) etc. would be better but importing core leads to
+	// a conflict when building for WASM
+	return strings.HasPrefix(err.Error(), "invalid transaction nonce:") ||
+		strings.HasSuffix(err.Error(), "nonce too low") ||
+		strings.HasSuffix(err.Error(), "nonce is too low")
 }
 
 // signAndSend signs and sends a transaction.
@@ -550,10 +564,10 @@ func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transactio
 	if len(actionBatch) == 0 {
 		return nil, nil
 	} else if len(actionBatch) == 1 {
-		fmt.Println("Sending single action")
+		// fmt.Println("Sending single action")
 		return a.SendAction(actionBatch[0])
 	} else {
-		fmt.Println("Sending multiple actions")
+		// fmt.Println("Sending multiple actions")
 		data, err := a.packMultiActionCall(actionBatch)
 		if err != nil {
 			return nil, err
