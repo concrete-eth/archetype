@@ -500,9 +500,7 @@ func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
 
 	// Retry if nonce too low or too high
 	if err != nil {
-		// fmt.Println("Error sending transaction:", err)
 		if isUnexpectedNonceError(err) {
-			// fmt.Println("Retrying with new nonce")
 			a.nonce, err = getPendingNonce(a.ethcli, a.from)
 			if err != nil {
 				return nil, err
@@ -564,10 +562,8 @@ func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transactio
 	if len(actionBatch) == 0 {
 		return nil, nil
 	} else if len(actionBatch) == 1 {
-		// fmt.Println("Sending single action")
 		return a.SendAction(actionBatch[0])
 	} else {
-		// fmt.Println("Sending multiple actions")
 		data, err := a.packMultiActionCall(actionBatch)
 		if err != nil {
 			return nil, err
