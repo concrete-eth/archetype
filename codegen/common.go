@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"text/template"
@@ -175,4 +176,20 @@ func tabWrite(data [][]string) string {
 	}
 	w.Flush()
 	return strings.TrimSpace(buffer.String())
+}
+
+// DeleteAllFilesInDir deletes all files in the given directory.
+func DeleteAllFilesInDir(dir string) error {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		filePath := filepath.Join(dir, file.Name())
+		if err := os.Remove(filePath); err != nil {
+			return err
+		}
+	}
+	return nil
 }

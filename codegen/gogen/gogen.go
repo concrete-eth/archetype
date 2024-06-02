@@ -93,6 +93,9 @@ func GenerateTables(config Config) error {
 
 // Codegen generates the go code from the given config.
 func Codegen(config Config) error {
+	if err := codegen.DeleteAllFilesInDir(config.Out); err != nil {
+		return errors.New("error deleting files in output directory: " + err.Error())
+	}
 	if err := config.Validate(); err != nil {
 		return errors.New("error validating config for go code generation: " + err.Error())
 	}

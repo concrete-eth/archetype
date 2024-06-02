@@ -89,6 +89,9 @@ func GenerateArch(config Config) error {
 
 // Codegen generates the solidity code from the given config.
 func Codegen(config Config) error {
+	if err := codegen.DeleteAllFilesInDir(config.Out); err != nil {
+		return errors.New("error deleting files in output directory: " + err.Error())
+	}
 	if err := config.Validate(); err != nil {
 		return errors.New("error validating config for solidity code generation: " + err.Error())
 	}
