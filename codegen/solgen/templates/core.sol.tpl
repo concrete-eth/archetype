@@ -7,4 +7,4 @@ pragma solidity >=0.8.0;
 import "{{ . }}";
 {{- end }}
 
-interface {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {}
+interface {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {}

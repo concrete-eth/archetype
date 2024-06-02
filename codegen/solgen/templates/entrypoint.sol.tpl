@@ -7,8 +7,8 @@ pragma solidity >=0.8.0;
 import "{{ . }}";
 {{- end }}
 
-abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {
-    function {{.ArchParams.MultiActionMethodName}}(
+abstract contract {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {
+    function {{$.ArchParams.MultiActionMethodName}}(
         uint32[] memory actionIds,
         uint8[] memory actionCount,
         bytes[] memory actionData
@@ -24,7 +24,7 @@ abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ 
     }
 
     function _executeAction(uint32 actionId, bytes memory actionData) private {
-        if (actionId == {{.ArchParams.TickActionIdHex}}) {
+        if (actionId == {{$.ArchParams.TickActionIdHex}}) {
             {{ SolidityActionMethodNameFn .ArchParams.TickActionName }}();
         } else 
         {{- range $schema := .Schemas }}

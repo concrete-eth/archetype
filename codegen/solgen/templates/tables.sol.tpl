@@ -7,13 +7,13 @@ pragma solidity >=0.8.0;
 {{- if $schema.Values }}
 struct {{ SolidityTableStructNameFn .Name }} {
     {{- range $value := $schema.Values }}
-    {{.Type.SolType}} {{$value.Name}};
+    {{$value.Type.SolType}} {{$value.Name}};
     {{- end }}
 }
 {{ end }}
 {{- end }}
 
-interface {{.Name}} {
+interface {{$.Name}} {
 {{- range $schema := .Schemas }}
     function {{ SolidityTableMethodNameFn $schema.Name }}(
         {{- $length := len $schema.Keys -}}

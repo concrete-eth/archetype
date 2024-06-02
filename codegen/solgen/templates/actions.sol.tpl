@@ -13,7 +13,7 @@ struct {{ SolidityActionStructNameFn $schema.Name }} {
 {{ end }}
 {{- end }}
 
-interface {{.Name}} {
+interface {{$.Name}} {
     event {{$.ArchParams.ActionExecutedEventName}}(bytes4 actionId, bytes data);
 
     function {{ SolidityActionMethodNameFn $.ArchParams.TickActionName }}() external;

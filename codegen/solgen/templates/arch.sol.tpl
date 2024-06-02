@@ -11,7 +11,7 @@ import {Initializable} from "openzeppelin/proxy/Utils/Initializable.sol";
 import {ArchProxyAdmin} from "arch/ArchProxyAdmin.sol";
 import {ArchProxy} from "arch/ArchProxy.sol";
 
-abstract contract {{.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {
+abstract contract {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{ end }}{{ $v }}{{ end }} {
     function initialize(address _logic) public initializer {
         address proxyAddress = address(
             new ArchProxy(address(this), _logic, "")
