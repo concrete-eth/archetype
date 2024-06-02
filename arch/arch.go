@@ -65,6 +65,9 @@ func newArchSchemas(
 		if !ok {
 			return archSchemas{}, fmt.Errorf("no type found for schema %s", schema.Name)
 		}
+		if !isStruct(actionType) {
+			return archSchemas{}, fmt.Errorf("type for schema %s is not a struct", schema.Name)
+		}
 
 		s.schemas[id] = archSchema{
 			TableSchema: datamod.TableSchema{Name: schema.Name},
@@ -118,6 +121,11 @@ func NewActionSchemas(
 	schemas []datamod.TableSchema,
 	types map[string]reflect.Type,
 ) (ActionSchemas, error) {
+	if _, ok := types[params.TickActionName]; !ok {
+		// Add the canonical Tick action
+		schemas = append(schemas, datamod.TableSchema{Name: "Tick"})
+		types[params.TickActionName] = reflect.TypeOf(CanonicalTickAction{})
+	}
 	s, err := newArchSchemas(abi, schemas, types, params.SolidityActionMethodName)
 	if err != nil {
 		return ActionSchemas{}, err
@@ -146,9 +154,6 @@ func NewActionSchemasFromRaw(
 	if err != nil {
 		return ActionSchemas{}, err
 	}
-	// Add the canonical Tick action
-	schemas = append(schemas, datamod.TableSchema{Name: "Tick"})
-	types[params.TickActionName] = reflect.TypeOf(CanonicalTickAction{})
 	return NewActionSchemas(&ABI, schemas, types)
 }
 
@@ -379,7 +384,7 @@ func (t *tableGetter) get(datastore lib.Datastore, keys ...interface{}) (interfa
 	for i, arg := range keys {
 		argVal := reflect.ValueOf(arg)
 		if argVal.Type() != t.rowGetterType.In(i+1) { // First argument is the receiver
-			return nil, fmt.Errorf("argument %d has wrong type: expected %v, got %v", i, t.rowGetterType.In(i), argVal.Type())
+			return nil, fmt.Errorf("key for argument %d has wrong type: expected %v, got %v", i, t.rowGetterType.In(i+1), argVal.Type())
 		}
 		rowArgs[i] = argVal
 	}
