@@ -47,8 +47,8 @@ import (
 )
 
 var (
-	errBlockNumberUnsupported  = errors.New("simulatedBackend cannot access blocks other than the latest block")
-	errBlockHashUnsupported    = errors.New("simulatedBackend cannot access blocks by hash other than the latest block")
+	errBlockNumberUnsupported = errors.New("simulatedBackend cannot access blocks other than the latest block")
+	// errBlockHashUnsupported    = errors.New("simulatedBackend cannot access blocks by hash other than the latest block")
 	errBlockDoesNotExist       = errors.New("block does not exist in blockchain")
 	errTransactionDoesNotExist = errors.New("transaction does not exist")
 )
@@ -397,15 +397,17 @@ func (b *SimulatedBackend) PendingCodeAt(ctx context.Context, contract common.Ad
 	return b.pendingState.GetCode(contract), nil
 }
 
-func newRevertError(result *core.ExecutionResult) *revertError {
-	reason, errUnpack := abi.UnpackRevert(result.Revert())
-	err := errors.New("execution reverted")
+// newRevertError creates a revertError instance with the provided revert data.
+func newRevertError(revert []byte) *revertError {
+	err := vm.ErrExecutionReverted
+
+	reason, errUnpack := abi.UnpackRevert(revert)
 	if errUnpack == nil {
-		err = fmt.Errorf("execution reverted: %v", reason)
+		err = fmt.Errorf("%w: %v", vm.ErrExecutionReverted, reason)
 	}
 	return &revertError{
 		error:  err,
-		reason: hexutil.Encode(result.Revert()),
+		reason: hexutil.Encode(revert),
 	}
 }
 
@@ -449,8 +451,8 @@ func (b *SimulatedBackend) callContractAtHead(ctx context.Context, call ethereum
 		return nil, err
 	}
 	// If the result contains a revert reason, try to unpack and return it.
-	if len(res.Revert()) > 0 {
-		return nil, newRevertError(res)
+	if rev := res.Revert(); len(rev) > 0 {
+		return nil, newRevertError(rev)
 	}
 	return res.Return(), res.Err
 }
