@@ -641,7 +641,7 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 	signer := types.MakeSigner(b.blockchain.Config(), block.Number(), block.Time())
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
-		return fmt.Errorf("invalid transaction: %v", err)
+		return fmt.Errorf("invalid transaction: %w", err)
 	}
 	nonce := b.pendingState.GetNonce(sender)
 	if tx.Nonce() != nonce {

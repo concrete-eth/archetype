@@ -151,22 +151,22 @@ func runGameClient(params URLParams, privateKeyHex string) {
 	setLoadStatus("Connecting...")
 	ethcli, err := ethclient.Dial(params.WsURL)
 	if err != nil {
-		logCrit(fmt.Errorf("Failed to connect to RPC: %v", err))
+		logCrit(fmt.Errorf("Failed to connect to RPC: %w", err))
 	}
 	log.Info("Connected to RPC", "url", params.WsURL)
 
 	// Create signer
 	chainId, err := ethcli.ChainID(context.Background())
 	if err != nil {
-		logCrit(fmt.Errorf("Failed to get chain ID: %v", err))
+		logCrit(fmt.Errorf("Failed to get chain ID: %w", err))
 	}
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
-		logCrit(fmt.Errorf("Failed to parse private key: %v", err))
+		logCrit(fmt.Errorf("Failed to parse private key: %w", err))
 	}
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, chainId)
 	if err != nil {
-		logCrit(fmt.Errorf("Failed to create transactor: %v", err))
+		logCrit(fmt.Errorf("Failed to create transactor: %w", err))
 	}
 	log.Info("Loaded burner wallet", "address", opts.From)
 	from := opts.From
@@ -228,13 +228,13 @@ func main() {
 	// Get URL params
 	params, err := getURLParams()
 	if err != nil {
-		logCrit(fmt.Errorf("failed to get URL params: %v", err))
+		logCrit(fmt.Errorf("failed to get URL params: %w", err))
 	}
 
 	// Get private key
 	privateKey, err := getPrivateKey()
 	if err != nil {
-		logCrit(fmt.Errorf("failed to get burner key: %v", err))
+		logCrit(fmt.Errorf("failed to get burner key: %w", err))
 	}
 
 	// Set log level

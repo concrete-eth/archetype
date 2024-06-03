@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
@@ -463,7 +464,7 @@ func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
 		defer cancel()
 		estimatedGas, err := a.gasEstimator.EstimateGas(ctx, msg)
 		if err != nil {
-			errChan <- errors.New("failed to estimate gas:" + err.Error())
+			errChan <- fmt.Errorf("failed to estimate gas: %w", err)
 			return
 		}
 		estGasCostChan <- estimatedGas
