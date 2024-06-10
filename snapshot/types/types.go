@@ -24,7 +24,7 @@ type SnapshotMetadata struct {
 type SnapshotMetadataWithStatus struct {
 	SnapshotMetadata
 	Status SnapshotStatus `json:"status"`
-	Error  error          `json:"err"`
+	Error  string         `json:"err"`
 }
 
 type SnapshotResponse struct {

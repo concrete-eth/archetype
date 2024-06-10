@@ -3,7 +3,9 @@ package snapshot
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/big"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -14,11 +16,19 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/concrete"
+	"github.com/ethereum/go-ethereum/concrete/api"
+	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state/snapshot"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// TODO: more rigorous testing of blob generation from a previous blob
 
 func TestCompression(t *testing.T) {
 	data := []byte("test data")
@@ -145,15 +155,19 @@ var (
 	testSenderAddress = crypto.PubkeyToAddress(testKey.PublicKey)
 )
 
-func NewTestSnapshotMaker() (*SnapshotMaker, SnapshotWriter, SnapshotReader, *simulated.SimulatedBackend) {
+func NewTestSnapshotMakerWithConcrete(registry concrete.PrecompileRegistry) (*SnapshotMaker, SnapshotWriter, SnapshotReader, *simulated.SimulatedBackend) {
 	gasLimit := uint64(1e7)
 	sim := simulated.NewSimulatedBackend(types.GenesisAlloc{
 		testSenderAddress: {Balance: math.MaxBig256},
-	}, gasLimit, nil)
+	}, gasLimit, registry)
 	m := NewSnapshotMaker(true)
 	w := m.NewWriter(sim)
 	r := m.NewReader(sim)
 	return m, w, r, sim
+}
+
+func NewTestSnapshotMaker() (*SnapshotMaker, SnapshotWriter, SnapshotReader, *simulated.SimulatedBackend) {
+	return NewTestSnapshotMakerWithConcrete(nil)
 }
 
 func checkError(t *testing.T, err error) {
@@ -229,6 +243,19 @@ func checkMetadata(t *testing.T, m SnapshotMetadataWithStatus, address common.Ad
 	}
 }
 
+func _checkMetadataErr(m SnapshotMetadataWithStatus, address common.Address, blockHash common.Hash, blockNumber uint64, status SnapshotStatus) error {
+	if m.Address != address {
+		return fmt.Errorf("expected address %v, got %v", address, m.Address)
+	} else if m.BlockHash != blockHash {
+		return fmt.Errorf("expected block hash %v, got %v", blockHash, m.BlockHash)
+	} else if m.BlockNumber.Cmp(new(big.Int).SetUint64(blockNumber)) != 0 {
+		return fmt.Errorf("expected block number %v, got %v", blockNumber, m.BlockNumber)
+	} else if m.Status != status {
+		return fmt.Errorf("expected status %v, got %v", status, m.Status)
+	}
+	return nil
+}
+
 func waitForSnapshot(t *testing.T, reader SnapshotReader, address common.Address, blockHash common.Hash) SnapshotResponse {
 	startTime := time.Now()
 	for {
@@ -249,131 +276,286 @@ func waitForSnapshot(t *testing.T, reader SnapshotReader, address common.Address
 	return SnapshotResponse{}
 }
 
+type storageSetterPc struct {
+	lib.BlankPrecompile
+}
+
+func (p *storageSetterPc) Run(API api.Environment, input []byte) ([]byte, error) {
+	v := common.BytesToHash(input)
+	API.StorageStore(common.Hash{}, v)
+	return nil, nil
+}
+
+type testRegistry struct {
+	addresses []common.Address
+}
+
+var _ concrete.PrecompileRegistry = (*testRegistry)(nil)
+
+func (r *testRegistry) Precompile(addr common.Address, _ uint64) (concrete.Precompile, bool) {
+	for _, a := range r.addresses {
+		if a == addr {
+			return &storageSetterPc{}, true
+		}
+	}
+	return nil, false
+}
+
+func (r *testRegistry) Precompiles(_ uint64) concrete.PrecompileMap {
+	m := make(concrete.PrecompileMap)
+	for _, addr := range r.addresses {
+		m[addr] = &storageSetterPc{}
+	}
+	return m
+}
+
+func (r *testRegistry) ActivePrecompiles(_ uint64) []common.Address {
+	return r.addresses
+}
+
 func TestSnapshot(t *testing.T) {
-	// log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
+	log.SetDefault(log.NewLogger(log.NewTerminalHandlerWithLevel(os.Stderr, log.LevelWarn, true)))
 
-	_, writer, reader, sim := NewTestSnapshotMaker()
+	var (
+		r         = require.New(t)
+		addr1     = common.HexToAddress("0x12340001")
+		addr2     = common.HexToAddress("0x12340002")
+		addr3     = common.HexToAddress("0x12340003")
+		addresses = []common.Address{addr1, addr2, addr3}
+	)
+
+	registry := &testRegistry{addresses: addresses}
+	_, writer, reader, sim := NewTestSnapshotMakerWithConcrete(registry)
 	rw := writer.(*snapshotReaderWriter)
+
 	sim.Commit()
+	block := sim.BlockChain().CurrentBlock()
 
-	address := common.HexToAddress("0x1")
-	blockHash := sim.BlockChain().CurrentBlock().Hash()
-
-	// Get non-existent block
-	_, err := reader.Get(address, common.Hash{1})
-	if err != ErrSnapshotNotFound {
-		t.Errorf("expected ErrSnapshotNotFound, got %v", err)
-	}
-	// Get non-existent snapshot for existing block
-	_, err = reader.Get(address, blockHash)
-	if err != ErrSnapshotNotFound {
-		t.Errorf("expected ErrSnapshotNotFound, got %v", err)
-	}
-	// Get the last out of zero snapshots
-	_, err = reader.Last(address)
-	if err != ErrSnapshotNotFound {
-		t.Errorf("expected ErrSnapshotNotFound, got %v", err)
-	}
-	// Get all out of zero snapshots
-	l, err := reader.List(address)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(l) != 0 {
-		t.Errorf("expected no snapshots, got %v", l)
+	// Query non-existent snapshots
+	for _, addr := range addresses {
+		// Get non-existent block
+		_, err := reader.Get(addr, common.Hash{1})
+		r.Equal(ErrSnapshotNotFound, err)
+		// Get non-existent snapshot for existing block
+		_, err = reader.Get(addr, block.Hash())
+		r.Equal(ErrSnapshotNotFound, err)
+		// Get the last out of zero snapshots
+		_, err = reader.Last(addr)
+		r.Equal(ErrSnapshotNotFound, err)
+		// Get all out of zero snapshots
+		l, err := reader.List(addr)
+		r.NoError(err)
+		r.Len(l, 0)
 	}
 
-	// New snapshot
-	mm, err := writer.New(SnapshotQuery{Addresses: []common.Address{address}, BlockHash: blockHash})
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	// Create snapshots
+	mm, err := writer.New(SnapshotQuery{Addresses: addresses, BlockHash: block.Hash()})
+	r.NoError(err)
+	r.Len(mm, len(addresses))
+	checked := make(map[common.Address]struct{})
+	for _, m := range mm {
+		r.NotContains(checked, m.Address)
+		r.Contains(addresses, m.Address)
+		checked[m.Address] = struct{}{}
+
+		// Check metadata
+		r.Equal(block.Hash(), m.BlockHash)
+		r.Equal(block.Number, m.BlockNumber)
+		r.Equal(SnapshotStatus_Pending, m.Status)
+
+		// Get the snapshot
+		got, err := reader.Get(m.Address, block.Hash())
+		r.NoError(err)
+		r.Equal(m, got.SnapshotMetadataWithStatus)
+
+		// Get the last snapshot (not found since still pending)
+		_, err = reader.Last(addr1)
+		r.Equal(ErrSnapshotNotFound, err)
+
+		// Get all snapshots
+		list, err := reader.List(m.Address)
+		r.NoError(err)
+		r.Len(list, 1)
+		r.Equal(m, list[0])
 	}
-	if len(mm) != 1 {
-		t.Errorf("expected 1 metadata, got %v", len(mm))
+	r.Len(checked, len(addresses))
+
+	// Run snapshot worker
+	timeout := time.After(1 * time.Second)
+	for i := 0; i < len(addresses); i++ {
+		select {
+		case <-timeout:
+			t.Fatal("timeout")
+		case task := <-rw.taskQueueChan:
+			r.Contains(addresses, task.Metadata.Address)
+			rw.runSnapshotWorkerTask(task)
+		}
 	}
-	checkMetadata(t, mm[0], address, blockHash, 1, SnapshotStatus_Pending)
-	_, err = reader.Last(address)
-	if err != ErrSnapshotNotFound {
-		t.Errorf("expected ErrSnapshotNotFound, got %v", err)
+	// select {
+	// case <-rw.taskQueueChan:
+	// 	t.Fatal("expected no more tasks")
+	// default:
+	// }
+
+	// Check snapshots
+	for _, addr := range addresses {
+		m, err := reader.Last(addr)
+		r.NoError(err)
+		r.Equal(block.Hash(), m.BlockHash)
+		r.Equal(block.Number, m.BlockNumber)
+		r.Equal(SnapshotStatus_Done, m.Status)
 	}
-	if err != ErrSnapshotNotFound {
-		t.Errorf("expected ErrSnapshotNotFound, got %v", err)
-	}
-	rw.runSnapshotWorkerTask(<-rw.taskQueueChan)
-	m, err := reader.Last(address)
-	checkError(t, err)
-	checkMetadata(t, m, address, blockHash, 1, SnapshotStatus_Done)
 
 	// New block
 	// Note there are no storage changes in this block
-	previousBlockHash := blockHash
 	sim.Commit()
-	blockHash = sim.BlockChain().CurrentBlock().Hash()
+	block = sim.BlockChain().CurrentBlock()
+	prevBlock := sim.BlockChain().GetHeaderByHash(block.ParentHash)
 
-	// Update snapshot
-	mm, err = writer.Update(SnapshotQuery{Addresses: []common.Address{address}, BlockHash: blockHash})
-	if err != nil {
-		t.Errorf("expected no error, got %v", err)
+	// Update snapshots
+	mm, err = writer.Update(SnapshotQuery{Addresses: addresses, BlockHash: block.Hash()})
+	r.NoError(err)
+	r.Len(mm, len(addresses))
+	checked = make(map[common.Address]struct{})
+	for _, m := range mm {
+		r.NotContains(checked, m.Address)
+		r.Contains(addresses, m.Address)
+		checked[m.Address] = struct{}{}
+
+		// Check metadata
+		r.Equal(block.Hash(), m.BlockHash)
+		r.Equal(block.Number, m.BlockNumber)
+		r.Equal(SnapshotStatus_Done, m.Status)
+
+		// Get the previous snapshot
+		_, err = reader.Get(m.Address, prevBlock.Hash())
+		r.Equal(ErrSnapshotNotFound, err)
+
+		// Get the snapshot
+		got, err := reader.Get(m.Address, block.Hash())
+		r.NoError(err)
+		r.Equal(m, got.SnapshotMetadataWithStatus)
+
+		// Get the last snapshot
+		last, err := reader.Last(m.Address)
+		r.NoError(err)
+		r.Equal(m, last)
+
+		// Get all snapshots
+		list, err := reader.List(m.Address)
+		r.NoError(err)
+		r.Len(list, 1)
+		r.Equal(m, list[0])
 	}
-	if len(mm) != 1 {
-		t.Errorf("expected 1 metadata, got %v", len(mm))
+	r.Len(checked, len(addresses))
+
+	// Set storage
+	for ii, addr := range addresses {
+		nonce, err := sim.PendingNonceAt(context.Background(), testSenderAddress)
+		r.NoError(err)
+		gasPrice, err := sim.SuggestGasPrice(context.Background())
+		r.NoError(err)
+		gas := uint64(1e6)
+		value := big.NewInt(int64(ii + 1))
+		input := common.BigToHash(value).Bytes()
+
+		tx := types.NewTransaction(nonce, addr, common.Big0, gas, gasPrice, input)
+		signedTx, err := types.SignTx(tx, types.HomesteadSigner{}, testKey)
+		r.NoError(err)
+
+		err = sim.SendTransaction(context.Background(), signedTx)
+		r.NoError(err)
+
+		_, pending, err := sim.TransactionByHash(context.Background(), signedTx.Hash())
+		r.NoError(err)
+		r.True(pending)
 	}
-	checkMetadata(t, mm[0], address, blockHash, 2, SnapshotStatus_Done)
 
-	// Get the previous snapshot
-	res, err := reader.Get(address, previousBlockHash)
-	if err != ErrSnapshotNotFound {
-		t.Errorf("expected ErrSnapshotNotFound, got %v", err)
-	}
+	// New block
+	sim.Commit()
+	block = sim.BlockChain().CurrentBlock()
+	prevBlock = sim.BlockChain().GetHeaderByHash(block.ParentHash)
 
-	// Deploy storage tester contract
-	// A new block is created
-	contractAddress := deployStorageTester(t, sim)
+	// New snapshots with different storage
+	mm, err = writer.New(SnapshotQuery{Addresses: addresses, BlockHash: block.Hash()})
+	r.NoError(err)
+	r.Len(mm, len(addresses))
+	checked = make(map[common.Address]struct{})
+	for _, m := range mm {
+		r.NotContains(checked, m.Address)
+		r.Contains(addresses, m.Address)
+		checked[m.Address] = struct{}{}
 
-	// Set value
-	// A new block is created
-	value := common.Big2
-	setValue(t, sim, contractAddress, value)
-	if v := getValue(t, sim, contractAddress); v.Cmp(value) != 0 {
-		t.Errorf("expected value %v, got %v", value, v)
-	}
+		// Check metadata
+		r.Equal(block.Hash(), m.BlockHash)
+		r.Equal(block.Number, m.BlockNumber)
+		r.Equal(SnapshotStatus_Pending, m.Status)
 
-	blockHash = sim.BlockChain().CurrentBlock().Hash()
+		// Get the previous snapshot
+		prev, err := reader.Get(m.Address, prevBlock.Hash())
+		r.NoError(err)
+		r.Equal(prevBlock.Hash(), prev.BlockHash)
+		r.Equal(prevBlock.Number, prev.BlockNumber)
+		r.Equal(SnapshotStatus_Done, prev.Status)
+		r.NotEqual(m.StorageRoot, prev.StorageRoot)
 
-	// New snapshot
-	mm, err = writer.New(SnapshotQuery{Addresses: []common.Address{contractAddress}, BlockHash: blockHash})
-	checkError(t, err)
-	if len(mm) != 1 {
-		t.Errorf("expected 1 metadata, got %v", len(mm))
-	}
-	checkMetadata(t, mm[0], contractAddress, blockHash, 4, SnapshotStatus_Pending)
+		// Get the snapshot
+		got, err := reader.Get(m.Address, block.Hash())
+		r.NoError(err)
+		r.Equal(m, got.SnapshotMetadataWithStatus)
 
-	// Wait for snapshot
-	rw.runSnapshotWorkerTask(<-rw.taskQueueChan)
-	res, err = reader.Get(contractAddress, blockHash)
-	checkError(t, err)
-	checkMetadata(t, res.SnapshotMetadataWithStatus, contractAddress, blockHash, 4, SnapshotStatus_Done)
+		// Get the last snapshot (will be from previous block since new block is pending)
+		last, err := reader.Last(m.Address)
+		r.NoError(err)
+		r.Equal(prev.SnapshotMetadataWithStatus, last)
 
-	// Check blob
-	rawBlob, err := utils.Decompress(res.Storage)
-	checkError(t, err)
-	it := utils.BlobToStorageIt(rawBlob)
-	storage := make(map[common.Hash][]byte)
-	for it.Next() {
-		slot := it.Hash()
-		value := it.Slot()
-		storage[slot] = value
-	}
-	if len(storage) != 1 {
-		t.Errorf("expected 1 storage slot, got %v", len(storage))
-	}
-	for _, v := range storage {
-		dec, err := utils.DecodeSnapshotSlot(v)
-		checkError(t, err)
-		if dec != common.BigToHash(value) {
-			t.Errorf("expected value %v, got %v", value, dec)
+		// Get all snapshots
+		list, err := reader.List(m.Address)
+		r.NoError(err)
+		r.Len(list, 2)
+
+		if !(assert.ObjectsAreEqual(m, list[0]) && assert.ObjectsAreEqual(prev.SnapshotMetadataWithStatus, list[1])) &&
+			!(assert.ObjectsAreEqual(m, list[1]) && assert.ObjectsAreEqual(prev.SnapshotMetadataWithStatus, list[0])) {
+			t.Fatalf("expected %v and %v, got %v", m, prev.SnapshotMetadataWithStatus, list)
 		}
-		break
+	}
+
+	// Run snapshot worker
+	timeout = time.After(1 * time.Second)
+	for i := 0; i < len(addresses); i++ {
+		select {
+		case <-timeout:
+			t.Fatal("timeout")
+		case task := <-rw.taskQueueChan:
+			r.Contains(addresses, task.Metadata.Address)
+			rw.runSnapshotWorkerTask(task)
+		}
+	}
+
+	// Check snapshots
+	for ii, addr := range addresses {
+		res, err := reader.Get(addr, block.Hash())
+		r.NoError(err)
+		r.Equal(SnapshotStatus_Done, res.Status)
+		// Check storage
+		rawBlob, err := utils.Decompress(res.Storage)
+		r.NoError(err)
+		it := utils.BlobToStorageIt(rawBlob)
+		storage := make(map[common.Hash][]byte)
+		for it.Next() {
+			slot := it.Hash()
+			value := it.Slot()
+			storage[slot] = value
+		}
+		r.Len(storage, 1)
+		for k, v := range storage {
+			r.Equal(crypto.Keccak256Hash(common.Hash{}.Bytes()), k)
+			dec, err := utils.DecodeSnapshotSlot(v)
+			r.NoError(err)
+			value := big.NewInt(int64(ii + 1))
+			r.Equal(common.BigToHash(value), dec)
+			break
+		}
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	snapshot_types "github.com/concrete-eth/archetype/snapshot/types"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 var Root = NewSnapshotMaker(true)
@@ -44,4 +43,9 @@ type Ethereum interface {
 	ChainDb() ethdb.Database
 }
 
-var logger = log.Root().New("archetype", "snapshot")
+func errToString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}

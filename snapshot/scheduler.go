@@ -6,6 +6,7 @@ import (
 
 	snapshot_types "github.com/concrete-eth/archetype/snapshot/types"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -46,7 +47,7 @@ func (s *Scheduler) AddSchedule(schedule snapshot_types.Schedule, blockNumber ui
 	s.schedules[id] = schedule
 	s.lastRun[id] = blockNumber
 	WriteSchedule(s.db, id, schedule)
-	logger.Info("Added schedule", "id", id)
+	log.Info("Added schedule", "id", id)
 	return snapshot_types.ScheduleResponse{
 		Schedule: schedule,
 		ID:       id,
@@ -59,7 +60,7 @@ func (s *Scheduler) DeleteSchedule(id uint64) error {
 	delete(s.schedules, id)
 	delete(s.lastRun, id)
 	DeleteSchedule(s.db, id)
-	logger.Info("Deleted schedule", "id", id)
+	log.Info("Deleted schedule", "id", id)
 	return nil
 }
 
@@ -79,7 +80,7 @@ func (s *Scheduler) RunSchedule(blockNumber uint64, f func(schedule snapshot_typ
 			f(schedule)
 			s.lastRun[id] = blockNumber
 			run = true
-			logger.Info("Ran schedule", "id", id)
+			log.Info("Ran schedule", "id", id)
 		}
 	}
 	return run
@@ -94,10 +95,10 @@ func scheduleKey(id uint64) []byte {
 func WriteSchedule(db ethdb.KeyValueWriter, id uint64, schedule snapshot_types.Schedule) {
 	enc, err := rlp.EncodeToBytes(schedule)
 	if err != nil {
-		logger.Crit("Failed to encode schedule", "err", err)
+		log.Crit("Failed to encode schedule", "err", err)
 	}
 	if err := db.Put(scheduleKey(id), enc); err != nil {
-		logger.Crit("Failed to write schedule", "err", err)
+		log.Crit("Failed to write schedule", "err", err)
 	}
 }
 
@@ -109,14 +110,14 @@ func ReadSchedule(db ethdb.KeyValueReader, id uint64) snapshot_types.Schedule {
 	}
 	err = rlp.DecodeBytes(enc, &schedule)
 	if err != nil {
-		logger.Crit("Failed to decode schedule", "err", err)
+		log.Crit("Failed to decode schedule", "err", err)
 	}
 	return schedule
 }
 
 func DeleteSchedule(db ethdb.KeyValueWriter, id uint64) {
 	if err := db.Delete(scheduleKey(id)); err != nil {
-		logger.Crit("Failed to delete schedule", "err", err)
+		log.Crit("Failed to delete schedule", "err", err)
 	}
 }
 
@@ -136,7 +137,7 @@ func (it *ScheduleIterator) Schedule() snapshot_types.Schedule {
 	var schedule snapshot_types.Schedule
 	err := rlp.DecodeBytes(it.Value(), &schedule)
 	if err != nil {
-		logger.Crit("Failed to decode schedule", "err", err)
+		log.Crit("Failed to decode schedule", "err", err)
 	}
 	return schedule
 }
