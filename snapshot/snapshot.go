@@ -852,6 +852,7 @@ func (s *snapshotReaderWriter) getStorageRoot(snapshot snapshot.Snapshot, trie s
 	return storageRoot
 }
 
+// TODO: swap position of return values
 func (s *snapshotReaderWriter) lookupSnapshot(address common.Address, blockHash common.Hash) (found bool, metadata SnapshotMetadata) {
 	metadata = ReadSnapshotMetadata(s.db, address, blockHash)
 	if metadata.BlockHash == (common.Hash{}) {

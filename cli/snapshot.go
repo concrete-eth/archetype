@@ -14,26 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-/*
-
-type SnapshotWriter interface {
-	New(query FilterQuery) ([]SnapshotMetadataWithStatus, error)
-	Update(query FilterQuery) ([]SnapshotMetadataWithStatus, error)
-	Delete(query FilterQuery) error
-	Prune() error
-	AddSchedule(schedule snapshot_types.Schedule) (snapshot_types.ScheduleResponse, error)
-	DeleteSchedule(id uint64) error
-}
-
-type SnapshotReader interface {
-	Get(address common.Address, blockHash common.Hash) (SnapshotResponse, error)
-	Last(address common.Address) (SnapshotMetadataWithStatus, error)
-	List(address common.Address) ([]SnapshotMetadataWithStatus, error)
-	GetSchedules() (map[uint64]snapshot_types.Schedule, error) // TODO: get schedule by id/address?
-}
-
-*/
-
 func methodName(name string) string {
 	return engine.SnapshotNamespace + "_" + name
 }
@@ -81,8 +61,8 @@ func getSnapshotQuery(cmd *cobra.Command) *snapshot.SnapshotQuery {
 	blockHash := common.HexToHash(blockHashHex)
 	addresses := make([]common.Address, len(addressesHex))
 
-	for _, addressHex := range addressesHex {
-		addresses = append(addresses, common.HexToAddress(addressHex))
+	for idx, addressHex := range addressesHex {
+		addresses[idx] = common.HexToAddress(addressHex)
 	}
 
 	return &snapshot.SnapshotQuery{
@@ -91,11 +71,23 @@ func getSnapshotQuery(cmd *cobra.Command) *snapshot.SnapshotQuery {
 	}
 }
 
+// TODO: list schedules
+
 func runNewSnapshot(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
 	query := getSnapshotQuery(cmd)
-	if err := rpcClient.Call(nil, methodName("new"), query); err != nil {
-		logFatalNoContext(err)
+	replace, err := cmd.Flags().GetBool("replace")
+	if err != nil {
+		logFatal(err)
+	}
+	if replace {
+		if err := rpcClient.Call(nil, methodName("update"), query); err != nil {
+			logFatalNoContext(err)
+		}
+	} else {
+		if err := rpcClient.Call(nil, methodName("new"), query); err != nil {
+			logFatalNoContext(err)
+		}
 	}
 }
 
@@ -167,17 +159,21 @@ func runDeleteSchedule(cmd *cobra.Command, args []string) {
 }
 
 func printSnapshotMetadataWithStatus(metadata ...snapshot.SnapshotMetadataWithStatus) {
-	for _, m := range metadata {
-		jsonStr, err := json.Marshal(m)
-		if err != nil {
-			logFatal(err)
-		}
-		logInfo(string(jsonStr))
+	var data any
+	if len(metadata) == 1 {
+		data = metadata[0]
+	} else {
+		data = metadata
 	}
+	jsonStr, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		logFatal(err)
+	}
+	logInfo(string(jsonStr))
 }
 
 func printSnapshotResponse(resp snapshot.SnapshotResponse) {
-	jsonStr, err := json.Marshal(resp)
+	jsonStr, err := json.MarshalIndent(resp, "", "    ")
 	if err != nil {
 		logFatal(err)
 	}
@@ -185,16 +181,20 @@ func printSnapshotResponse(resp snapshot.SnapshotResponse) {
 }
 
 func printSnapshotSchedules(schedules ...snapshot.Schedule) {
-	for _, schedule := range schedules {
-		jsonStr, err := json.Marshal(schedule)
-		if err != nil {
-			logFatal(err)
-		}
-		logInfo(string(jsonStr))
+	var data any
+	if len(schedules) == 1 {
+		data = schedules[0]
+	} else {
+		data = schedules
 	}
+	jsonStr, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		logFatal(err)
+	}
+	logInfo(string(jsonStr))
 }
 
-func runSnapshotGet(cmd *cobra.Command, args []string) {
+func runGetSnapshot(cmd *cobra.Command, args []string) {
 	addressHex, err := cmd.Flags().GetString("address")
 	if err != nil {
 		logFatal(err)
@@ -240,7 +240,7 @@ func runSnapshotGet(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runSnapshotSchedulesGet(cmd *cobra.Command, args []string) {
+func runGetSnapshotSchedules(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
 	var resp []snapshot.Schedule
 	if err := rpcClient.Call(&resp, methodName("getSchedules")); err != nil {
@@ -284,12 +284,12 @@ func AddSnapshotCommand(parent *cobra.Command) {
 	snapshotCmd.AddCommand(addScheduleCmd)
 	snapshotCmd.AddCommand(deleteScheduleCmd)
 
-	snapshotGetCmd := &cobra.Command{Use: "get", Short: "get a snapshot", Run: runSnapshotGet}
+	snapshotGetCmd := &cobra.Command{Use: "get", Short: "get a snapshot", Run: runGetSnapshot}
 	snapshotGetCmd.PersistentFlags().String("address", "", "contract address")
 	snapshotGetCmd.Flags().String("block-hash", "", "block hash")
 	snapshotGetCmd.Flags().BoolP("all", "a", false, "list all snapshots")
 
-	snapshotScheduleGet := &cobra.Command{Use: "schedules", Short: "get schedules", Run: runSnapshotSchedulesGet}
+	snapshotScheduleGet := &cobra.Command{Use: "schedules", Short: "get schedules", Run: runGetSnapshotSchedules}
 	snapshotScheduleGet.Flags().String("address", "", "contract address")
 	snapshotGetCmd.AddCommand(snapshotScheduleGet)
 
