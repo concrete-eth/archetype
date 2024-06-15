@@ -17,7 +17,7 @@ const (
 type SnapshotMetadata struct {
 	Address     common.Address `json:"address"`
 	BlockHash   common.Hash    `json:"blockHash"`
-	BlockNumber *big.Int       `json:"blockNumber"` // TODO: make this an uint64
+	BlockNumber *big.Int       `json:"blockNumber"` // TODO: make this an uint64?
 	StorageRoot common.Hash    `json:"storageRoot"`
 }
 
@@ -32,6 +32,7 @@ type SnapshotResponse struct {
 	Storage []byte `json:"storage"`
 }
 
+// TODO: this is an account state query, not a snapshot query
 type SnapshotQuery struct {
 	BlockHash common.Hash      `json:"blockHash"`
 	Addresses []common.Address `json:"addresses"`

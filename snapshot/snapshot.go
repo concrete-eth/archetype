@@ -20,7 +20,6 @@ import (
 )
 
 // TODO: disambiguate naming collision between contract storage blob snapshots and geth snapshots
-// TODO: blobs should never be missing
 // TODO: docstrings
 
 var (
@@ -61,11 +60,10 @@ type SnapshotMaker struct {
 func NewSnapshotMaker(enableScheduling bool) *SnapshotMaker {
 	return &SnapshotMaker{
 		readWriter: &snapshotReaderWriter{
-			taskQueueChan:    make(chan WorkerTask, TaskBufferSize),
+			taskQueueChan:    make(chan *WorkerTask, TaskBufferSize),
 			schedulerEnabled: enableScheduling,
 			snapshotsPending: make(map[common.Hash]common.Address),
 			snapshotsFailed:  make(map[common.Hash]error),
-			snapshotsLast:    make(map[common.Address]SnapshotMetadata),
 		},
 	}
 }
@@ -111,15 +109,13 @@ type snapshotReaderWriter struct {
 	db     ethdb.Database
 	triedb state.Database
 
-	taskQueueChan chan WorkerTask
+	taskQueueChan chan *WorkerTask
 
 	schedulerEnabled             bool
 	scheduler                    *Scheduler
 	schedulerCreationsSincePrune uint
-
-	snapshotsPending map[common.Hash]common.Address
-	snapshotsFailed  map[common.Hash]error
-	snapshotsLast    map[common.Address]SnapshotMetadata
+	snapshotsPending             map[common.Hash]common.Address
+	snapshotsFailed              map[common.Hash]error
 
 	lock       sync.RWMutex
 	prunerLock sync.Mutex
@@ -150,11 +146,10 @@ func (s *snapshotReaderWriter) setPending(addr common.Address, storageRoot commo
 	s.snapshotsPending[storageRoot] = addr
 }
 
-func (s *snapshotReaderWriter) isPending(storageRoot common.Hash) bool {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	_, ok := s.snapshotsPending[storageRoot]
-	return ok
+func (s *snapshotReaderWriter) setDone(storageRoot common.Hash) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	delete(s.snapshotsPending, storageRoot)
 }
 
 func (s *snapshotReaderWriter) getPending(storageRoot common.Hash) (common.Address, bool) {
@@ -167,46 +162,22 @@ func (s *snapshotReaderWriter) getPending(storageRoot common.Hash) (common.Addre
 func (s *snapshotReaderWriter) setFailed(storageRoot common.Hash, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	// A root will only be removed from pending when it is marked as failed or set as last
-	delete(s.snapshotsPending, storageRoot)
 	s.snapshotsFailed[storageRoot] = err
 }
 
-func (s *snapshotReaderWriter) hasFailed(storageRoot common.Hash) (bool, error) {
+func (s *snapshotReaderWriter) getFailed(storageRoot common.Hash) (bool, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	err, ok := s.snapshotsFailed[storageRoot]
 	return ok, err
 }
 
-func (s *snapshotReaderWriter) setLast(address common.Address, metadata SnapshotMetadata) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	// A root will only be removed from pending when it is marked as failed or set as last
-	delete(s.snapshotsPending, metadata.StorageRoot)
-	s.snapshotsLast[address] = metadata
-}
-
-func (s *snapshotReaderWriter) getLast(address common.Address) SnapshotMetadata {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	return s.snapshotsLast[address]
-}
-
-func (s *snapshotReaderWriter) hasLast(address common.Address) bool {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	_, ok := s.snapshotsLast[address]
-	return ok
-}
-
-func (s *snapshotReaderWriter) runSnapshotWorkerTask(task WorkerTask) {
+func (s *snapshotReaderWriter) runSnapshotWorkerTask(task *WorkerTask) {
 	// Roots will only be marked as failed from this function
 
 	metadata := task.Metadata
 
 	var blobZip []byte
-	var err error
 
 	if task.CopyFrom != (common.Address{}) {
 		// Copy blob from another address
@@ -214,73 +185,41 @@ func (s *snapshotReaderWriter) runSnapshotWorkerTask(task WorkerTask) {
 			blobZip = blob
 		}
 	}
-
 	if blobZip == nil {
 		log.Info("Running snapshot blob generation", "address", task.Metadata.Address, "storageRoot", task.Metadata.StorageRoot)
+		var err error
 		blobZip, err = s.makeBlob(metadata.Address, task.BlockHash, task.BlockRoot)
 		if err != nil {
-			s.setFailed(metadata.StorageRoot, fmt.Errorf("failed to generate blob: %w", err))
 			log.Error("Failed to generate snapshot blob", "address", metadata.Address, "storageRoot", metadata.StorageRoot, "err", err)
+			s.setFailed(metadata.StorageRoot, fmt.Errorf("failed to generate blob: %w", err))
+			return
 		}
 		log.Info("Finished snapshot blob generation", "address", metadata.Address, "storageRoot", metadata.StorageRoot)
 	}
 
-	batch := s.db.NewBatch()
-	if task.Replace {
-		oldestMetadata, _ := s.getOldestAndNewest(metadata.Address)
-		if oldestMetadata.BlockHash != (common.Hash{}) {
-			DeleteSnapshotMetadata(batch, oldestMetadata.Address, oldestMetadata.BlockHash)
-			// Blob is not deleted as it is may be referenced by intermediate metadata
-		}
-	}
-	WriteSnapshotBlob(batch, metadata.Address, metadata.StorageRoot, blobZip)
-
-	log.Info("Finished (over) writing snapshot", "address", metadata.Address, "storageRoot", metadata.StorageRoot)
-
 	// Wait for pruner to finish before writing new blobs
 	s.prunerLock.Lock()
 	defer s.prunerLock.Unlock()
-	if err := batch.Write(); err == nil {
-		s.setLast(metadata.Address, metadata)
-	} else {
-		s.setFailed(metadata.StorageRoot, fmt.Errorf("failed to write snapshot to db: %w", err))
-		log.Error("Failed to write snapshot to db", "address", metadata.Address, "storageRoot", metadata.StorageRoot, "err", err)
+
+	WriteSnapshotBlob(s.db, metadata.Address, metadata.StorageRoot, blobZip)
+	s.setDone(metadata.StorageRoot)
+
+	if task.Replace {
+		oldestMetadata, _ := s.getOldestAndNewest(metadata.Address)
+		if oldestMetadata.BlockHash != (common.Hash{}) {
+			DeleteSnapshotMetadata(s.db, oldestMetadata.Address, oldestMetadata.BlockHash)
+			// Blob is not deleted as it is may be referenced by intermediate metadata
+		}
 	}
+
+	log.Info("Finished (over) writing snapshot", "address", metadata.Address, "storageRoot", metadata.StorageRoot)
 }
 
 func (s *snapshotReaderWriter) makeBlob(address common.Address, blockHash, blockRoot common.Hash) ([]byte, error) {
 	targetBlockHeader := s.eth.BlockChain().GetHeaderByHash(blockHash)
 	targetBlockNumber := targetBlockHeader.Number.Uint64()
 
-	var previousBlobMetadata SnapshotMetadata
-
-	// Get the previous blob, if any
-	// Check the last generated blob for the account (might be in memory)
-	// TODO: is this ever going to be the case?
-	lastBlobMetadata := s.getLast(address)
-	if lastBlobMetadata.BlockHash == blockHash {
-		log.Warn("Blob already exist", "address", address, "blockHash", blockHash, "blockRoot", blockRoot)
-		blob := ReadSnapshotBlob(s.db, address, lastBlobMetadata.StorageRoot)
-		if blob == nil {
-			log.Error("Missing snapshot blob", "address", address, "storageRoot", lastBlobMetadata.StorageRoot)
-			return nil, ErrMissingBlob
-		}
-		return blob, nil
-	}
-	if lastBlobMetadata.BlockHash != (common.Hash{}) {
-		lastBlobBlockHeader := s.eth.BlockChain().GetHeaderByNumber(lastBlobMetadata.BlockNumber.Uint64())
-		var (
-			isCanon        = lastBlobBlockHeader != nil && lastBlobBlockHeader.Hash() == lastBlobMetadata.BlockHash
-			isBeforeOrSame = lastBlobBlockHeader.Nonce.Uint64() <= targetBlockNumber
-		)
-		if isCanon || isBeforeOrSame {
-			previousBlobMetadata = lastBlobMetadata
-		}
-	}
-	if previousBlobMetadata.BlockHash == (common.Hash{}) {
-		// Find the previous blob
-		_, previousBlobMetadata = s.getOldestAndNewestInRange(address, 0, targetBlockNumber)
-	}
+	_, previousBlobMetadata := s.getOldestAndNewestInRange(address, 0, targetBlockNumber)
 	if previousBlobMetadata.BlockHash == (common.Hash{}) {
 		// No previous blob to build on top of
 		return s.makeBlobFromScratch(address, blockRoot)
@@ -310,7 +249,7 @@ func (s *snapshotReaderWriter) makeBlob(address common.Address, blockHash, block
 		}
 	}
 
-	prevBlob := ReadSnapshotBlob(s.db, address, lastBlobMetadata.StorageRoot)
+	prevBlob := ReadSnapshotBlob(s.db, address, previousBlobMetadata.StorageRoot)
 	rawBlob, err := utils.Decompress(prevBlob)
 	if err != nil {
 		return nil, err
@@ -337,6 +276,8 @@ func (s *snapshotReaderWriter) makeBlob(address common.Address, blockHash, block
 
 	return blobZip, nil
 }
+
+// TODO: revise logging
 
 func (s *snapshotReaderWriter) makeBlobFromScratch(address common.Address, blockRoot common.Hash) ([]byte, error) {
 	addressHash := crypto.Keccak256Hash(address.Bytes())
@@ -401,9 +342,9 @@ func (s *snapshotReaderWriter) runScheduler() {
 }
 
 func (s *snapshotReaderWriter) snapshotStatus(metadata SnapshotMetadata) (SnapshotStatus, error) {
-	if s.isPending(metadata.StorageRoot) {
+	if _, pending := s.getPending(metadata.StorageRoot); pending {
 		return SnapshotStatus_Pending, nil
-	} else if ok, err := s.hasFailed(metadata.StorageRoot); ok {
+	} else if ok, err := s.getFailed(metadata.StorageRoot); ok {
 		return SnapshotStatus_Fail, err
 	} else if HasSnapshotBlob(s.db, metadata.Address, metadata.StorageRoot) {
 		return SnapshotStatus_Done, nil
@@ -491,18 +432,17 @@ func (s *snapshotReaderWriter) newOrUpdate(query SnapshotQuery, replace bool) (r
 			} else {
 				metadataWithStatus.Status = SnapshotStatus_Fail
 				metadataWithStatus.Error = errToString(err)
+				// s.setFailed(storageRoot, err)
 			}
 		} else {
 			if HasSnapshotBlob(s.db, address, storageRoot) {
 				// Blob is already in database from another block with same storage root
 				metadataWithStatus.Status = SnapshotStatus_Done
-				s.setLast(address, metadata)
 			} else if blob := ReadSnapshotBlobAnyAccount(s.db, storageRoot); blob != nil {
 				// Blob is already in database from another address with same storage root
 				// Copy it under the current address
 				WriteSnapshotBlob(batch, address, storageRoot, blob)
 				metadataWithStatus.Status = SnapshotStatus_Done
-				s.setLast(address, metadata)
 			} else {
 				s.setPending(address, storageRoot)
 				// Blob is not in database, queue snapshot generation
@@ -532,7 +472,7 @@ func (s *snapshotReaderWriter) newOrUpdate(query SnapshotQuery, replace bool) (r
 	return response, nil
 }
 
-func (s *snapshotReaderWriter) queueTask(task WorkerTask) error {
+func (s *snapshotReaderWriter) queueTask(task *WorkerTask) error {
 	select {
 	case s.taskQueueChan <- task:
 		log.Info("Queued snapshot generation", "address", task.Metadata.Address, "storageRoot", task.Metadata.StorageRoot)
@@ -544,7 +484,7 @@ func (s *snapshotReaderWriter) queueTask(task WorkerTask) error {
 }
 
 func (s *snapshotReaderWriter) queueSnapshotGeneration(metadata SnapshotMetadata, replace bool, blockRoot common.Hash) error {
-	task := WorkerTask{
+	task := &WorkerTask{
 		Metadata:  metadata,
 		Replace:   replace,
 		BlockRoot: blockRoot,
@@ -554,14 +494,14 @@ func (s *snapshotReaderWriter) queueSnapshotGeneration(metadata SnapshotMetadata
 }
 
 func (s *snapshotReaderWriter) queueSnapshotReplication(metadata SnapshotMetadata, replace bool, blockRoot common.Hash, copyFrom common.Address) error {
-	task := WorkerTask{
+	task := &WorkerTask{
 		Metadata:  metadata,
 		Replace:   replace,
 		BlockRoot: blockRoot,
 		BlockHash: metadata.BlockHash,
 		CopyFrom:  copyFrom,
 	}
-	return s.queueTask(task) // TODO: should pass pointer instead?
+	return s.queueTask(task)
 }
 
 func (s *snapshotReaderWriter) Delete(query SnapshotQuery) (err error) {
@@ -688,7 +628,7 @@ func (s *snapshotReaderWriter) Prune() (err error) {
 }
 
 func (s *snapshotReaderWriter) Get(address common.Address, blockHash common.Hash) (r SnapshotResponse, err error) {
-	found, metadata := s.lookupSnapshot(address, blockHash)
+	metadata, found := s.lookupSnapshot(address, blockHash)
 	if !found {
 		return SnapshotResponse{}, ErrSnapshotNotFound
 	}
@@ -719,18 +659,10 @@ func (s *snapshotReaderWriter) Get(address common.Address, blockHash common.Hash
 }
 
 func (s *snapshotReaderWriter) Last(address common.Address) (r SnapshotMetadataWithStatus, err error) {
-	if s.hasLast(address) {
-		metadata := s.getLast(address)
-		return SnapshotMetadataWithStatus{
-			SnapshotMetadata: metadata,
-			Status:           SnapshotStatus_Done,
-		}, nil
-	}
 	_, newestMetadata := s.getOldestAndNewest(address)
 	if newestMetadata.BlockHash == (common.Hash{}) {
 		return SnapshotMetadataWithStatus{}, ErrSnapshotNotFound
 	}
-	s.setLast(address, newestMetadata)
 	return SnapshotMetadataWithStatus{
 		SnapshotMetadata: newestMetadata,
 		Status:           SnapshotStatus_Done,
@@ -852,13 +784,12 @@ func (s *snapshotReaderWriter) getStorageRoot(snapshot snapshot.Snapshot, trie s
 	return storageRoot
 }
 
-// TODO: swap position of return values
-func (s *snapshotReaderWriter) lookupSnapshot(address common.Address, blockHash common.Hash) (found bool, metadata SnapshotMetadata) {
+func (s *snapshotReaderWriter) lookupSnapshot(address common.Address, blockHash common.Hash) (metadata SnapshotMetadata, found bool) {
 	metadata = ReadSnapshotMetadata(s.db, address, blockHash)
 	if metadata.BlockHash == (common.Hash{}) {
-		return false, SnapshotMetadata{}
+		return SnapshotMetadata{}, false
 	}
-	return true, metadata
+	return metadata, true
 }
 
 // Finds snapshots for which metadata is available in the DB.

@@ -3,7 +3,6 @@ package snapshot
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"math/big"
 	"os"
 	"reflect"
@@ -13,7 +12,6 @@ import (
 	"github.com/concrete-eth/archetype/simulated"
 	snapshot_types "github.com/concrete-eth/archetype/snapshot/types"
 	"github.com/concrete-eth/archetype/snapshot/utils"
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/concrete"
@@ -27,8 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// TODO: more rigorous testing of blob generation from a previous blob
 
 func TestCompression(t *testing.T) {
 	data := []byte("test data")
@@ -170,119 +166,14 @@ func NewTestSnapshotMaker() (*SnapshotMaker, SnapshotWriter, SnapshotReader, *si
 	return NewTestSnapshotMakerWithConcrete(nil)
 }
 
-func checkError(t *testing.T, err error) {
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-var (
-	storageTesterCode = common.FromHex("608060405234801561001057600080fd5b5060b18061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c80633fa4f24514603757806355241077146051575b600080fd5b603f60005481565b60405190815260200160405180910390f35b6061605c3660046063565b600055565b005b600060208284031215607457600080fd5b503591905056fea2646970667358221220a1490c138af3ca93bfdcc87a46306f71fe97efe367215b8733eedd154c0dd4e164736f6c634300080f0033")
-	valueSig          = crypto.Keccak256([]byte("value()"))[:4]
-	setSig            = crypto.Keccak256([]byte("setValue(uint256)"))[:4]
-)
-
-func deployStorageTester(t *testing.T, sim *simulated.SimulatedBackend) common.Address {
-	gasPrice, err := sim.SuggestGasPrice(context.Background())
-	checkError(t, err)
-	tx := types.NewContractCreation(0, common.Big0, 1e6, gasPrice, storageTesterCode)
-	tx, err = types.SignTx(tx, types.HomesteadSigner{}, testKey)
-	checkError(t, err)
-	err = sim.SendTransaction(context.Background(), tx)
-	checkError(t, err)
-	sim.Commit()
-	receipt, err := sim.TransactionReceipt(context.Background(), tx.Hash())
-	checkError(t, err)
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Fatalf("expected successful receipt, got %v", receipt.Status)
-	}
-	return receipt.ContractAddress
-}
-
-func setValue(t *testing.T, sim *simulated.SimulatedBackend, address common.Address, value *big.Int) {
-	gasPrice, err := sim.SuggestGasPrice(context.Background())
-	checkError(t, err)
-	nonce, err := sim.NonceAt(context.Background(), testSenderAddress, nil)
-	checkError(t, err)
-	tx := types.NewTransaction(nonce, address, common.Big0, 1e6, gasPrice, append(
-		setSig,
-		common.BigToHash(value).Bytes()...,
-	))
-	tx, err = types.SignTx(tx, types.HomesteadSigner{}, testKey)
-	checkError(t, err)
-	err = sim.SendTransaction(context.Background(), tx)
-	checkError(t, err)
-	sim.Commit()
-}
-
-func getValue(t *testing.T, sim *simulated.SimulatedBackend, address common.Address) *big.Int {
-	ret, err := sim.CallContract(context.Background(), ethereum.CallMsg{
-		From: testSenderAddress,
-		To:   &address,
-		Data: valueSig,
-	}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	n := new(big.Int).SetBytes(ret)
-	return n
-}
-
-func checkMetadata(t *testing.T, m SnapshotMetadataWithStatus, address common.Address, blockHash common.Hash, blockNumber uint64, status SnapshotStatus) {
-	if m.Address != address {
-		t.Errorf("expected address %v, got %v", address, m.Address)
-	}
-	if m.BlockHash != blockHash {
-		t.Errorf("expected block hash %v, got %v", blockHash, m.BlockHash)
-	}
-	if m.BlockNumber.Cmp(new(big.Int).SetUint64(blockNumber)) != 0 {
-		t.Errorf("expected block number %v, got %v", blockNumber, m.BlockNumber)
-	}
-	if m.Status != status {
-		t.Errorf("expected status %v, got %v", status, m.Status)
-	}
-}
-
-func _checkMetadataErr(m SnapshotMetadataWithStatus, address common.Address, blockHash common.Hash, blockNumber uint64, status SnapshotStatus) error {
-	if m.Address != address {
-		return fmt.Errorf("expected address %v, got %v", address, m.Address)
-	} else if m.BlockHash != blockHash {
-		return fmt.Errorf("expected block hash %v, got %v", blockHash, m.BlockHash)
-	} else if m.BlockNumber.Cmp(new(big.Int).SetUint64(blockNumber)) != 0 {
-		return fmt.Errorf("expected block number %v, got %v", blockNumber, m.BlockNumber)
-	} else if m.Status != status {
-		return fmt.Errorf("expected status %v, got %v", status, m.Status)
-	}
-	return nil
-}
-
-func waitForSnapshot(t *testing.T, reader SnapshotReader, address common.Address, blockHash common.Hash) SnapshotResponse {
-	startTime := time.Now()
-	for {
-		res, err := reader.Get(address, blockHash)
-		checkError(t, err)
-		if res.Status == SnapshotStatus_Done {
-			return res
-		} else if res.Status == SnapshotStatus_Pending {
-			if time.Since(startTime) > 1*time.Second {
-				t.Fatal("timeout")
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
-		} else {
-			t.Fatalf("unexpected status %v", res.Status)
-		}
-	}
-	return SnapshotResponse{}
-}
-
 type storageSetterPc struct {
 	lib.BlankPrecompile
 }
 
 func (p *storageSetterPc) Run(API api.Environment, input []byte) ([]byte, error) {
-	v := common.BytesToHash(input)
-	API.StorageStore(common.Hash{}, v)
+	key := common.BytesToHash(input[:32])
+	value := common.BytesToHash(input[32:])
+	API.StorageStore(key, value)
 	return nil, nil
 }
 
@@ -313,8 +204,33 @@ func (r *testRegistry) ActivePrecompiles(_ uint64) []common.Address {
 	return r.addresses
 }
 
+func sendSetValueTx(t *testing.T, sim *simulated.SimulatedBackend, addr common.Address, key, value common.Hash) {
+	r := require.New(t)
+
+	nonce, err := sim.PendingNonceAt(context.Background(), testSenderAddress)
+	r.NoError(err)
+	gasPrice, err := sim.SuggestGasPrice(context.Background())
+	r.NoError(err)
+	gas := uint64(1e6)
+
+	input := make([]byte, 64)
+	copy(input[32-len(key.Bytes()):], key.Bytes())
+	copy(input[64-len(value.Bytes()):], value.Bytes())
+
+	tx := types.NewTransaction(nonce, addr, common.Big0, gas, gasPrice, input)
+	signedTx, err := types.SignTx(tx, types.HomesteadSigner{}, testKey)
+	r.NoError(err)
+
+	err = sim.SendTransaction(context.Background(), signedTx)
+	r.NoError(err)
+
+	_, pending, err := sim.TransactionByHash(context.Background(), signedTx.Hash())
+	r.NoError(err)
+	r.True(pending)
+}
+
 func TestSnapshot(t *testing.T) {
-	log.SetDefault(log.NewLogger(log.NewTerminalHandlerWithLevel(os.Stderr, log.LevelWarn, true)))
+	log.SetDefault(log.NewLogger(log.NewTerminalHandlerWithLevel(os.Stderr, log.LevelError, true)))
 
 	var (
 		r         = require.New(t)
@@ -391,11 +307,11 @@ func TestSnapshot(t *testing.T) {
 			rw.runSnapshotWorkerTask(task)
 		}
 	}
-	// select {
-	// case <-rw.taskQueueChan:
-	// 	t.Fatal("expected no more tasks")
-	// default:
-	// }
+	select {
+	case <-rw.taskQueueChan:
+		t.Fatal("expected no more tasks")
+	default:
+	}
 
 	// Check snapshots
 	for _, addr := range addresses {
@@ -451,24 +367,8 @@ func TestSnapshot(t *testing.T) {
 
 	// Set storage
 	for ii, addr := range addresses {
-		nonce, err := sim.PendingNonceAt(context.Background(), testSenderAddress)
-		r.NoError(err)
-		gasPrice, err := sim.SuggestGasPrice(context.Background())
-		r.NoError(err)
-		gas := uint64(1e6)
 		value := big.NewInt(int64(ii + 1))
-		input := common.BigToHash(value).Bytes()
-
-		tx := types.NewTransaction(nonce, addr, common.Big0, gas, gasPrice, input)
-		signedTx, err := types.SignTx(tx, types.HomesteadSigner{}, testKey)
-		r.NoError(err)
-
-		err = sim.SendTransaction(context.Background(), signedTx)
-		r.NoError(err)
-
-		_, pending, err := sim.TransactionByHash(context.Background(), signedTx.Hash())
-		r.NoError(err)
-		r.True(pending)
+		sendSetValueTx(t, sim, addr, common.Hash{}, common.BigToHash(value))
 	}
 
 	// New block
@@ -531,6 +431,11 @@ func TestSnapshot(t *testing.T) {
 			rw.runSnapshotWorkerTask(task)
 		}
 	}
+	select {
+	case <-rw.taskQueueChan:
+		t.Fatal("expected no more tasks")
+	default:
+	}
 
 	// Check snapshots
 	for ii, addr := range addresses {
@@ -559,174 +464,274 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 
+func TestMakeBlobFromScratch(t *testing.T) {
+	r := require.New(t)
+	addr := common.HexToAddress("0x12340001")
+	registry := &testRegistry{addresses: []common.Address{addr}}
+	_, writer, _, sim := NewTestSnapshotMakerWithConcrete(registry)
+	rw := writer.(*snapshotReaderWriter)
+
+	storage := make(map[common.Hash]common.Hash)
+	for i := 0; i < 10; i++ {
+		key := common.BigToHash(big.NewInt(int64(i)))
+		value := common.BigToHash(big.NewInt(int64(i + 1)))
+		storage[crypto.Keccak256Hash(key.Bytes())] = value
+		sendSetValueTx(t, sim, addr, key, value)
+	}
+
+	sim.Commit()
+	block := sim.BlockChain().CurrentBlock()
+
+	rawBlob, err := rw.makeBlobFromScratch(addr, block.Root)
+	r.NoError(err)
+	blob, err := utils.Decompress(rawBlob)
+	r.NoError(err)
+
+	it := utils.BlobToStorageIt(blob)
+	readStorage := make(map[common.Hash]common.Hash)
+	for it.Next() {
+		slot := it.Hash()
+		value := it.Slot()
+		readStorage[slot] = common.BytesToHash(value)
+	}
+	r.Equal(storage, readStorage)
+}
+
+func TestMakeBlobFromPrevious(t *testing.T) {
+	var (
+		r                      = require.New(t)
+		addr                   = common.HexToAddress("0x12340001")
+		registry               = &testRegistry{addresses: []common.Address{addr}}
+		_, writer, reader, sim = NewTestSnapshotMakerWithConcrete(registry)
+		rw                     = writer.(*snapshotReaderWriter)
+	)
+
+	storage := make(map[common.Hash]common.Hash)
+	setKv := func(key, value int) {
+		keyHash := common.BigToHash(big.NewInt(int64(key)))
+		valueHash := common.BigToHash(big.NewInt(int64(value)))
+		sendSetValueTx(t, sim, addr, keyHash, valueHash)
+		storage[crypto.Keccak256Hash(keyHash.Bytes())] = valueHash
+	}
+
+	for i := 0; i < 10; i++ {
+		setKv(i, i+1)
+	}
+
+	sim.Commit()
+	block := sim.BlockChain().CurrentBlock()
+
+	_, err := writer.New(SnapshotQuery{Addresses: []common.Address{addr}, BlockHash: block.Hash()})
+	r.NoError(err)
+
+	rw.runSnapshotWorkerTask(<-rw.taskQueueChan)
+
+	got, err := reader.Last(addr)
+	r.NoError(err)
+	r.Equal(block.Hash(), got.BlockHash)
+	r.Equal(SnapshotStatus_Done, got.Status)
+
+	for i := 10; i < 20; i++ {
+		setKv(i, i+1)
+	}
+
+	for i := 0; i < 256; i++ {
+		sim.Commit()
+	}
+
+	for i := 20; i < 30; i++ {
+		setKv(i, i+1)
+	}
+	for i := 0; i < 5; i++ {
+		setKv(i, i+10)
+	}
+
+	sim.Commit()
+	block = sim.BlockChain().CurrentBlock()
+
+	rawBlob, err := rw.makeBlob(addr, block.Hash(), block.Root)
+	r.NoError(err)
+	blob, err := utils.Decompress(rawBlob)
+	r.NoError(err)
+
+	it := utils.BlobToStorageIt(blob)
+	readStorage := make(map[common.Hash]common.Hash)
+	for it.Next() {
+		slot := it.Hash()
+		value := it.Slot()
+		readStorage[slot] = common.BytesToHash(value)
+	}
+	r.Equal(storage, readStorage)
+}
+
 func TestSchedulerReadWrite(t *testing.T) {
+	r := require.New(t)
 	_, writer, reader, _ := NewTestSnapshotMaker()
 
 	// Get schedules when there are none
 	s, err := reader.GetSchedules()
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(s) != 0 {
-		t.Errorf("expected no schedules, got %v", len(s))
-	}
+	r.NoError(err)
+	r.Len(s, 0)
 
 	// Add schedule
 	schedule := snapshot_types.Schedule{BlockPeriod: 1}
 	res, err := writer.AddSchedule(schedule)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if res.ID != 0 {
-		t.Errorf("expected ID 0, got %v", res.ID)
-	}
-	if !reflect.DeepEqual(res.Schedule, schedule) {
-		t.Errorf("expected schedule %v, got %v", schedule, res.Schedule)
-	}
+	r.NoError(err)
+	r.Equal(uint64(0), res.ID)
+	r.Equal(schedule, res.Schedule)
+
+	// Get schedules
 	s, err = reader.GetSchedules()
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(s) != 1 {
-		t.Errorf("expected 1 schedule, got %v", len(s))
-	}
-	if !reflect.DeepEqual(s[0], res.Schedule) {
-		t.Errorf("expected schedule %v, got %v", res, s[0])
-	}
+	r.NoError(err)
+	r.Len(s, 1)
+	r.Equal(res.Schedule, s[0])
 
 	// Delete schedule
 	err = writer.DeleteSchedule(res.ID)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+	r.NoError(err)
+
+	// Get schedules when there are none
 	s, err = reader.GetSchedules()
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(s) != 0 {
-		t.Errorf("expected no schedules, got %v", len(s))
-	}
+	r.NoError(err)
+	r.Len(s, 0)
 
-	// Add schedule
-	res, err = writer.AddSchedule(schedule)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	// Add schedules
+	for i := 0; i < 3; i++ {
+		res, err = writer.AddSchedule(schedule)
+		r.NoError(err)
+		r.Equal(uint64(i+1), res.ID)
+		r.Equal(schedule, res.Schedule)
 	}
-	if res.ID != 1 {
-		t.Errorf("expected ID 1, got %v", res.ID)
-	}
-
-	writer.AddSchedule(schedule)
-	writer.AddSchedule(schedule)
-	writer.AddSchedule(schedule)
 
 	res, err = writer.AddSchedule(schedule)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if res.ID != 5 {
-		t.Errorf("expected ID 5, got %v", res.ID)
-	}
+	r.NoError(err)
+	r.Equal(uint64(4), res.ID)
+	r.Equal(schedule, res.Schedule)
 }
 
 func TestScheduler(t *testing.T) {
-	// log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
+	log.SetDefault(log.NewLogger(log.NewTerminalHandlerWithLevel(os.Stderr, log.LevelError, true)))
 
-	maker, writer, reader, sim := NewTestSnapshotMaker()
-	go maker.RunSnapshotWorker()
-	// go maker.RunScheduler()
+	var (
+		r         = require.New(t)
+		addr1     = common.HexToAddress("0x12340001")
+		addresses = []common.Address{addr1}
+	)
+
+	registry := &testRegistry{addresses: addresses}
+	_, writer, reader, sim := NewTestSnapshotMakerWithConcrete(registry)
+	rw := writer.(*snapshotReaderWriter)
+
 	sim.Commit()
+	block := sim.BlockChain().CurrentBlock()
+	blockHash1 := block.Hash()
 
-	contractAddress := deployStorageTester(t, sim)
-	setValue(t, sim, contractAddress, common.Big2)
-
-	var blockHash common.Hash
-	var err error
-
-	// New snapshots
-	blockHash = sim.BlockChain().CurrentBlock().Hash()
-	_, err = writer.New(SnapshotQuery{Addresses: []common.Address{contractAddress}, BlockHash: blockHash})
-	checkError(t, err)
-	sim.Commit()
+	// New snapshot
+	_, err := writer.New(SnapshotQuery{Addresses: addresses, BlockHash: block.Hash()})
+	r.NoError(err)
 
 	// Wait for snapshots
-	l, err := reader.List(contractAddress)
-	checkError(t, err)
-	if len(l) != 1 {
-		t.Errorf("expected 1 snapshots, got %v", len(l))
+	for _, addr := range addresses {
+		list, err := reader.List(addr)
+		r.NoError(err)
+		r.Len(list, 1)
+		r.Equal(blockHash1, list[0].BlockHash)
 	}
 
 	// Add schedule
-	schedule := snapshot_types.Schedule{
-		Addresses:   []common.Address{contractAddress},
+	res, err := writer.AddSchedule(Schedule{
+		Addresses:   addresses,
 		BlockPeriod: 2,
 		Replace:     false,
-	}
-	res, err := writer.AddSchedule(schedule)
-	checkError(t, err)
+	})
+	r.NoError(err)
 	id := res.ID
 
 	// New block
 	sim.Commit()
 	// Trigger scheduler
 	// Schedule should not run as block period has not elapsed
-	writer.(*snapshotReaderWriter).runScheduler()
+	rw.runScheduler()
 
-	l, err = reader.List(contractAddress)
-	checkError(t, err)
-	if len(l) != 1 {
-		t.Errorf("expected 1 snapshots, got %v", len(l))
+	for _, addr := range addresses {
+		list, err := reader.List(addr)
+		r.NoError(err)
+		r.Len(list, 1)
 	}
 
 	// New block
 	sim.Commit()
+	block = sim.BlockChain().CurrentBlock()
+	blockHash3 := block.Hash()
 	// Trigger scheduler
 	// Schedule should run as block period has elapsed
-	writer.(*snapshotReaderWriter).runScheduler()
+	rw.runScheduler()
 
-	l, err = reader.List(contractAddress)
-	checkError(t, err)
-	if len(l) != 2 {
-		t.Errorf("expected 2 snapshots, got %v", len(l))
+	for _, addr := range addresses {
+		list, err := reader.List(addr)
+		r.NoError(err)
+		r.Len(list, 2)
+		r.ElementsMatch([]common.Hash{blockHash1, blockHash3}, []common.Hash{list[0].BlockHash, list[1].BlockHash})
 	}
 
 	// Delete schedule
 	err = writer.DeleteSchedule(id)
-	checkError(t, err)
+	r.NoError(err)
 
 	// Add schedule with replacement
-	schedule.Replace = true
-	res, err = writer.AddSchedule(schedule)
-	checkError(t, err)
-	// id = res.ID
+	res, err = writer.AddSchedule(Schedule{
+		Addresses:   addresses,
+		BlockPeriod: 2,
+		Replace:     true,
+	})
+	r.NoError(err)
 
-	// Two blocks
-	// sim.Commit()
-	setValue(t, sim, contractAddress, common.Big3)
+	// Two new blocks
 	sim.Commit()
+	sim.Commit()
+	block = sim.BlockChain().CurrentBlock()
+	blockHash4 := block.Hash()
 	// Trigger scheduler
-	writer.(*snapshotReaderWriter).runScheduler()
+	rw.runScheduler()
 
-	blockHash = sim.BlockChain().CurrentBlock().Hash()
-	waitForSnapshot(t, reader, contractAddress, blockHash)
-
-	l, err = reader.List(contractAddress)
-	checkError(t, err)
-	if len(l) != 2 {
-		t.Errorf("expected 2 snapshots, got %v", len(l))
+	// Run snapshot worker
+	timeout := time.After(1 * time.Second)
+	for i := 0; i < len(addresses)*3; i++ {
+		select {
+		case <-timeout:
+			t.Fatal("timeout")
+		case task := <-rw.taskQueueChan:
+			r.Contains(addresses, task.Metadata.Address)
+			rw.runSnapshotWorkerTask(task)
+		}
+	}
+	select {
+	case <-rw.taskQueueChan:
+		t.Fatal("expected no more tasks")
+	default:
 	}
 
-	currentBlockNumber := sim.BlockChain().CurrentBlock().Number.Uint64()
-	previousSnapshotBlockNumber := currentBlockNumber - 2
+	for _, addr := range addresses {
+		timeout := time.After(1 * time.Second)
+		for {
+			select {
+			case <-timeout:
+				t.Fatal("timeout")
+			default:
+			}
+			got, err := reader.Last(addr)
+			r.NoError(err)
+			r.Equal(blockHash4, got.BlockHash)
+			if got.Status == SnapshotStatus_Done {
+				break
+			}
+		}
+	}
 
-	// Check list contains latest two snapshots
-	if l[0].BlockNumber.Cmp(l[1].BlockNumber) == 0 {
-		t.Errorf("expected different block numbers, got %v", l)
-	}
-	if l0 := l[0].BlockNumber.Uint64(); l0 != currentBlockNumber && l0 != previousSnapshotBlockNumber {
-		t.Errorf("expected block number %v or %v, got %v", currentBlockNumber, previousSnapshotBlockNumber, l0)
-	}
-	if l1 := l[1].BlockNumber.Uint64(); l1 != currentBlockNumber && l1 != previousSnapshotBlockNumber {
-		t.Errorf("expected block number %v or %v, got %v", currentBlockNumber, previousSnapshotBlockNumber, l1)
+	for _, addr := range addresses {
+		list, err := reader.List(addr)
+		r.NoError(err)
+		r.Len(list, 2)
+		r.ElementsMatch([]common.Hash{blockHash3, blockHash4}, []common.Hash{list[0].BlockHash, list[1].BlockHash})
 	}
 }
