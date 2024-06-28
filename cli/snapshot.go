@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/concrete-eth/archetype/example/engine"
 	"github.com/concrete-eth/archetype/snapshot"
@@ -13,6 +14,13 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+func checkIsHexAddress(addressHex string) {
+	if !common.IsHexAddress(addressHex) {
+		errorMessage := fmt.Sprintf("address %s is not an expected hexadecimal address", addressHex)
+		logFatalNoContext(errors.New(errorMessage))
+	}
+}
 
 func methodName(name string) string {
 	return engine.SnapshotNamespace + "_" + name
@@ -62,6 +70,7 @@ func getSnapshotQuery(cmd *cobra.Command) *snapshot.SnapshotQuery {
 	addresses := make([]common.Address, len(addressesHex))
 
 	for idx, addressHex := range addressesHex {
+		checkIsHexAddress(addressHex)
 		addresses[idx] = common.HexToAddress(addressHex)
 	}
 
@@ -118,6 +127,7 @@ func runAddSchedule(cmd *cobra.Command, args []string) {
 
 	addresses := make([]common.Address, len(addressesHex))
 	for _, addressHex := range addressesHex {
+		checkIsHexAddress(addressHex)
 		addresses = append(addresses, common.HexToAddress(addressHex))
 	}
 
@@ -202,6 +212,7 @@ func runGetSnapshot(cmd *cobra.Command, args []string) {
 	if addressHex == "" {
 		logFatalNoContext(errors.New("address is required"))
 	}
+	checkIsHexAddress(addressHex)
 	address := common.HexToAddress(addressHex)
 
 	hasBlockHash := cmd.Flags().Changed("block-hash")
