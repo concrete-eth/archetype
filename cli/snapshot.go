@@ -17,8 +17,8 @@ import (
 
 func checkIsHexAddress(addressHex string) {
 	if !common.IsHexAddress(addressHex) {
-		errorMessage := fmt.Sprintf("address %s is not an expected hexadecimal address", addressHex)
-		logFatalNoContext(errors.New(errorMessage))
+		err := fmt.Errorf("'%s' is not a valid address", addressHex)
+		logFatalNoContext(err)
 	}
 }
 
