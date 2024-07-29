@@ -80,8 +80,6 @@ func getSnapshotQuery(cmd *cobra.Command) *snapshot.SnapshotQuery {
 	}
 }
 
-// TODO: list schedules
-
 func runNewSnapshot(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
 	query := getSnapshotQuery(cmd)
@@ -301,7 +299,6 @@ func AddSnapshotCommand(parent *cobra.Command) {
 	snapshotGetCmd.Flags().BoolP("all", "a", false, "list all snapshots")
 
 	snapshotScheduleGet := &cobra.Command{Use: "schedules", Short: "get schedules", Run: runGetSnapshotSchedules}
-	snapshotScheduleGet.Flags().String("address", "", "contract address")
 	snapshotGetCmd.AddCommand(snapshotScheduleGet)
 
 	snapshotCmd.AddCommand(snapshotGetCmd)

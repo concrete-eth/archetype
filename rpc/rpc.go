@@ -982,8 +982,6 @@ type IO struct {
 	_txUpdateHook func(*ActionTxUpdate)
 }
 
-// TODO: use context instead of cancel funcs
-
 // NewIO creates a new IO.
 func NewIO(
 	ethcli EthCli,

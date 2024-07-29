@@ -553,7 +553,7 @@ func AddCodegenCommand(parent *cobra.Command) {
 	codegenCmd.Flags().StringP("actions", "a", "./actions.json", "action schema file")
 	codegenCmd.Flags().String("pkg", "archmod", "go package name")
 	codegenCmd.Flags().BoolP("verbose", "v", false, "verbose output")
-	codegenCmd.Flags().Bool("more-experimental", false, "enable experimental features") // TODO: rm
+	codegenCmd.Flags().Bool("more-experimental", false, "enable experimental features")
 
 	// Bind flags to viper
 	viper.BindPFlag("go-out", codegenCmd.Flags().Lookup("go-out"))

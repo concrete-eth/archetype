@@ -14,11 +14,5 @@ func TestE2E(t *testing.T) {
 		Contract: filepath.Join("Test.sol:Test"),
 		OutDir:   filepath.Join("..", "out"),
 	}
-	passed, failed := testtool.Test(registry, config)
-	if failed > 0 {
-		t.Errorf("failed tests: %v", failed)
-	}
-	if passed == 0 {
-		t.Error("no tests passed")
-	}
+	testtool.Test(t, registry, config)
 }

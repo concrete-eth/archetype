@@ -12,9 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// Fake tick
-// TODO: use sys tx somehow, how does op-node do it?
-
 var TickDepositorKeyHex = "6ad661dea8f20dff26c1529ec80eb479e16c39468dcacfe72d2a819ec59a4f25"
 
 type TickingSimulatedBackend struct {
