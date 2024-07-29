@@ -200,8 +200,16 @@ func (r *testRegistry) Precompiles(_ uint64) concrete.PrecompileMap {
 	return m
 }
 
-func (r *testRegistry) ActivePrecompiles(_ uint64) []common.Address {
+func (r *testRegistry) PrecompiledAddresses(_ uint64) []common.Address {
 	return r.addresses
+}
+
+func (r *testRegistry) PrecompiledAddressesSet(_ uint64) map[common.Address]struct{} {
+	set := make(map[common.Address]struct{})
+	for _, addr := range r.addresses {
+		set[addr] = struct{}{}
+	}
+	return set
 }
 
 func sendSetValueTx(t *testing.T, sim *simulated.SimulatedBackend, addr common.Address, key, value common.Hash) {

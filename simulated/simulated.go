@@ -619,9 +619,8 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 	// Create a new environment which holds all relevant information
 	// about the transaction and calling mechanisms.
 	txContext := core.NewEVMTxContext(msg)
-	concretePcs := b.blockchain.Concrete().Precompiles(header.Number.Uint64())
 	evmContext := core.NewEVMBlockContext(header, b.blockchain, nil, b.blockchain.Config(), stateDB)
-	vmEnv := vm.NewEVMWithConcrete(evmContext, txContext, stateDB, b.blockchain.Config(), vm.Config{NoBaseFee: true}, concretePcs)
+	vmEnv := vm.NewEVM(evmContext, txContext, stateDB, b.blockchain.Config(), vm.Config{NoBaseFee: true})
 	gasPool := new(core.GasPool).AddGas(math.MaxUint64)
 
 	return core.ApplyMessage(vmEnv, msg, gasPool)

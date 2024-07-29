@@ -53,8 +53,8 @@ github.com/cockroachdb/redact v1.1.3/go.mod h1:BVNblN9mBWFyMyqK1k3AAiSxhvhfK2oOZ
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 h1:zuQyyAKVxetITBuuhv3BI9cMrmStnpT18zmgmTxunpo=
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06/go.mod h1:7nc4anLGjupUW/PeY5qiNYsdNXj7zopG+eqsS7To5IQ=
 github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0/go.mod h1:4Zcjuz89kmFXt9morQgcfYZAYZ5n8WHjt81YYWIwtTM=
-github.com/concrete-eth/concrete-geth v0.0.0-20240728084543-5ec9a6c5f00f h1:XavWEx6KGnvGhWPBNUOdpdmdjncy/f1vveVeXDkorMI=
-github.com/concrete-eth/concrete-geth v0.0.0-20240728084543-5ec9a6c5f00f/go.mod h1:zepHVFwIpGmiyuX18K5z9K4yQdW5324iUjVM7he6ZQE=
+github.com/concrete-eth/concrete-geth v0.0.0-20240729093623-f235c8816a19 h1:D7fv21bB7o0SJ1TYfVEheBnLEIHlsu7UygeS+QIu8AM=
+github.com/concrete-eth/concrete-geth v0.0.0-20240729093623-f235c8816a19/go.mod h1:zepHVFwIpGmiyuX18K5z9K4yQdW5324iUjVM7he6ZQE=
 github.com/consensys/bavard v0.1.13 h1:oLhMLOFGTLdlda/kma4VOJazblc7IM5y5QPd2A/YjhQ=
 github.com/consensys/bavard v0.1.13/go.mod h1:9ItSMtA/dXMAiL7BG6bqW2m3NdSEObYWoH223nGHukI=
 github.com/consensys/gnark-crypto v0.12.1 h1:lHH39WuuFgVHONRl3J0LRBtuYdQTumFSDtJF7HpyG8M=
