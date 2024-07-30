@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	ErrInvalidAction          = errors.New("invalid action")
-	ErrInvalidActionId        = errors.New("invalid action ID")
-	ErrInvalidTableId         = errors.New("invalid table ID")
+	ErrInvalidAction = errors.New("invalid action")
+	// ErrInvalidActionId = errors.New("invalid action ID")
+	// ErrInvalidTableId         = errors.New("invalid table ID")
 	ErrCalldataIsNotTableRead = errors.New("calldata is not a table read operation")
 )
 
@@ -70,7 +70,7 @@ func newArchSchemas(
 		}
 
 		s.schemas[id] = archSchema{
-			TableSchema: datamod.TableSchema{Name: schema.Name},
+			TableSchema: schema,
 			Method:      &method,
 			Type:        actionType,
 		}
@@ -94,8 +94,8 @@ func (t archSchemas) idFromName(name string) (validId, bool) {
 	return validId{}, false
 }
 
-func (a archSchemas) getSchema(actionId validId) archSchema {
-	return a.schemas[actionId.Raw()]
+func (a archSchemas) getSchema(id validId) archSchema {
+	return a.schemas[id.Raw()]
 }
 
 // ABI returns the ABI of the interface.
@@ -123,7 +123,11 @@ func NewActionSchemas(
 ) (ActionSchemas, error) {
 	if _, ok := types[params.TickActionName]; !ok {
 		// Add the canonical Tick action
-		schemas = append(schemas, datamod.TableSchema{Name: "Tick"})
+		schemas = append(schemas, datamod.TableSchema{
+			Name:   "Tick",
+			Keys:   []datamod.FieldSchema{},
+			Values: []datamod.FieldSchema{},
+		})
 		types[params.TickActionName] = reflect.TypeOf(CanonicalTickAction{})
 	}
 	s, err := newArchSchemas(abi, schemas, types, params.SolidityActionMethodName)
