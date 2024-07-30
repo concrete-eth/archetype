@@ -19,11 +19,16 @@ type Core interface {
 	InBlockTickIndex() uint64   // Get the in-block tick index
 }
 
+type ISetRebasing interface {
+	SetRebasing(bool)
+}
+
 type BaseCore struct {
 	kv               lib.KeyValueStore
 	ds               lib.Datastore
 	blockNumber      uint64
 	inBlockTickIndex uint64
+	rebasing         bool
 }
 
 var _ Core = &BaseCore{}
@@ -55,6 +60,14 @@ func (b *BaseCore) SetInBlockTickIndex(index uint64) {
 
 func (b *BaseCore) InBlockTickIndex() uint64 {
 	return b.inBlockTickIndex
+}
+
+func (b *BaseCore) SetRebasing(rebasing bool) {
+	b.rebasing = rebasing
+}
+
+func (b *BaseCore) Rebasing() bool {
+	return b.rebasing
 }
 
 func (b *BaseCore) TicksPerBlock() uint64 {

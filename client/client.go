@@ -217,9 +217,16 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		didReceiveNewBatch = true
 		c.kv.Revert()
 		c.core.SetInBlockTickIndex(0)
+
+		if base, ok := c.core.(arch.ISetRebasing); ok {
+			base.SetRebasing(true)
+		}
 		didTick, err = c.applyBatchAndCommit(batch)
 		if err != nil {
 			return didReceiveNewBatch, didTick, err
+		}
+		if base, ok := c.core.(arch.ISetRebasing); ok {
+			base.SetRebasing(false)
 		}
 
 		c.ticksRunThisBlock = 0
