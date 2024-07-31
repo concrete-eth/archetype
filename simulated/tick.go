@@ -86,7 +86,7 @@ func (tsb *TickingSimulatedBackend) insertTickTxIfNecessary() {
 }
 
 func (tsb *TickingSimulatedBackend) newTickTransaction() *types.Transaction {
-	nonce, err := tsb.NonceAt(context.Background(), tsb.tickOpts.From, nil)
+	nonce, err := tsb.PendingNonceAt(context.Background(), tsb.tickOpts.From)
 	if err != nil {
 		panic(err)
 	}
