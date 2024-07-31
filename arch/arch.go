@@ -37,6 +37,10 @@ func (v validId) Raw() RawIdType {
 	return v.id
 }
 
+func (v validId) Uint32() uint32 {
+	return uint32(v.id[3]) | uint32(v.id[2])<<8 | uint32(v.id[1])<<16 | uint32(v.id[0])<<24
+}
+
 type archSchema struct {
 	datamod.TableSchema
 	Method *abi.Method

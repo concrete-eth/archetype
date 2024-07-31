@@ -395,7 +395,7 @@ func NewActionSender(
 // packMultiActionCall packs multiple actions into a single call to the contract.
 func (a *ActionSender) packMultiActionCall(actions []arch.Action) ([]byte, error) {
 	var (
-		actionIds   = make([]arch.RawIdType, 0)
+		actionIds   = make([]uint32, 0)
 		actionCount = make([]uint8, 0)
 		actionData  = make([][]byte, 0, len(actions))
 	)
@@ -407,21 +407,20 @@ func (a *ActionSender) packMultiActionCall(actions []arch.Action) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	actionIds = append(actionIds, firstActionId.Raw())
+	actionIds = append(actionIds, firstActionId.Uint32())
 	actionCount = append(actionCount, 1)
 	actionData = append(actionData, firstData)
 
 	for _, action := range actions[1:] {
-		_actionId, data, err := a.actionSchemas.EncodeAction(action)
+		actionId, data, err := a.actionSchemas.EncodeAction(action)
 		if err != nil {
 			return nil, err
 		}
-		rawActionId := _actionId.Raw()
 		actionData = append(actionData, data)
-		if rawActionId == actionIds[len(actionIds)-1] {
+		if actionId.Uint32() == actionIds[len(actionIds)-1] {
 			actionCount[len(actionCount)-1]++
 		} else {
-			actionIds = append(actionIds, rawActionId)
+			actionIds = append(actionIds, actionId.Uint32())
 			actionCount = append(actionCount, 1)
 		}
 	}

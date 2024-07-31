@@ -61,7 +61,7 @@ func GenerateActions(config Config) error {
 	data := make(map[string]interface{})
 	data["Package"] = config.PackageName
 	data["Imports"] = []importSpecs{
-		{"contract", filepath.Join(config.ContractsImportPath, params.IActionsContract.PackageName)},
+		{"contract", filepath.Join(config.ContractsImportPath, params.EntrypointContract.PackageName)},
 	}
 	data["Experimental"] = config.Experimental
 	outPath := filepath.Join(config.Out, "actions.go")

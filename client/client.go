@@ -154,6 +154,10 @@ func (c *Client) SendActions(actions []arch.Action) error {
 		}
 	})
 
+	if len(actionsToSend) == 0 {
+		return nil
+	}
+
 	select {
 	case c.actionOutChan <- actionsToSend:
 		return nil
