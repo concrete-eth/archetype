@@ -80,6 +80,7 @@ func getGasPrice(ethcli EthCli) (gasFeeCap, gasTipCap *big.Int, err error) {
 			errChan <- err
 			return
 		}
+		gasTipCap.Add(gasTipCap, new(big.Int).Div(gasTipCap, big.NewInt(4))) // +25%
 		gasTipCapChan <- gasTipCap
 	}()
 
@@ -434,15 +435,15 @@ func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
 	}()
 
 	// Use provisional gas price to estimate gas
-	gasEstGasFeeCap := common.Big0
-	gasEstTipCap := common.Big0
+	// gasEstGasFeeCap := common.Big0
+	// gasEstTipCap := common.Big0
 
 	msg := ethereum.CallMsg{
 		From:      a.from,
 		To:        &a.contractAddress,
 		Value:     common.Big0,
-		GasFeeCap: gasEstGasFeeCap,
-		GasTipCap: gasEstTipCap,
+		GasFeeCap: common.Big0,
+		GasTipCap: common.Big0,
 		Data:      data,
 	}
 
@@ -473,7 +474,12 @@ func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
 		}
 	}
 
-	gasLimit := estGasCost + estGasCost/4
+	var gasLimit uint64
+	if estGasCost < 80_000 {
+		gasLimit = 100_000
+	} else {
+		gasLimit = estGasCost + estGasCost/4
+	}
 
 	// Send transaction
 	txData := &types.DynamicFeeTx{
