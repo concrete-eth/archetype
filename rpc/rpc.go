@@ -524,8 +524,8 @@ func isUnexpectedNonceError(err error) bool {
 	// errors.Is(core.ErrNonceTooLow, err) etc. would be better but importing core leads to
 	// a conflict when building for WASM
 	return strings.HasPrefix(err.Error(), "invalid transaction nonce:") ||
-		strings.HasSuffix(err.Error(), "nonce too low") ||
-		strings.HasSuffix(err.Error(), "nonce is too low")
+		strings.HasPrefix(err.Error(), "nonce too low") ||
+		strings.HasPrefix(err.Error(), "nonce is too low")
 }
 
 // signAndSend signs and sends a transaction.
@@ -973,6 +973,7 @@ type IO struct {
 
 	actionBatchOutChan <-chan arch.ActionBatch
 	actionInChan       chan<- []arch.Action
+	errChan            <-chan error
 
 	schemas             arch.ArchSchemas
 	blockTime           time.Duration
@@ -1013,7 +1014,8 @@ func NewIO(
 	}
 
 	io.sender = NewActionSender(ethcli, schemas.Actions, nil, gameAddress, auth.From, auth.Nonce.Uint64(), auth.Signer)
-	_, cancel := io.sender.StartSendingActions(actionChan, txUpdateChanW)
+	errChan, cancel := io.sender.StartSendingActions(actionChan, txUpdateChanW)
+	io.errChan = errChan
 	io.registerCancelFn(cancel)
 
 	sub := SubscribeActionBatches(ethcli, schemas.Actions, coreAddress, startingBlockNumber, actionBatchChan, txHashChan)
@@ -1075,6 +1077,10 @@ func (io *IO) Stop() {
 
 func (io *IO) Hinter() *TxHinter {
 	return io.hinter
+}
+
+func (io *IO) ErrChan() <-chan error {
+	return io.errChan
 }
 
 // Create a new client.Client using IO for sending and receiving transactions.
