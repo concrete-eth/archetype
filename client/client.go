@@ -45,6 +45,7 @@ type Client struct {
 func New(schemas arch.ArchSchemas, core arch.Core, kv lib.KeyValueStore, actionBatchChan <-chan arch.ActionBatch, actionChan chan<- []arch.Action, blockTime time.Duration, blockNumber uint64) *Client {
 	stagedKv := kvstore.NewStagedKeyValueStore(kv)
 	core.SetKV(stagedKv)
+	core.SetBlockNumber(blockNumber)
 	return &Client{
 		schemas:           schemas,
 		core:              core,
