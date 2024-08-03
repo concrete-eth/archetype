@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/lib"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // var (
@@ -1089,4 +1090,42 @@ func (io *IO) NewClient(
 	core arch.Core,
 ) *client.Client {
 	return client.New(io.schemas, core, kv, io.actionBatchOutChan, io.actionInChan, io.blockTime, io.startingBlockNumber)
+}
+
+func NewEthClient(rpcUrl string) (ethcli *ethclient.Client, chainId *big.Int, err error) {
+	// TODO: make this less confusing
+	if ethcli, err = ethclient.Dial(rpcUrl); err != nil {
+		return
+	} else if chainId, err = ethcli.ChainID(context.Background()); err != nil {
+		return
+	}
+	return
+}
+
+func SetNonce(auth *bind.TransactOpts, ethcli ethereum.PendingStateReader) error {
+	if nonce, err := ethcli.PendingNonceAt(context.Background(), auth.From); err != nil {
+		return err
+	} else {
+		auth.Nonce = new(big.Int).SetUint64(nonce)
+	}
+	return nil
+}
+
+func WaitForTx(ethcli ethereum.TransactionReader, tx *types.Transaction) error {
+	timeout := time.After(1 * time.Second)
+	for {
+		_, pending, err := ethcli.TransactionByHash(context.Background(), tx.Hash())
+		if err == ethereum.NotFound {
+			select {
+			case <-timeout:
+				return errors.New("timeout")
+			default:
+			}
+		} else if err != nil {
+			return err
+		} else if !pending {
+			return nil
+		}
+		time.Sleep(1 * time.Second)
+	}
 }

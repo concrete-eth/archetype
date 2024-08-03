@@ -5,6 +5,7 @@ import (
 
 	"github.com/concrete-eth/archetype/deploy"
 	game_contract "github.com/concrete-eth/archetype/example/gogen/abigen/game"
+	"github.com/concrete-eth/archetype/rpc"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,7 +21,7 @@ var (
 func main() {
 	// Connect to rpc
 	fmt.Println("Connecting to", rpcUrl)
-	ethcli, chainId, err := deploy.NewEthClient(rpcUrl)
+	ethcli, chainId, err := rpc.NewEthClient(rpcUrl)
 	if err != nil {
 		panic(err)
 	}

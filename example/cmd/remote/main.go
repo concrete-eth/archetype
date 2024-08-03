@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/concrete-eth/archetype/arch"
-	"github.com/concrete-eth/archetype/deploy"
 	"github.com/concrete-eth/archetype/example/client"
 	"github.com/concrete-eth/archetype/example/gogen/archmod"
 	"github.com/concrete-eth/archetype/kvstore"
@@ -29,7 +28,7 @@ func main() {
 	log.SetDefault(log.NewLogger(log.NewTerminalHandlerWithLevel(os.Stderr, log.LevelInfo, true)))
 
 	// Dial rpc
-	ethcli, chainId, err := deploy.NewEthClient(rpcUrl)
+	ethcli, chainId, err := rpc.NewEthClient(rpcUrl)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +42,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	deploy.SetNonce(auth, ethcli)
+	rpc.SetNonce(auth, ethcli)
 
 	// Create schemas from codegen
 	schemas := arch.ArchSchemas{Actions: archmod.ActionSchemas, Tables: archmod.TableSchemas}
