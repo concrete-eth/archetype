@@ -104,8 +104,7 @@ type ActionBatchSubscription struct {
 	ethcli               EthCli
 	actionSchemas        arch.ActionSchemas
 	coreAddress          common.Address
-	actionBatchesOutChan chan<- arch.ActionBatch
-	txHashesOutChan      chan<- common.Hash
+	actionBatchesOutChan chan<- arch.ActionBatchWithLogs
 	unsubChan            chan struct{}
 	errChan              chan error
 	closeUnsubOnce       sync.Once
@@ -121,15 +120,13 @@ func SubscribeActionBatches(
 	actionSchemas arch.ActionSchemas,
 	coreAddress common.Address,
 	startingBlockNumber uint64,
-	actionBatchesChan chan<- arch.ActionBatch,
-	txHashesChan chan<- common.Hash,
+	actionBatchesChan chan<- arch.ActionBatchWithLogs,
 ) *ActionBatchSubscription {
 	sub := &ActionBatchSubscription{
 		ethcli:               ethcli,
 		actionSchemas:        actionSchemas,
 		coreAddress:          coreAddress,
 		actionBatchesOutChan: actionBatchesChan,
-		txHashesOutChan:      txHashesChan,
 		unsubChan:            make(chan struct{}),
 		errChan:              make(chan error, 1),
 	}
@@ -324,22 +321,12 @@ func (s *ActionBatchSubscription) sendLogBatch(blockNumber uint64, logBatch []ty
 		}
 		actions = append(actions, action)
 	}
-	actionBatch := arch.NewActionBatch(blockNumber, actions)
+	actionBatchWithLogs := arch.NewActionBatchWithLogs(blockNumber, actions, logBatch)
 	select {
 	case <-s.unsubChan:
 		s.unsubscribe()
 		return nil
-	case s.actionBatchesOutChan <- actionBatch:
-		if s.txHashesOutChan != nil {
-			for _, log := range logBatch {
-				select {
-				case <-s.unsubChan:
-					s.unsubscribe()
-					return nil
-				case s.txHashesOutChan <- log.TxHash:
-				}
-			}
-		}
+	case s.actionBatchesOutChan <- actionBatchWithLogs:
 	}
 	return nil
 }
@@ -994,11 +981,11 @@ func NewIO(
 	dampenDelay time.Duration,
 ) *IO {
 	var (
-		actionChan              = make(chan []arch.Action, 8)
-		actionBatchChan         = make(chan arch.ActionBatch, 8)
-		actionBatchChanDampened = make(chan arch.ActionBatch, 1)
-		txHashChan              = make(chan common.Hash, 1)
-		txUpdateChanW           = make(chan *ActionTxUpdate, 1)
+		actionChan                      = make(chan []arch.Action, 8)
+		actionBatchWithLogsChan         = make(chan arch.ActionBatchWithLogs, 8)
+		actionBatchWithLogsChanDampened = make(chan arch.ActionBatchWithLogs, 1)
+		actionBatchChanDampened         = make(chan arch.ActionBatch)
+		txUpdateChanW                   = make(chan *ActionTxUpdate)
 	)
 
 	io := &IO{
@@ -1019,15 +1006,18 @@ func NewIO(
 	io.errChan = errChan
 	io.registerCancelFn(cancel)
 
-	sub := SubscribeActionBatches(ethcli, schemas.Actions, coreAddress, startingBlockNumber, actionBatchChan, txHashChan)
+	sub := SubscribeActionBatches(ethcli, schemas.Actions, coreAddress, startingBlockNumber, actionBatchWithLogsChan)
 	io.registerCancelFn(sub.unsubscribe)
-	DampenLatency(actionBatchChan, actionBatchChanDampened, blockTime, dampenDelay)
+	DampenLatency(actionBatchWithLogsChan, actionBatchWithLogsChanDampened, blockTime, dampenDelay)
 
 	go func() {
-		for txHash := range txHashChan {
-			txUpdateChanW <- &ActionTxUpdate{
-				TxHash: txHash,
-				Status: ActionTxStatus_Included,
+		for txHash := range actionBatchWithLogsChanDampened {
+			actionBatchChanDampened <- txHash.ActionBatch
+			for _, log := range txHash.Logs {
+				txUpdateChanW <- &ActionTxUpdate{
+					TxHash: log.TxHash,
+					Status: ActionTxStatus_Included,
+				}
 			}
 		}
 	}()

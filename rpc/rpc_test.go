@@ -113,13 +113,13 @@ func TestSendBadAction(t *testing.T) {
 	}
 }
 
-func waitForActionBatch(t *testing.T, actionBatchesChan <-chan arch.ActionBatch) arch.ActionBatch {
+func waitForActionBatch(t *testing.T, actionBatchesChan <-chan arch.ActionBatchWithLogs) arch.ActionBatch {
 	select {
 	case <-time.After(10 * time.Millisecond):
 		t.Fatal("timeout")
 		return arch.ActionBatch{}
 	case actionBatchIn := <-actionBatchesChan:
-		return actionBatchIn
+		return actionBatchIn.ActionBatch
 	}
 }
 
@@ -130,8 +130,8 @@ func TestSubscribeToActionBatches(t *testing.T) {
 	)
 
 	// Subscribe to action batches
-	actionBatchesChan := make(chan arch.ActionBatch, 1)
-	sub := SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchesChan, nil)
+	actionBatchesChan := make(chan arch.ActionBatchWithLogs, 1)
+	sub := SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchesChan)
 	defer sub.Unsubscribe()
 
 	// Commit and empty block
@@ -187,8 +187,8 @@ func TestSubscribeToActionBatchesError(t *testing.T) {
 	)
 
 	// Subscribe to action batches
-	actionBatchesChan := make(chan arch.ActionBatch, 1)
-	sub := SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchesChan, nil)
+	actionBatchesChan := make(chan arch.ActionBatchWithLogs, 1)
+	sub := SubscribeActionBatches(ethcli, schemas.Actions, pcAddress, 0, actionBatchesChan)
 	defer sub.Unsubscribe()
 
 	timeout := time.After(10 * time.Millisecond)

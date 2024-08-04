@@ -1,5 +1,9 @@
 package arch
 
+import (
+	"github.com/ethereum/go-ethereum/core/types"
+)
+
 type Action interface{}
 
 type CanonicalTickAction struct{}
@@ -18,4 +22,13 @@ func (a ActionBatch) Len() int {
 // NewActionBatch creates a new ActionBatch instance.
 func NewActionBatch(blockNumber uint64, actions []Action) ActionBatch {
 	return ActionBatch{BlockNumber: blockNumber, Actions: actions}
+}
+
+type ActionBatchWithLogs struct {
+	ActionBatch
+	Logs []types.Log
+}
+
+func NewActionBatchWithLogs(blockNumber uint64, actions []Action, logs []types.Log) ActionBatchWithLogs {
+	return ActionBatchWithLogs{ActionBatch: NewActionBatch(blockNumber, actions), Logs: logs}
 }
