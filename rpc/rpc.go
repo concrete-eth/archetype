@@ -818,7 +818,11 @@ func (txh *TxHinter) GetHints() (uint64, [][]arch.Action) {
 	defer txh.mutex.Unlock()
 
 	pendingTxs := txh.txm.PendingTxs()
-	hints := make([][]arch.Action, 0, len(txh.unsentActions)+len(pendingTxs))
+	hints := make([][]arch.Action, 0, len(pendingTxs)+len(txh.unsentActions))
+
+	for _, txHash := range pendingTxs {
+		hints = append(hints, txh.actions[txHash])
+	}
 
 	nonces := make([]uint64, 0, len(txh.unsentActions))
 	for _, actions := range txh.unsentActions {
@@ -829,9 +833,6 @@ func (txh *TxHinter) GetHints() (uint64, [][]arch.Action) {
 		return nonces[i] < nonces[j]
 	})
 
-	for _, txHash := range pendingTxs {
-		hints = append(hints, txh.actions[txHash])
-	}
 	return txh.hintNonce, hints
 }
 
