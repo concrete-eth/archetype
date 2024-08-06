@@ -11,7 +11,7 @@ contract Test {
 
     function setUp() public virtual {
         game = new Game();
-        game.initialize(address(0x80));
+        game.initialize(address(0x80), "");
     }
 
     function assertEq(string memory title, uint256 a, uint256 b) internal pure {

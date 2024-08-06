@@ -45,7 +45,7 @@ contract GameTest is Test {
     function setUp() public virtual {
         logic = new TestLogic();
         game = new Game();
-        game.initialize(address(logic));
+        game.initialize(address(logic), "");
     }
 
     function testAddBody() public {

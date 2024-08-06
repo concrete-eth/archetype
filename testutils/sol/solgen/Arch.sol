@@ -17,7 +17,7 @@ abstract contract Arch is Entrypoint, ArchProxyAdmin, Initializable {
             new ArchProxy(address(this), _logic, "")
         );
         _setProxy(proxyAddress);
-        _initialize();
+        _initialize(data);
     }
 
     function _initialize() internal virtual;

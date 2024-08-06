@@ -11,15 +11,15 @@ import {ArchProxyAdmin} from "arch/ArchProxyAdmin.sol";
 import {ArchProxy} from "arch/ArchProxy.sol";
 
 abstract contract Arch is Entrypoint, ArchProxyAdmin, Initializable {
-    function initialize(address _logic) public initializer {
+    function initialize(address _logic, bytes memory data) public initializer {
         address proxyAddress = address(
             new ArchProxy(address(this), _logic, "")
         );
         _setProxy(proxyAddress);
-        _initialize();
+        _initialize(data);
     }
 
-    function _initialize() internal virtual;
+    function _initialize(bytes memory data) internal virtual;
 
     uint256 public lastTickBlockNumber;
 

@@ -9,6 +9,7 @@
 		"abigen:game": "abigen --bin ./out/Game.sol/Game.bin --abi ./out/Game.sol/Game.abi.json --pkg contract --out ./gogen/abigen/game/game.go",
 		"build:game:web": "env GOOS=js GOARCH=wasm go build -trimpath -o ./web/play.wasm ./web/play.go",
 		"build:engine:docker": "docker build -t ghcr.io/concrete-eth/archetype/example:latest ..",
+		"test": "pnpm run test:sol && pnpm run test:e2e",
 		"test:sol": "forge test",
 		"test:e2e": "forge build -C e2e/Test.sol && go test ./e2e",
 		"run:game": "go run cmd/main.go"

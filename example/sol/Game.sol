@@ -8,7 +8,7 @@ import {Arch} from "./solgen/Arch.sol";
 contract Game is Arch {
     int32 internal constant scale = 100;
 
-    function _initialize() internal override {
+    function _initialize(bytes memory data) internal override {
         _addBody(0, 0, uint32(6 * scale), 0, 0);
         _addBody(-60 * scale, 0, uint32(2 * scale), 0, -4 * scale);
         _addBody(60 * scale, 0, uint32(2 * scale), 0, 4 * scale);
