@@ -687,7 +687,7 @@ func NewTxMonitor(ethcli EthCli) *TxMonitor {
 
 // AddTxHash adds a transaction hash to be monitored.
 func (txm *TxMonitor) AddTxHash(txHash common.Hash) {
-	txm.timestamps[txHash] = time.Now().Unix()
+	txm.timestamps[txHash] = time.Now().UnixMilli()
 }
 
 // RemoveTx removes a transaction hash from the monitor.
@@ -722,7 +722,7 @@ func (txm *TxMonitor) Update() bool {
 		isPending, err := txm.isPending(txHash)
 		if err != nil {
 			// Remove a transaction that cannot be retrieved if it was added more than 6 seconds ago
-			isStale := time.Now().Unix()-timestamp > 6
+			isStale := time.Now().UnixMilli()-timestamp > 6000
 			if isStale {
 				txm.RemoveTx(txHash)
 				modified = true
