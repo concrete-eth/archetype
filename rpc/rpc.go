@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -739,10 +740,15 @@ func (txm *TxMonitor) Update() bool {
 
 // PendingTxs returns the hash all of monitored transactions that are currently pending.
 func (txm *TxMonitor) PendingTxs() []common.Hash {
+	timestamps := make([]int64, 0, len(txm.timestamps))
 	pendingTxs := make([]common.Hash, 0, len(txm.timestamps))
-	for txHash := range txm.timestamps {
+	for txHash, timestamp := range txm.timestamps {
+		timestamps = append(timestamps, timestamp)
 		pendingTxs = append(pendingTxs, txHash)
 	}
+	sort.Slice(pendingTxs, func(i, j int) bool {
+		return timestamps[i] < timestamps[j]
+	})
 	return pendingTxs
 }
 
@@ -812,12 +818,19 @@ func (txh *TxHinter) GetHints() (uint64, [][]arch.Action) {
 	defer txh.mutex.Unlock()
 
 	pendingTxs := txh.txm.PendingTxs()
-	hints := make([][]arch.Action, 0, len(pendingTxs))
+	hints := make([][]arch.Action, 0, len(txh.unsentActions)+len(pendingTxs))
+
+	nonces := make([]uint64, 0, len(txh.unsentActions))
+	for _, actions := range txh.unsentActions {
+		hints = append(hints, actions)
+		nonces = append(nonces, txh.hintNonce)
+	}
+	sort.Slice(nonces, func(i, j int) bool {
+		return nonces[i] < nonces[j]
+	})
+
 	for _, txHash := range pendingTxs {
 		hints = append(hints, txh.actions[txHash])
-	}
-	for _, action := range txh.unsentActions {
-		hints = append(hints, action)
 	}
 	return txh.hintNonce, hints
 }
