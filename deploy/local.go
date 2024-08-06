@@ -29,7 +29,7 @@ func NewSimulatedBackend(registry concrete.PrecompileRegistry, gasLimit uint64, 
 	return simulated.NewTickingSimulatedBackend(alloc, gasLimit, registry)
 }
 
-func NewLocalIO(registry concrete.PrecompileRegistry, schemas arch.ArchSchemas, deployer GameContractDeployer, logic common.Address, blockTime time.Duration) (*rpc.IO, error) {
+func NewLocalIO(registry concrete.PrecompileRegistry, schemas arch.ArchSchemas, deployer GameContractDeployer, logic common.Address, data []byte, blockTime time.Duration) (*rpc.IO, error) {
 	// Load tx opts
 	privateKey, err := crypto.HexToECDSA(localPrivateKeyHex)
 	if err != nil {
@@ -44,7 +44,7 @@ func NewLocalIO(registry concrete.PrecompileRegistry, schemas arch.ArchSchemas, 
 	// Create simulated backend with precompile
 	ethcli := NewSimulatedBackend(registry, 100_000_000, auth.From)
 	// Deploy game
-	gameAddr, coreAddr, err := DeployGame(auth, ethcli, deployer, logic, true)
+	gameAddr, coreAddr, err := DeployGame(auth, ethcli, deployer, logic, data, true)
 	if err != nil {
 		return nil, err
 	}

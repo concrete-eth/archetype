@@ -14,7 +14,7 @@ type InitializableProxyAdmin interface {
 	Initialize(auth *bind.TransactOpts, logic common.Address, data []byte) (*types.Transaction, error)
 }
 
-func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContractDeployer, logic common.Address, commit bool) (gameAddr common.Address, coreAddr common.Address, err error) {
+func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContractDeployer, logic common.Address, data []byte, commit bool) (gameAddr common.Address, coreAddr common.Address, err error) {
 	var tx *types.Transaction
 	var proxyAdmin InitializableProxyAdmin
 
@@ -31,7 +31,7 @@ func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContrac
 	}
 
 	rpc.SetNonce(auth, ethcli)
-	if tx, err = proxyAdmin.Initialize(auth, logic, []byte{}); err != nil {
+	if tx, err = proxyAdmin.Initialize(auth, logic, data); err != nil {
 		return
 	} else {
 		if commit {

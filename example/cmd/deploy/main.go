@@ -41,7 +41,7 @@ func main() {
 	fmt.Println("Deploying game")
 	gameAddr, coreAddr, err := deploy.DeployGame(auth, ethcli, func(auth *bind.TransactOpts, ethcli bind.ContractBackend) (common.Address, *types.Transaction, deploy.InitializableProxyAdmin, error) {
 		return game_contract.DeployContract(auth, ethcli)
-	}, pcAddr, false)
+	}, pcAddr, nil, false)
 	if err != nil {
 		panic(err)
 	}
