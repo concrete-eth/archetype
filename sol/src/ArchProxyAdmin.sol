@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {ArchProxy} from "./ArchProxy.sol";
 import {CallUtils} from "./utils/CallUtils.sol";
-
 import {console2} from "forge-std/Test.sol";
 
 contract ArchProxyAdmin {
