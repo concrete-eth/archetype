@@ -11,6 +11,7 @@ func NewRootCmd() *cobra.Command {
 	var rootCmd = &cobra.Command{Use: "archetype"}
 	AddCodegenCommand(rootCmd)
 	AddSnapshotCommand(rootCmd)
+	AddInfoCommand(rootCmd)
 	return rootCmd
 }
 

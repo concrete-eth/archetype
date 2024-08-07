@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +8,6 @@ import (
 	"github.com/concrete-eth/archetype/example/engine"
 	"github.com/concrete-eth/archetype/snapshot"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/spf13/cobra"
 )
@@ -24,30 +21,6 @@ func checkIsHexAddress(addressHex string) {
 
 func methodName(name string) string {
 	return engine.SnapshotNamespace + "_" + name
-}
-
-func newRpcClient(cmd *cobra.Command) *rpc.Client {
-	opts := make([]rpc.ClientOption, 0)
-
-	jwtSecretHex, err := cmd.Flags().GetString("jwt-secret")
-	if err != nil {
-		logFatal(err)
-	}
-	if jwtSecretHex != "" {
-		jwtSecret := common.HexToHash(jwtSecretHex)
-		opts = append(opts, rpc.WithHTTPAuth(node.NewJWTAuth(jwtSecret)))
-	}
-
-	rpcUrl, err := cmd.Flags().GetString("rpc-url")
-	if err != nil {
-		logFatal(err)
-	}
-
-	rpcClient, err := rpc.DialOptions(context.Background(), rpcUrl, opts...)
-	if err != nil {
-		logFatal(err)
-	}
-	return rpcClient
 }
 
 func getSnapshotQuery(cmd *cobra.Command) *snapshot.SnapshotQuery {
@@ -87,15 +60,17 @@ func runNewSnapshot(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logFatal(err)
 	}
+	var resp []snapshot.SnapshotMetadataWithStatus
 	if replace {
-		if err := rpcClient.Call(nil, methodName("update"), query); err != nil {
+		if err := rpcClient.Call(&resp, methodName("update"), query); err != nil {
 			logFatalNoContext(err)
 		}
 	} else {
-		if err := rpcClient.Call(nil, methodName("new"), query); err != nil {
+		if err := rpcClient.Call(&resp, methodName("new"), query); err != nil {
 			logFatalNoContext(err)
 		}
 	}
+	printSnapshotMetadataWithStatus(resp...)
 }
 
 func runDeleteSnapshot(cmd *cobra.Command, args []string) {
@@ -188,13 +163,8 @@ func printSnapshotResponse(resp snapshot.SnapshotResponse) {
 	logInfo(string(jsonStr))
 }
 
-func printSnapshotSchedules(schedules ...snapshot.Schedule) {
-	var data any
-	if len(schedules) == 1 {
-		data = schedules[0]
-	} else {
-		data = schedules
-	}
+func printSnapshotSchedules(schedules map[uint64]snapshot.Schedule) {
+	data := schedules
 	jsonStr, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		logFatal(err)
@@ -203,17 +173,9 @@ func printSnapshotSchedules(schedules ...snapshot.Schedule) {
 }
 
 func runGetSnapshot(cmd *cobra.Command, args []string) {
-	addressHex, err := cmd.Flags().GetString("address")
-	if err != nil {
-		logFatal(err)
-	}
-	if addressHex == "" {
-		logFatalNoContext(errors.New("address is required"))
-	}
-	checkIsHexAddress(addressHex)
-	address := common.HexToAddress(addressHex)
-
+	address := getAddress(cmd)
 	hasBlockHash := cmd.Flags().Changed("block-hash")
+
 	blockHashHex, err := cmd.Flags().GetString("block-hash")
 	if err != nil {
 		logFatal(err)
@@ -251,13 +213,11 @@ func runGetSnapshot(cmd *cobra.Command, args []string) {
 
 func runGetSnapshotSchedules(cmd *cobra.Command, args []string) {
 	rpcClient := newRpcClient(cmd)
-	var resp []snapshot.Schedule
+	var resp map[uint64]snapshot.Schedule
 	if err := rpcClient.Call(&resp, methodName("getSchedules")); err != nil {
 		logFatalNoContext(err)
 	}
-	for _, schedule := range resp {
-		printSnapshotSchedules(schedule)
-	}
+	printSnapshotSchedules(resp)
 }
 
 // AddSnapshotCommand
