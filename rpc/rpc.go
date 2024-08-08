@@ -562,7 +562,12 @@ func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transactio
 }
 
 // StartSendingActions starts sending actions from the given channel.
-func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txUpdateChan chan<- *ActionTxUpdate) (<-chan error, func()) {
+func (a *ActionSender) StartSendingActions(
+	actionsChan <-chan []arch.Action,
+	txUpdateChan chan<- *ActionTxUpdate,
+	retryTxData <-chan []byte,
+	retryTxHashes chan<- common.Hash,
+) (<-chan error, func()) {
 	stopChan := make(chan struct{})
 	errChan := make(chan error, 1)
 	go func() {
@@ -598,6 +603,17 @@ func (a *ActionSender) StartSendingActions(actionsChan <-chan []arch.Action, txU
 						// Announce success
 						txUpdateChan <- &ActionTxUpdate{TxHash: tx.Hash(), Nonce: nonce, Status: ActionTxStatus_Pending}
 					}
+				}
+			case data := <-retryTxData:
+				tx, err := a.sendData(data)
+				if err == nil {
+					retryTxHashes <- tx.Hash()
+				} else {
+					select {
+					case errChan <- err:
+					default:
+					}
+					retryTxHashes <- common.Hash{}
 				}
 			}
 		}
@@ -672,16 +688,22 @@ func (t *TableGetter) Read(tableName string, keys ...interface{}) (interface{}, 
 }
 
 type TxMonitor struct {
-	client     EthCli
-	timestamps map[common.Hash]int64
+	client          EthCli
+	timestamps      map[common.Hash]int64
+	retryTxData     chan<- []byte
+	retryTxHashes   <-chan common.Hash
+	retriedTxHashes map[common.Hash]common.Hash // original hash -> retried hash
 }
 
 // NewTxMonitor creates a new TxMonitor.
 // The TxMonitor is used to monitor the status of transactions. All included or stale transactions are discarded.
-func NewTxMonitor(ethcli EthCli) *TxMonitor {
+func NewTxMonitor(ethcli EthCli, retryTxData chan<- []byte, retryTxHashes <-chan common.Hash) *TxMonitor {
 	return &TxMonitor{
-		client:     ethcli,
-		timestamps: make(map[common.Hash]int64),
+		client:          ethcli,
+		timestamps:      make(map[common.Hash]int64),
+		retriedTxHashes: make(map[common.Hash]common.Hash),
+		retryTxData:     retryTxData,
+		retryTxHashes:   retryTxHashes,
 	}
 }
 
@@ -716,23 +738,61 @@ func (txm *TxMonitor) isPending(txHash common.Hash) (bool, error) {
 }
 
 // Update triggers and update of the status of all monitored transactions.
-func (txm *TxMonitor) Update() bool {
-	modified := false
+func (txm *TxMonitor) Update() (modified bool) {
 	for txHash, timestamp := range txm.timestamps {
-		isPending, err := txm.isPending(txHash)
+		ogTxHash := txHash
+		if retriedHash, ok := txm.retriedTxHashes[ogTxHash]; ok {
+			txHash = retriedHash
+		}
+		tx, isPending, err := txm.client.TransactionByHash(context.Background(), txHash)
 		if err != nil {
 			// Remove a transaction that cannot be retrieved if it was added more than 6 seconds ago
 			isStale := time.Now().UnixMilli()-timestamp > 6000
 			if isStale {
+				txm.RemoveTx(ogTxHash)
+				delete(txm.retriedTxHashes, ogTxHash)
+				modified = true
+			}
+			continue
+		}
+		if isPending {
+			continue
+		}
+		if txHash != ogTxHash {
+			// Already retried, remove both hashes
+			txm.RemoveTx(ogTxHash)
+			delete(txm.retriedTxHashes, ogTxHash)
+			modified = true
+		} else {
+			// Not retried, check receipt
+			receipt, err := txm.client.TransactionReceipt(context.Background(), txHash)
+			if err != nil || receipt.Status == types.ReceiptStatusSuccessful {
+				// Cannot get receipt or success status
+				txm.RemoveTx(ogTxHash)
+				modified = true
+				continue
+			}
+			// Tx failed, check gas used
+			if receipt.GasUsed > tx.Gas()*97/100 {
+				// Likely out of gas, retry
+				select {
+				case txm.retryTxData <- tx.Data():
+					txHash := <-txm.retryTxHashes
+					if txHash == (common.Hash{}) {
+						// Retry failed
+						txm.RemoveTx(ogTxHash)
+						modified = true
+					} else {
+						// Retry successful
+						txm.retriedTxHashes[ogTxHash] = txHash
+					}
+				default:
+				}
+			} else {
+				// Remove failed tx
 				txm.RemoveTx(txHash)
 				modified = true
-			} else {
-				isPending = true
 			}
-		}
-		if !isPending {
-			txm.RemoveTx(txHash)
-			modified = true
 		}
 	}
 	return modified
@@ -801,9 +861,9 @@ type TxHinter struct {
 
 // NewTxHinter creates a new TxHinter.
 // The TxHinter is used to get the actions sent by all monitored pending transactions.
-func NewTxHinter(ethcli EthCli, txUpdateChan <-chan *ActionTxUpdate) *TxHinter {
+func NewTxHinter(txm *TxMonitor, txUpdateChan <-chan *ActionTxUpdate) *TxHinter {
 	return &TxHinter{
-		txm:            NewTxMonitor(ethcli),
+		txm:            txm,
 		unsentActions:  make(map[uint64][]arch.Action),
 		actions:        make(map[common.Hash][]arch.Action),
 		txUpdateInChan: txUpdateChan,
@@ -1000,6 +1060,8 @@ func NewIO(
 		actionBatchWithLogsChanDampened = make(chan arch.ActionBatchWithLogs, 1)
 		actionBatchChanDampened         = make(chan arch.ActionBatch)
 		txUpdateChanW                   = make(chan *ActionTxUpdate)
+		retryTxData                     = make(chan []byte)
+		retryTxHashes                   = make(chan common.Hash)
 	)
 
 	io := &IO{
@@ -1015,8 +1077,9 @@ func NewIO(
 		auth.Nonce = new(big.Int).SetUint64(0)
 	}
 
+	txm := NewTxMonitor(ethcli, retryTxData, retryTxHashes)
 	io.sender = NewActionSender(ethcli, schemas.Actions, nil, gameAddress, auth.From, auth.Nonce.Uint64(), auth.Signer)
-	errChan, cancel := io.sender.StartSendingActions(actionChan, txUpdateChanW)
+	errChan, cancel := io.sender.StartSendingActions(actionChan, txUpdateChanW, retryTxData, retryTxHashes)
 	io.errChan = errChan
 	io.registerCancelFn(cancel)
 
@@ -1038,7 +1101,7 @@ func NewIO(
 
 	txUpdateChanR := utils.ProbeChannel(txUpdateChanW, io.txUpdateHook)
 
-	io.hinter = NewTxHinter(ethcli, txUpdateChanR)
+	io.hinter = NewTxHinter(txm, txUpdateChanR)
 	io.hinter.Start(blockTime / 2)
 
 	return io
