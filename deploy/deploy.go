@@ -1,6 +1,9 @@
 package deploy
 
 import (
+	"context"
+	"errors"
+
 	"github.com/concrete-eth/archetype/rpc"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,8 +28,15 @@ func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContrac
 		if commit {
 			ethcli.(interface{ Commit() }).Commit()
 		}
-		if err = rpc.WaitForTx(ethcli, tx); err != nil {
-			return
+		if err := rpc.WaitForTx(ethcli, tx); err != nil {
+			return gameAddr, coreAddr, err
+		}
+		receipt, err := ethcli.TransactionReceipt(context.Background(), tx.Hash())
+		if err != nil {
+			return gameAddr, coreAddr, err
+		}
+		if receipt.Status != 1 {
+			return gameAddr, coreAddr, errors.New("deploy tx failed")
 		}
 	}
 
@@ -37,8 +47,15 @@ func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContrac
 		if commit {
 			ethcli.(interface{ Commit() }).Commit()
 		}
-		if err = rpc.WaitForTx(ethcli, tx); err != nil {
-			return
+		if err := rpc.WaitForTx(ethcli, tx); err != nil {
+			return gameAddr, coreAddr, err
+		}
+		receipt, err := ethcli.TransactionReceipt(context.Background(), tx.Hash())
+		if err != nil {
+			return gameAddr, coreAddr, err
+		}
+		if receipt.Status != 1 {
+			return gameAddr, coreAddr, errors.New("initialize tx failed")
 		}
 	}
 
