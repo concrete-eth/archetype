@@ -24,7 +24,7 @@ abstract contract {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{
 
     uint256 public lastTickBlockNumber;
 
-    function tick() public override {
+    function tick() public virtual override {
         require(block.number > lastTickBlockNumber, "already ticked");
         ICore(proxy).tick();
     }

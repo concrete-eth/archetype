@@ -23,7 +23,7 @@ abstract contract Arch is Entrypoint, ArchProxyAdmin, Initializable {
 
     uint256 public lastTickBlockNumber;
 
-    function tick() public override {
+    function tick() public virtual override {
         require(block.number > lastTickBlockNumber, "already ticked");
         ICore(proxy).tick();
     }
