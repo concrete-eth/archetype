@@ -1,7 +1,7 @@
 {
 	"devDependencies": {
-		"prettier": "^3.2.5",
-		"prettier-plugin-solidity": "^1.3.1"
+		"prettier": "^3.3.3",
+		"prettier-plugin-solidity": "^1.4.1"
 	},
 	"scripts": {
 		"codegen": "pnpm run archetype:codegen && pnpm run game:abigen",
