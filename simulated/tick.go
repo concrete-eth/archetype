@@ -2,6 +2,7 @@ package simulated
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -19,6 +20,7 @@ type TickingSimulatedBackend struct {
 	stopChan   chan struct{}
 	tickOpts   *bind.TransactOpts
 	tickTarget common.Address
+	lock       sync.Mutex
 }
 
 // NewTickingSimulatedBackend creates a new simulated blockchain, pre-funded with the given accounts and with the given gas limit.
@@ -77,6 +79,8 @@ func (tsb *TickingSimulatedBackend) Commit() {
 }
 
 func (tsb *TickingSimulatedBackend) insertTickTxIfNecessary() {
+	tsb.lock.Lock()
+	defer tsb.lock.Unlock()
 	if tsb.tickTarget != (common.Address{}) && tsb.pendingBlock.Transactions().Len() == 0 {
 		tickTx := tsb.newTickTransaction()
 		if err := tsb.SimulatedBackend.SendTransaction(context.Background(), tickTx); err != nil {
