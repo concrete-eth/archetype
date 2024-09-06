@@ -22,7 +22,6 @@ import (
 
 const (
 	GO_BIN              = "go"
-	CONCRETE_BIN        = "concrete"
 	GOFMT_BIN           = "gofmt"
 	NODE_EXEC_BIN       = "npx"
 	PRETTIER_BIN        = "prettier"
@@ -291,6 +290,8 @@ func runCodegen(cmd *cobra.Command, args []string) {
 		logFatal(err)
 	}
 
+	concrete_bin := viper.GetString("concrete-bin")
+
 	// Preliminary checks
 	if !isInstalled(GO_BIN) {
 		logFatal(fmt.Errorf("go is not installed (go_bin=%s)", GO_BIN))
@@ -298,8 +299,8 @@ func runCodegen(cmd *cobra.Command, args []string) {
 	if !isInGoModule() {
 		logFatal(fmt.Errorf("not in a go module"))
 	}
-	if !isInstalled(CONCRETE_BIN) {
-		logFatal(fmt.Errorf("concrete cli is not installed (concrete_bin=%s)", CONCRETE_BIN))
+	if !isInstalled(concrete_bin) {
+		logFatal(fmt.Errorf("concrete cli is not installed (concrete_bin=%s)", concrete_bin))
 	}
 	if !isInstalled(FORGE_BIN) {
 		logFatal(fmt.Errorf("forge cli is not installed (forge_bin=%s)", FORGE_BIN))
@@ -459,7 +460,8 @@ func runDatamod(outDir, tables, pkg string, experimental bool) error {
 	if experimental {
 		args = append(args, "--more-experimental")
 	}
-	cmd := exec.Command(CONCRETE_BIN, args...)
+	concrete_bin := viper.GetString("concrete-bin")
+	cmd := exec.Command(concrete_bin, args...)
 	return runCommand(taskName, cmd)
 }
 
@@ -554,6 +556,7 @@ func AddCodegenCommand(parent *cobra.Command) {
 	codegenCmd.Flags().String("pkg", "archmod", "go package name")
 	codegenCmd.Flags().BoolP("verbose", "v", false, "verbose output")
 	codegenCmd.Flags().Bool("more-experimental", false, "enable experimental features")
+	codegenCmd.Flags().String("concrete-bin", "concrete", "concrete cli binary")
 
 	// Bind flags to viper
 	viper.BindPFlag("go-out", codegenCmd.Flags().Lookup("go-out"))
@@ -564,6 +567,7 @@ func AddCodegenCommand(parent *cobra.Command) {
 	viper.BindPFlag("pkg", codegenCmd.Flags().Lookup("pkg"))
 	viper.BindPFlag("verbose", codegenCmd.Flags().Lookup("verbose"))
 	viper.BindPFlag("more-experimental", codegenCmd.Flags().Lookup("more-experimental"))
+	viper.BindPFlag("concrete-bin", codegenCmd.Flags().Lookup("concrete-bin"))
 
 	parent.AddCommand(codegenCmd)
 }
