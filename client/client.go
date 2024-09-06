@@ -212,6 +212,10 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 	if !c.core.ExpectTick() {
 		return c.Sync()
 	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	select {
 	case batch, ok := <-c.actionBatchInChan:
 		if !ok {
@@ -254,9 +258,6 @@ func (c *Client) InterpolatedSync() (didReceiveNewBatch bool, didTick bool, err 
 		// Already up to date
 		return didReceiveNewBatch, didTick, nil
 	}
-
-	c.lock.Lock()
-	defer c.lock.Unlock()
 
 	for c.ticksRunThisBlock < targetTicks {
 		c.core.SetInBlockTickIndex(c.ticksRunThisBlock)
