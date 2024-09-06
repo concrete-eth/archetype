@@ -17,6 +17,7 @@ type Core interface {
 	ExpectTick() bool           // Check if a tick is expected
 	SetInBlockTickIndex(uint64) // Set the in-block tick index
 	InBlockTickIndex() uint64   // Get the in-block tick index
+	Purge()                     // Purge the core
 }
 
 type ISetRebasing interface {
@@ -79,6 +80,8 @@ func (b *BaseCore) ExpectTick() bool {
 }
 
 func (b *BaseCore) Tick() {}
+
+func (b *BaseCore) Purge() {}
 
 func incrementBlockTickIndex(c Core) {
 	c.SetInBlockTickIndex(c.InBlockTickIndex() + 1)

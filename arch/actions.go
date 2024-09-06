@@ -7,6 +7,7 @@ import (
 type Action interface{}
 
 type CanonicalTickAction struct{}
+type CanonicalPurgeAction struct{}
 
 // Holds all the actions included to a specific core in a specific block
 type ActionBatch struct {

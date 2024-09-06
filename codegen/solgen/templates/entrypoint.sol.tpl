@@ -26,6 +26,8 @@ abstract contract {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{
     function _executeAction(uint32 actionId, bytes memory actionData) private {
         if (actionId == {{$.ArchParams.TickActionIdHex}}) {
             {{ SolidityActionMethodNameFn .ArchParams.TickActionName }}();
+        } else if (actionId == {{$.ArchParams.PurgeActionIdHex}}) {
+            {{ SolidityActionMethodNameFn .ArchParams.PurgeActionName }}();
         } else 
         {{- range $schema := .Schemas }}
         {{- if $schema.Values }}
@@ -45,13 +47,21 @@ abstract contract {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{
         }
     }
 
-    function {{ SolidityActionMethodNameFn $.ArchParams.TickActionName }}() public virtual;
+    function {{ SolidityActionMethodNameFn $.ArchParams.TickActionName }}() public virtual {
+        revert("not implemented");
+    }
+
+    function {{ SolidityActionMethodNameFn $.ArchParams.PurgeActionName }}() public virtual {
+        revert("not implemented");
+    }
 
     {{- range $schema := .Schemas }}
     {{ if $schema.Values }}
-    function {{ SolidityActionMethodNameFn .Name }}({{ SolidityActionStructNameFn $schema.Name }} memory action) public virtual;
+    function {{ SolidityActionMethodNameFn .Name }}({{ SolidityActionStructNameFn $schema.Name }} memory action) public virtual {
     {{- else }}
-    function {{ SolidityActionMethodNameFn .Name }}() public virtual;
+    function {{ SolidityActionMethodNameFn .Name }}() public virtual {
     {{- end }}
+        revert("not implemented");
+    }
     {{- end }}
 }

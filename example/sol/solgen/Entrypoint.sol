@@ -24,6 +24,8 @@ abstract contract Entrypoint is IActions {
     function _executeAction(uint32 actionId, bytes memory actionData) private {
         if (actionId == 0x3eaf5d9f) {
             tick();
+        } else if (actionId == 0x70f0c351) {
+            purge();
         } else if (actionId == 0x22c5eafe) {
             ActionData_AddBody memory action = abi.decode(
                 actionData,
@@ -35,7 +37,15 @@ abstract contract Entrypoint is IActions {
         }
     }
 
-    function tick() public virtual;
+    function tick() public virtual {
+        revert("not implemented");
+    }
 
-    function addBody(ActionData_AddBody memory action) public virtual;
+    function purge() public virtual {
+        revert("not implemented");
+    }
+
+    function addBody(ActionData_AddBody memory action) public virtual {
+        revert("not implemented");
+    }
 }

@@ -17,6 +17,8 @@ interface {{$.Name}} {
     event {{$.ArchParams.ActionExecutedEventName}}(bytes4 actionId, bytes data);
 
     function {{ SolidityActionMethodNameFn $.ArchParams.TickActionName }}() external;
+    
+    function {{ SolidityActionMethodNameFn $.ArchParams.PurgeActionName }}() external;
 
 {{ range $schema := .Schemas }}
     {{- if $schema.Values }}

@@ -16,5 +16,7 @@ interface IActions {
 
     function tick() external;
 
+    function purge() external;
+
     function addBody(ActionData_AddBody memory action) external;
 }

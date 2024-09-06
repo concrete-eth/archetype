@@ -27,6 +27,8 @@ contract TestLogic is ICore {
 
     function tick() external {}
 
+    function purge() external {}
+
     function getMetaRow() external view returns (RowData_Meta memory) {
         return RowData_Meta({maxBodyCount: 0, bodyCount: uint8(bodies.length)});
     }
