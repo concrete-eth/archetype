@@ -17,6 +17,8 @@ var ValueParams = map[string]interface{}{
 	"EntrypointContract":      EntrypointContract,
 	"TickActionName":          TickActionName,
 	"TickActionIdHex":         TickActionIdHex,
+	"PurgeActionName":         PurgeActionName,
+	"PurgeActionIdHex":        PurgeActionIdHex,
 }
 
 // FunctionParams holds function parameters.
@@ -143,4 +145,10 @@ var (
 	TickActionName  = "Tick"
 	TickActionId    = crypto.Keccak256([]byte(SolidityActionMethodName(TickActionName) + "()"))[:4]
 	TickActionIdHex = "0x" + common.Bytes2Hex(TickActionId)
+)
+
+var (
+	PurgeActionName  = "Purge"
+	PurgeActionId    = crypto.Keccak256([]byte(SolidityActionMethodName(PurgeActionName) + "()"))[:4]
+	PurgeActionIdHex = "0x" + common.Bytes2Hex(PurgeActionId)
 )

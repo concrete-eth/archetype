@@ -128,11 +128,20 @@ func NewActionSchemas(
 	if _, ok := types[params.TickActionName]; !ok {
 		// Add the canonical Tick action
 		schemas = append(schemas, datamod.TableSchema{
-			Name:   "Tick",
+			Name:   params.TickActionName,
 			Keys:   []datamod.FieldSchema{},
 			Values: []datamod.FieldSchema{},
 		})
 		types[params.TickActionName] = reflect.TypeOf(CanonicalTickAction{})
+	}
+	if _, ok := types[params.PurgeActionName]; !ok {
+		// Add the canonical Purge action
+		schemas = append(schemas, datamod.TableSchema{
+			Name:   params.PurgeActionName,
+			Keys:   []datamod.FieldSchema{},
+			Values: []datamod.FieldSchema{},
+		})
+		types[params.PurgeActionName] = reflect.TypeOf(CanonicalPurgeAction{})
 	}
 	s, err := newArchSchemas(abi, schemas, types, params.SolidityActionMethodName)
 	if err != nil {
@@ -287,6 +296,10 @@ func (a *ActionSchemas) LogToAction(log types.Log) (Action, error) {
 func (a *ActionSchemas) ExecuteAction(action Action, target Core) error {
 	if _, ok := action.(*CanonicalTickAction); ok {
 		RunBlockTicks(target)
+		return nil
+	}
+	if _, ok := action.(*CanonicalPurgeAction); ok {
+		target.Purge()
 		return nil
 	}
 	actionId, ok := a.ActionIdFromAction(action)

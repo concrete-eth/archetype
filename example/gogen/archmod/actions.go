@@ -29,7 +29,6 @@ var ActionSchemas arch.ActionSchemas
 func init() {
 	types := map[string]reflect.Type{
 		"AddBody": reflect.TypeOf(ActionData_AddBody{}),
-		// "Tick": reflect.TypeOf(arch.CanonicalTickAction{}),
 	}
 	var err error
 	if ActionSchemas, err = arch.NewActionSchemasFromRaw(ActionsABIJson, ActionSchemasJson, types); err != nil {
@@ -40,4 +39,5 @@ func init() {
 type IActions interface {
 	AddBody(action *ActionData_AddBody) error
 	Tick()
+	Purge()
 }
