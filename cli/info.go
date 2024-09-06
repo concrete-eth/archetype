@@ -48,8 +48,7 @@ func runInfo(cmd *cobra.Command, args []string) {
 
 func AddInfoCommand(parent *cobra.Command) {
 	infoCommand := &cobra.Command{Use: "info", Short: "Get game contract info", Run: runInfo}
-	infoCommand.PersistentFlags().StringP("rpc-url", "r", "http://localhost:8545", "rpc endpoint")
 	infoCommand.PersistentFlags().StringP("address", "a", "", "game contract address")
-	infoCommand.PersistentFlags().StringP("jwt-secret", "", "", "jwt secret")
+	addRpcFlags(infoCommand)
 	parent.AddCommand(infoCommand)
 }

@@ -223,8 +223,7 @@ func runGetSnapshotSchedules(cmd *cobra.Command, args []string) {
 // AddSnapshotCommand
 func AddSnapshotCommand(parent *cobra.Command) {
 	snapshotCmd := &cobra.Command{Use: "snapshot", Short: "Manage integrated state snapshots in an execution engine"}
-	snapshotCmd.PersistentFlags().StringP("rpc-url", "r", "http://localhost:8545", "rpc endpoint")
-	snapshotCmd.PersistentFlags().StringP("jwt-secret", "", "", "jwt secret")
+	addRpcFlags(snapshotCmd)
 
 	var (
 		newSnapshotCmd    = &cobra.Command{Use: "new", Short: "create a snapshot", Run: runNewSnapshot}

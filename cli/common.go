@@ -10,6 +10,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func addRpcFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringP("rpc-url", "r", "http://localhost:8545", "rpc endpoint")
+	cmd.PersistentFlags().StringP("jwt-secret", "", "", "jwt secret")
+}
+
 func newRpcClient(cmd *cobra.Command) *rpc.Client {
 	opts := make([]rpc.ClientOption, 0)
 
