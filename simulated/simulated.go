@@ -543,8 +543,6 @@ func (b *SimulatedBackend) EstimateGas(ctx context.Context, call ethereum.CallMs
 		Header:     b.pendingBlock.Header(),
 		State:      b.pendingState,
 		ErrorRatio: 0.015,
-		// TODO: this is gonna go into chain context
-		ConcretePrecompiles: b.blockchain.Concrete().Precompiles(b.pendingBlock.Header().Nonce.Uint64()),
 	}
 
 	var gasCap uint64
