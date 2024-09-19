@@ -47,8 +47,8 @@ func runInfo(cmd *cobra.Command, args []string) {
 }
 
 func AddInfoCommand(parent *cobra.Command) {
-	infoCommand := &cobra.Command{Use: "info", Short: "Get game contract info", Run: runInfo}
-	infoCommand.PersistentFlags().StringP("address", "a", "", "game contract address")
-	addRpcFlags(infoCommand)
-	parent.AddCommand(infoCommand)
+	infoCmd := &cobra.Command{Use: "info", Short: "Get game contract info", Run: runInfo}
+	infoCmd.PersistentFlags().StringP("address", "a", "", "game contract address")
+	addRpcFlags(infoCmd)
+	parent.AddCommand(infoCmd)
 }

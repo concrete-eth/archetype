@@ -22,5 +22,3 @@ func Execute() {
 		logFatal(err)
 	}
 }
-
-// TODO: is hex address
