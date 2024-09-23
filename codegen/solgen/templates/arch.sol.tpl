@@ -37,7 +37,7 @@ abstract contract {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{
             needsPurge = NonZeroBoolean_False;
             return;
         }
-        (bool success, ) = proxy.call{gas: gasleft() - 10000}(
+        (bool success, ) = proxy.call{gas: gasleft() - 10_000}(
             abi.encodeWithSignature("tick()")
         );
         if (success) {
@@ -45,7 +45,7 @@ abstract contract {{$.Name}} is {{ range $i, $v := .Interfaces }}{{ if $i }}, {{
         }
         // The tick method SHOULD NEVER FAIL for reasons other than out-of-gas, so we can be very
         // aggressive when determining whether the method ran out of gas.
-        if (gasleft() < 10000+20000) {
+        if (gasleft() < 10_000+20_000) {
             needsPurge = NonZeroBoolean_True;
         } else {
             revert();
