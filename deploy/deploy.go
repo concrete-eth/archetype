@@ -3,6 +3,7 @@ package deploy
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/concrete-eth/archetype/rpc"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -17,50 +18,48 @@ type InitializableProxyAdmin interface {
 	Initialize(auth *bind.TransactOpts, logic common.Address, data []byte) (*types.Transaction, error)
 }
 
+func waitForSuccess(ethcli rpc.EthCli, tx *types.Transaction) error {
+	if err := rpc.WaitForTx(ethcli, tx); err != nil {
+		return err
+	}
+	receipt, err := ethcli.TransactionReceipt(context.Background(), tx.Hash())
+	if err != nil {
+		return err
+	}
+	if receipt.Status != 1 {
+		return errors.New("tx failed")
+	}
+	return nil
+}
+
 func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContractDeployer, logic common.Address, data []byte, commit bool) (gameAddr common.Address, coreAddr common.Address, err error) {
 	var tx *types.Transaction
 	var proxyAdmin InitializableProxyAdmin
 
 	rpc.SetNonce(auth, ethcli)
-	if gameAddr, tx, proxyAdmin, err = deployer(auth, ethcli); err != nil {
+	gameAddr, tx, proxyAdmin, err = deployer(auth, ethcli)
+	if err != nil {
 		return
-	} else {
-		if commit {
-			ethcli.(interface{ Commit() }).Commit()
-		}
-		if err := rpc.WaitForTx(ethcli, tx); err != nil {
-			return gameAddr, coreAddr, err
-		}
-		receipt, err := ethcli.TransactionReceipt(context.Background(), tx.Hash())
-		if err != nil {
-			return gameAddr, coreAddr, err
-		}
-		if receipt.Status != 1 {
-			return gameAddr, coreAddr, errors.New("deploy tx failed")
-		}
+	}
+	if commit {
+		ethcli.(interface{ Commit() }).Commit()
+	}
+	if err := waitForSuccess(ethcli, tx); err != nil {
+		err = fmt.Errorf("deploy game contract failed: %w", err)
+		return gameAddr, coreAddr, err
 	}
 
 	rpc.SetNonce(auth, ethcli)
-	if tx, err = proxyAdmin.Initialize(auth, logic, data); err != nil {
+	tx, err = proxyAdmin.Initialize(auth, logic, data)
+	if err != nil {
 		return
-	} else {
-		if commit {
-			ethcli.(interface{ Commit() }).Commit()
-		}
-		if err := rpc.WaitForTx(ethcli, tx); err != nil {
-			return gameAddr, coreAddr, err
-		}
-		receipt, err := ethcli.TransactionReceipt(context.Background(), tx.Hash())
-		if err != nil {
-			return gameAddr, coreAddr, err
-		}
-		if receipt.Status != 1 {
-			return gameAddr, coreAddr, errors.New("initialize tx failed")
-		}
 	}
-
-	if coreAddr, err = proxyAdmin.Proxy(nil); err != nil {
-		return
+	if commit {
+		ethcli.(interface{ Commit() }).Commit()
+	}
+	if err := waitForSuccess(ethcli, tx); err != nil {
+		err = fmt.Errorf("initialize game contract failed: %w", err)
+		return gameAddr, coreAddr, err
 	}
 
 	return gameAddr, coreAddr, nil
