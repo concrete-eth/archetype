@@ -44,9 +44,9 @@ func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContrac
 	if commit {
 		ethcli.(interface{ Commit() }).Commit()
 	}
-	if err := waitForSuccess(ethcli, tx); err != nil {
+	if err = waitForSuccess(ethcli, tx); err != nil {
 		err = fmt.Errorf("deploy game contract failed: %w", err)
-		return gameAddr, coreAddr, err
+		return
 	}
 
 	rpc.SetNonce(auth, ethcli)
@@ -57,9 +57,13 @@ func DeployGame(auth *bind.TransactOpts, ethcli rpc.EthCli, deployer GameContrac
 	if commit {
 		ethcli.(interface{ Commit() }).Commit()
 	}
-	if err := waitForSuccess(ethcli, tx); err != nil {
+	if err = waitForSuccess(ethcli, tx); err != nil {
 		err = fmt.Errorf("initialize game contract failed: %w", err)
-		return gameAddr, coreAddr, err
+		return
+	}
+
+	if coreAddr, err = proxyAdmin.Proxy(nil); err != nil {
+		return
 	}
 
 	return gameAddr, coreAddr, nil
