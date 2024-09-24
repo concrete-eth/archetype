@@ -409,7 +409,7 @@ func runCodegen(cmd *cobra.Command, args []string) {
 
 	// Run abigen on IActions and ITables
 	abigenOut := getAbigenOut()
-	for _, contract := range []params.ContractSpecs{params.EntrypointContract, params.ITablesContract} {
+	for _, contract := range []params.ContractSpecs{params.IActionsContract, params.ITablesContract} {
 		var (
 			inPath   = filepath.Join(forgeBuildOut, contract.FileName)
 			dirName  = contract.PackageName
