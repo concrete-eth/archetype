@@ -141,6 +141,12 @@ var ArchContract = ContractSpecs{
 	PackageName:  "arch",
 }
 
+var ArchBaseContract = ContractSpecs{
+	FileName:     "ArchBase.sol",
+	ContractName: "ArchBase",
+	PackageName:  "arch",
+}
+
 var (
 	TickActionName  = "Tick"
 	TickActionId    = crypto.Keccak256([]byte(SolidityActionMethodName(TickActionName) + "()"))[:4]

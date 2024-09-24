@@ -418,8 +418,8 @@ func (a *ActionSender) packMultiActionCall(actions []arch.Action) ([]byte, error
 	return a.actionSchemas.ABI().Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
 }
 
-// sendData sends a transaction to the contract with the given data.
-func (a *ActionSender) sendData(data []byte) (*types.Transaction, error) {
+// SendData sends a transaction to the contract with the given data.
+func (a *ActionSender) SendData(data []byte) (*types.Transaction, error) {
 	errChan := make(chan error, 2)
 	gasPriceChan := make(chan [2]*big.Int, 1)
 	estGasCostChan := make(chan uint64, 1)
@@ -549,7 +549,7 @@ func (a *ActionSender) SendAction(action arch.Action) (*types.Transaction, error
 	if err != nil {
 		return nil, err
 	}
-	return a.sendData(data)
+	return a.SendData(data)
 }
 
 // SendActions sends multiple actions to the contract in a single transaction.
@@ -563,7 +563,7 @@ func (a *ActionSender) SendActions(actionBatch []arch.Action) (*types.Transactio
 		if err != nil {
 			return nil, err
 		}
-		return a.sendData(data)
+		return a.SendData(data)
 	}
 }
 
@@ -611,7 +611,7 @@ func (a *ActionSender) StartSendingActions(
 					}
 				}
 			case data := <-retryTxData:
-				tx, err := a.sendData(data)
+				tx, err := a.SendData(data)
 				if err == nil {
 					retryTxHashes <- tx.Hash()
 				} else {

@@ -40,7 +40,7 @@ type ActionDataAddBody struct {
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"addBody\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_AddBody\",\"components\":[{\"name\":\"x\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"y\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"r\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"vx\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"vy\",\"type\":\"int32\",\"internalType\":\"int32\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"executeMultipleActions\",\"inputs\":[{\"name\":\"actionIds\",\"type\":\"uint32[]\",\"internalType\":\"uint32[]\"},{\"name\":\"actionCount\",\"type\":\"uint8[]\",\"internalType\":\"uint8[]\"},{\"name\":\"actionData\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"purge\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"tick\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"fallback\",\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"addBody\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_AddBody\",\"components\":[{\"name\":\"x\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"y\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"r\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"vx\",\"type\":\"int32\",\"internalType\":\"int32\"},{\"name\":\"vy\",\"type\":\"int32\",\"internalType\":\"int32\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"executeMultipleActions\",\"inputs\":[{\"name\":\"actionIds\",\"type\":\"uint32[]\",\"internalType\":\"uint32[]\"},{\"name\":\"actionCount\",\"type\":\"uint8[]\",\"internalType\":\"uint8[]\"},{\"name\":\"actionData\",\"type\":\"bytes[]\",\"internalType\":\"bytes[]\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"initialize\",\"inputs\":[{\"name\":\"_logic\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"data\",\"type\":\"bytes\",\"internalType\":\"bytes\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"lastTickBlockNumber\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"proxy\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"tick\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"Initialized\",\"inputs\":[{\"name\":\"version\",\"type\":\"uint64\",\"indexed\":false,\"internalType\":\"uint64\"}],\"anonymous\":false},{\"type\":\"error\",\"name\":\"InvalidInitialization\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"NotInitializing\",\"inputs\":[]}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -189,6 +189,68 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 	return _Contract.Contract.contract.Transact(opts, method, params...)
 }
 
+// LastTickBlockNumber is a free data retrieval call binding the contract method 0xff280198.
+//
+// Solidity: function lastTickBlockNumber() view returns(uint256)
+func (_Contract *ContractCaller) LastTickBlockNumber(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _Contract.contract.Call(opts, &out, "lastTickBlockNumber")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// LastTickBlockNumber is a free data retrieval call binding the contract method 0xff280198.
+//
+// Solidity: function lastTickBlockNumber() view returns(uint256)
+func (_Contract *ContractSession) LastTickBlockNumber() (*big.Int, error) {
+	return _Contract.Contract.LastTickBlockNumber(&_Contract.CallOpts)
+}
+
+// LastTickBlockNumber is a free data retrieval call binding the contract method 0xff280198.
+//
+// Solidity: function lastTickBlockNumber() view returns(uint256)
+func (_Contract *ContractCallerSession) LastTickBlockNumber() (*big.Int, error) {
+	return _Contract.Contract.LastTickBlockNumber(&_Contract.CallOpts)
+}
+
+// Proxy is a free data retrieval call binding the contract method 0xec556889.
+//
+// Solidity: function proxy() view returns(address)
+func (_Contract *ContractCaller) Proxy(opts *bind.CallOpts) (common.Address, error) {
+	var out []interface{}
+	err := _Contract.contract.Call(opts, &out, "proxy")
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
+}
+
+// Proxy is a free data retrieval call binding the contract method 0xec556889.
+//
+// Solidity: function proxy() view returns(address)
+func (_Contract *ContractSession) Proxy() (common.Address, error) {
+	return _Contract.Contract.Proxy(&_Contract.CallOpts)
+}
+
+// Proxy is a free data retrieval call binding the contract method 0xec556889.
+//
+// Solidity: function proxy() view returns(address)
+func (_Contract *ContractCallerSession) Proxy() (common.Address, error) {
+	return _Contract.Contract.Proxy(&_Contract.CallOpts)
+}
+
 // AddBody is a paid mutator transaction binding the contract method 0x22c5eafe.
 //
 // Solidity: function addBody((int32,int32,uint32,int32,int32) action) returns()
@@ -231,25 +293,25 @@ func (_Contract *ContractTransactorSession) ExecuteMultipleActions(actionIds []u
 	return _Contract.Contract.ExecuteMultipleActions(&_Contract.TransactOpts, actionIds, actionCount, actionData)
 }
 
-// Purge is a paid mutator transaction binding the contract method 0x70f0c351.
+// Initialize is a paid mutator transaction binding the contract method 0xd1f57894.
 //
-// Solidity: function purge() returns()
-func (_Contract *ContractTransactor) Purge(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "purge")
+// Solidity: function initialize(address _logic, bytes data) returns()
+func (_Contract *ContractTransactor) Initialize(opts *bind.TransactOpts, _logic common.Address, data []byte) (*types.Transaction, error) {
+	return _Contract.contract.Transact(opts, "initialize", _logic, data)
 }
 
-// Purge is a paid mutator transaction binding the contract method 0x70f0c351.
+// Initialize is a paid mutator transaction binding the contract method 0xd1f57894.
 //
-// Solidity: function purge() returns()
-func (_Contract *ContractSession) Purge() (*types.Transaction, error) {
-	return _Contract.Contract.Purge(&_Contract.TransactOpts)
+// Solidity: function initialize(address _logic, bytes data) returns()
+func (_Contract *ContractSession) Initialize(_logic common.Address, data []byte) (*types.Transaction, error) {
+	return _Contract.Contract.Initialize(&_Contract.TransactOpts, _logic, data)
 }
 
-// Purge is a paid mutator transaction binding the contract method 0x70f0c351.
+// Initialize is a paid mutator transaction binding the contract method 0xd1f57894.
 //
-// Solidity: function purge() returns()
-func (_Contract *ContractTransactorSession) Purge() (*types.Transaction, error) {
-	return _Contract.Contract.Purge(&_Contract.TransactOpts)
+// Solidity: function initialize(address _logic, bytes data) returns()
+func (_Contract *ContractTransactorSession) Initialize(_logic common.Address, data []byte) (*types.Transaction, error) {
+	return _Contract.Contract.Initialize(&_Contract.TransactOpts, _logic, data)
 }
 
 // Tick is a paid mutator transaction binding the contract method 0x3eaf5d9f.
@@ -273,9 +335,30 @@ func (_Contract *ContractTransactorSession) Tick() (*types.Transaction, error) {
 	return _Contract.Contract.Tick(&_Contract.TransactOpts)
 }
 
-// ContractActionExecutedIterator is returned from FilterActionExecuted and is used to iterate over the raw logs and unpacked data for ActionExecuted events raised by the Contract contract.
-type ContractActionExecutedIterator struct {
-	Event *ContractActionExecuted // Event containing the contract specifics and raw log
+// Fallback is a paid mutator transaction binding the contract fallback function.
+//
+// Solidity: fallback() returns()
+func (_Contract *ContractTransactor) Fallback(opts *bind.TransactOpts, calldata []byte) (*types.Transaction, error) {
+	return _Contract.contract.RawTransact(opts, calldata)
+}
+
+// Fallback is a paid mutator transaction binding the contract fallback function.
+//
+// Solidity: fallback() returns()
+func (_Contract *ContractSession) Fallback(calldata []byte) (*types.Transaction, error) {
+	return _Contract.Contract.Fallback(&_Contract.TransactOpts, calldata)
+}
+
+// Fallback is a paid mutator transaction binding the contract fallback function.
+//
+// Solidity: fallback() returns()
+func (_Contract *ContractTransactorSession) Fallback(calldata []byte) (*types.Transaction, error) {
+	return _Contract.Contract.Fallback(&_Contract.TransactOpts, calldata)
+}
+
+// ContractInitializedIterator is returned from FilterInitialized and is used to iterate over the raw logs and unpacked data for Initialized events raised by the Contract contract.
+type ContractInitializedIterator struct {
+	Event *ContractInitialized // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -289,7 +372,7 @@ type ContractActionExecutedIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *ContractActionExecutedIterator) Next() bool {
+func (it *ContractInitializedIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -298,7 +381,7 @@ func (it *ContractActionExecutedIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(ContractActionExecuted)
+			it.Event = new(ContractInitialized)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -313,7 +396,7 @@ func (it *ContractActionExecutedIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(ContractActionExecuted)
+		it.Event = new(ContractInitialized)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -329,42 +412,41 @@ func (it *ContractActionExecutedIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *ContractActionExecutedIterator) Error() error {
+func (it *ContractInitializedIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *ContractActionExecutedIterator) Close() error {
+func (it *ContractInitializedIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// ContractActionExecuted represents a ActionExecuted event raised by the Contract contract.
-type ContractActionExecuted struct {
-	ActionId [4]byte
-	Data     []byte
-	Raw      types.Log // Blockchain specific contextual infos
+// ContractInitialized represents a Initialized event raised by the Contract contract.
+type ContractInitialized struct {
+	Version uint64
+	Raw     types.Log // Blockchain specific contextual infos
 }
 
-// FilterActionExecuted is a free log retrieval operation binding the contract event 0x45065f461aede1b904079823f6d858e465fa8c25fcf1654bb4a89e6dee320a1a.
+// FilterInitialized is a free log retrieval operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
 //
-// Solidity: event ActionExecuted(bytes4 actionId, bytes data)
-func (_Contract *ContractFilterer) FilterActionExecuted(opts *bind.FilterOpts) (*ContractActionExecutedIterator, error) {
+// Solidity: event Initialized(uint64 version)
+func (_Contract *ContractFilterer) FilterInitialized(opts *bind.FilterOpts) (*ContractInitializedIterator, error) {
 
-	logs, sub, err := _Contract.contract.FilterLogs(opts, "ActionExecuted")
+	logs, sub, err := _Contract.contract.FilterLogs(opts, "Initialized")
 	if err != nil {
 		return nil, err
 	}
-	return &ContractActionExecutedIterator{contract: _Contract.contract, event: "ActionExecuted", logs: logs, sub: sub}, nil
+	return &ContractInitializedIterator{contract: _Contract.contract, event: "Initialized", logs: logs, sub: sub}, nil
 }
 
-// WatchActionExecuted is a free log subscription operation binding the contract event 0x45065f461aede1b904079823f6d858e465fa8c25fcf1654bb4a89e6dee320a1a.
+// WatchInitialized is a free log subscription operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
 //
-// Solidity: event ActionExecuted(bytes4 actionId, bytes data)
-func (_Contract *ContractFilterer) WatchActionExecuted(opts *bind.WatchOpts, sink chan<- *ContractActionExecuted) (event.Subscription, error) {
+// Solidity: event Initialized(uint64 version)
+func (_Contract *ContractFilterer) WatchInitialized(opts *bind.WatchOpts, sink chan<- *ContractInitialized) (event.Subscription, error) {
 
-	logs, sub, err := _Contract.contract.WatchLogs(opts, "ActionExecuted")
+	logs, sub, err := _Contract.contract.WatchLogs(opts, "Initialized")
 	if err != nil {
 		return nil, err
 	}
@@ -374,8 +456,8 @@ func (_Contract *ContractFilterer) WatchActionExecuted(opts *bind.WatchOpts, sin
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(ContractActionExecuted)
-				if err := _Contract.contract.UnpackLog(event, "ActionExecuted", log); err != nil {
+				event := new(ContractInitialized)
+				if err := _Contract.contract.UnpackLog(event, "Initialized", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -396,12 +478,12 @@ func (_Contract *ContractFilterer) WatchActionExecuted(opts *bind.WatchOpts, sin
 	}), nil
 }
 
-// ParseActionExecuted is a log parse operation binding the contract event 0x45065f461aede1b904079823f6d858e465fa8c25fcf1654bb4a89e6dee320a1a.
+// ParseInitialized is a log parse operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
 //
-// Solidity: event ActionExecuted(bytes4 actionId, bytes data)
-func (_Contract *ContractFilterer) ParseActionExecuted(log types.Log) (*ContractActionExecuted, error) {
-	event := new(ContractActionExecuted)
-	if err := _Contract.contract.UnpackLog(event, "ActionExecuted", log); err != nil {
+// Solidity: event Initialized(uint64 version)
+func (_Contract *ContractFilterer) ParseInitialized(log types.Log) (*ContractInitialized, error) {
+	event := new(ContractInitialized)
+	if err := _Contract.contract.UnpackLog(event, "Initialized", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

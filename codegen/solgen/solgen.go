@@ -52,7 +52,7 @@ func GenerateCore(config Config) error {
 		"./" + params.IActionsContract.FileName,
 		"./" + params.ITablesContract.FileName,
 	}
-	data["Interfaces"] = []string{
+	data["Parents"] = []string{
 		params.IActionsContract.ContractName,
 		params.ITablesContract.ContractName,
 	}
@@ -64,8 +64,13 @@ func GenerateCore(config Config) error {
 func GenerateEntrypoint(config Config) error {
 	data := make(map[string]interface{})
 	data["Name"] = params.EntrypointContract.ContractName
-	data["Imports"] = []string{"./" + params.IActionsContract.FileName}
-	data["Interfaces"] = []string{params.IActionsContract.ContractName}
+	data["Imports"] = []string{
+		"./" + params.IActionsContract.FileName,
+		"arch/" + params.ArchBaseContract.FileName,
+	}
+	data["Parents"] = []string{
+		params.ArchBaseContract.ContractName,
+	}
 	outPath := filepath.Join(config.Out, params.EntrypointContract.FileName)
 	return codegen.ExecuteTemplate(entrypointTpl, config.ActionsJsonPath, outPath, data, nil)
 }
@@ -78,7 +83,7 @@ func GenerateArch(config Config) error {
 		"./" + params.ICoreContract.FileName,
 		"./" + params.EntrypointContract.FileName,
 	}
-	data["Interfaces"] = []string{
+	data["Parents"] = []string{
 		params.EntrypointContract.ContractName,
 		"ArchProxyAdmin",
 		"Initializable",
@@ -107,8 +112,8 @@ func Codegen(config Config) error {
 	if err := GenerateEntrypoint(config); err != nil {
 		return errors.New("error generating solidity entrypoint: " + err.Error())
 	}
-	if err := GenerateArch(config); err != nil {
-		return errors.New("error generating solidity arch: " + err.Error())
-	}
+	// if err := GenerateArch(config); err != nil {
+	// 	return errors.New("error generating solidity arch: " + err.Error())
+	// }
 	return nil
 }

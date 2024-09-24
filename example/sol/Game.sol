@@ -3,9 +3,9 @@ pragma solidity >=0.8.0;
 
 import "./solgen/IActions.sol";
 import "./solgen/ICore.sol";
-import {Arch} from "./solgen/Arch.sol";
+import {Entrypoint} from "./solgen/Entrypoint.sol";
 
-contract Game is Arch {
+contract Game is Entrypoint {
     int32 internal constant scale = 100;
 
     function _initialize(bytes memory data) internal override {
