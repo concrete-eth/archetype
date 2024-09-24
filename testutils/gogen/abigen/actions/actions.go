@@ -36,7 +36,7 @@ type ActionDataAdd struct {
 
 // ContractMetaData contains all meta data concerning the Contract contract.
 var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"add\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_Add\",\"components\":[{\"name\":\"summand\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"tick\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
+	ABI: "[{\"type\":\"function\",\"name\":\"add\",\"inputs\":[{\"name\":\"action\",\"type\":\"tuple\",\"internalType\":\"structActionData_Add\",\"components\":[{\"name\":\"summand\",\"type\":\"int16\",\"internalType\":\"int16\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"purge\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"tick\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"event\",\"name\":\"ActionExecuted\",\"inputs\":[{\"name\":\"actionId\",\"type\":\"bytes4\",\"indexed\":false,\"internalType\":\"bytes4\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false}]",
 }
 
 // ContractABI is the input ABI used to generate the binding from.
@@ -204,6 +204,27 @@ func (_Contract *ContractSession) Add(action ActionDataAdd) (*types.Transaction,
 // Solidity: function add((int16) action) returns()
 func (_Contract *ContractTransactorSession) Add(action ActionDataAdd) (*types.Transaction, error) {
 	return _Contract.Contract.Add(&_Contract.TransactOpts, action)
+}
+
+// Purge is a paid mutator transaction binding the contract method 0x70f0c351.
+//
+// Solidity: function purge() returns()
+func (_Contract *ContractTransactor) Purge(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _Contract.contract.Transact(opts, "purge")
+}
+
+// Purge is a paid mutator transaction binding the contract method 0x70f0c351.
+//
+// Solidity: function purge() returns()
+func (_Contract *ContractSession) Purge() (*types.Transaction, error) {
+	return _Contract.Contract.Purge(&_Contract.TransactOpts)
+}
+
+// Purge is a paid mutator transaction binding the contract method 0x70f0c351.
+//
+// Solidity: function purge() returns()
+func (_Contract *ContractTransactorSession) Purge() (*types.Transaction, error) {
+	return _Contract.Contract.Purge(&_Contract.TransactOpts)
 }
 
 // Tick is a paid mutator transaction binding the contract method 0x3eaf5d9f.

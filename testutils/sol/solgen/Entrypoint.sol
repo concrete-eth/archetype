@@ -5,8 +5,9 @@ pragma solidity >=0.8.0;
 
 
 import "./IActions.sol";
+import "arch/ArchBase.sol";
 
-abstract contract Entrypoint is IActions {
+abstract contract Entrypoint is ArchBase {
     function executeMultipleActions(
         uint32[] memory actionIds,
         uint8[] memory actionCount,
@@ -36,8 +37,8 @@ abstract contract Entrypoint is IActions {
             revert("Entrypoint: Invalid action ID");
         }
     }
-
-    function tick() public virtual;
     
-    function add(ActionData_Add memory action) public virtual;
+    function add(ActionData_Add memory action) public virtual {
+        revert("not implemented");
+    }
 }

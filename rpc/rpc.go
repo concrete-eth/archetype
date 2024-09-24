@@ -16,6 +16,7 @@ import (
 	"github.com/concrete-eth/archetype/params"
 	"github.com/concrete-eth/archetype/utils"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/concrete/lib"
@@ -33,6 +34,28 @@ var (
 	BlockQueryLimit uint64 = 256             // Maximum number of blocks to query in a single request
 	HeaderChanSize         = 4               // Size of the header channel
 )
+
+var (
+	multiActionAbiJson = fmt.Sprintf(`[
+	{
+    "type": "function",
+    "name": "%s",
+    "inputs": [
+      {"name": "actionIds", "type": "uint32[]", "internalType": "uint32[]"},
+      {"name": "actionCount", "type": "uint8[]", "internalType": "uint8[]"},
+      {"name": "actionData", "type": "bytes[]", "internalType": "bytes[]"}
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]`, params.MultiActionMethodName)
+)
+
+var MultiActionABI abi.ABI
+
+func init() {
+	MultiActionABI, _ = abi.JSON(strings.NewReader(multiActionAbiJson))
+}
 
 func getBlockNumber(ethcli EthCli) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), StandardTimeout)
@@ -390,7 +413,7 @@ func (a *ActionSender) packMultiActionCall(actions []arch.Action) ([]byte, error
 		actionData  = make([][]byte, 0, len(actions))
 	)
 	if len(actions) == 0 {
-		return a.actionSchemas.ABI().Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
+		return MultiActionABI.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
 	}
 
 	firstActionId, firstData, err := a.actionSchemas.EncodeAction(actions[0])
@@ -415,7 +438,7 @@ func (a *ActionSender) packMultiActionCall(actions []arch.Action) ([]byte, error
 		}
 	}
 
-	return a.actionSchemas.ABI().Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
+	return MultiActionABI.Pack(params.MultiActionMethodName, actionIds, actionCount, actionData)
 }
 
 // SendData sends a transaction to the contract with the given data.

@@ -13,6 +13,8 @@ interface IActions {
     event ActionExecuted(bytes4 actionId, bytes data);
 
     function tick() external;
+    
+    function purge() external;
 
 
     function add(ActionData_Add memory action) external;
