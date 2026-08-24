@@ -57,10 +57,10 @@ func getURLParams() (URLParams, error) {
 	} else {
 		path := parsedUrl.Path
 		segments := strings.Split(path, "/")
-		gameAddressHex := segments[len(segments)-1]
-		if !common.IsHexAddress(gameAddressHex) {
-			return URLParams{}, fmt.Errorf("game address not provided or not valid")
-		}
+			gameAddressHex = segments[len(segments)-1]
+			if !common.IsHexAddress(gameAddressHex) {
+				return URLParams{}, fmt.Errorf("game address not provided or not valid")
+			}
 	}
 	gameAddress := common.HexToAddress(gameAddressHex)
 
@@ -81,8 +81,11 @@ func getURLParams() (URLParams, error) {
 		if err != nil {
 			return URLParams{}, fmt.Errorf("blockTime parameter is required")
 		}
-		blockTimeDuration = time.Duration(blockTime) * time.Millisecond
-	}
+			if blockTime <= 0 {
+				return URLParams{}, fmt.Errorf("blockTime parameter must be greater than zero")
+			}
+			blockTimeDuration = time.Duration(blockTime) * time.Millisecond
+		}
 
 	// Dampening delay
 	paramValue = queryParams.Get("delay")
@@ -111,7 +114,21 @@ func getURLParams() (URLParams, error) {
 }
 
 func getPrivateKey() (string, error) {
-	return "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", nil
+	prompt := js.Global().Get("prompt")
+	if prompt.IsUndefined() || prompt.IsNull() || prompt.Type() != js.TypeFunction {
+		return "", fmt.Errorf("secure key input is not available in this browser")
+	}
+
+	value := prompt.Invoke("Enter the burner wallet private key")
+	if value.IsNull() || value.IsUndefined() {
+		return "", fmt.Errorf("private key input was cancelled")
+	}
+
+	privateKeyHex := strings.TrimPrefix(strings.TrimSpace(value.String()), "0x")
+	if privateKeyHex == "" {
+		return "", fmt.Errorf("private key must not be empty")
+	}
+	return privateKeyHex, nil
 }
 
 func setLoadStatus(status string) {
@@ -129,15 +146,27 @@ func hideLoadStatus() {
 }
 
 func showErrorScreen(err error) {
-	body := js.Global().Get("document").Call("getElementsByTagName", "body").Index(0)
-	body.Set("innerHTML", `
-        <div id="error-container-main" class="error-container">
-            <div id="error-status-main" class="error-status">
-				<h1>Error</h1>
-				<p>`+err.Error()+`</p>
-			</div>
-        </div>
-    `)
+	document := js.Global().Get("document")
+	body := document.Get("body")
+	body.Set("textContent", "")
+
+	container := document.Call("createElement", "div")
+	container.Set("id", "error-container-main")
+	container.Set("className", "error-container")
+
+	status := document.Call("createElement", "div")
+	status.Set("id", "error-status-main")
+	status.Set("className", "error-status")
+
+	heading := document.Call("createElement", "h1")
+	heading.Set("textContent", "Error")
+	message := document.Call("createElement", "p")
+	message.Set("textContent", err.Error())
+
+	status.Call("appendChild", heading)
+	status.Call("appendChild", message)
+	container.Call("appendChild", status)
+	body.Call("appendChild", container)
 }
 
 func logCrit(err error) {

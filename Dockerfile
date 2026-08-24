@@ -21,7 +21,7 @@ COPY . /concrete-geth/
 RUN cd /concrete-geth && go build -o ./bin/geth ./example/engine/cmd/geth.go
 
 # Pull Geth into a second stage deploy alpine container
-FROM alpine:latest
+FROM alpine:3.20
 
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /concrete-geth/bin/geth /usr/local/bin/
