@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/concrete-eth/archetype/arch"
@@ -18,10 +19,9 @@ import (
 )
 
 var (
-	privateKeyHex = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-	rpcUrl        = "ws://localhost:9546"
-	gameAddr      = common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
-	coreAddr      = common.HexToAddress("0xa16E02E87b7454126E5E10d957A927A7F5B5d2be")
+	rpcUrl   = "ws://localhost:9546"
+	gameAddr = common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")
+	coreAddr = common.HexToAddress("0xa16E02E87b7454126E5E10d957A927A7F5B5d2be")
 )
 
 func main() {
@@ -33,7 +33,11 @@ func main() {
 		panic(err)
 	}
 
-	// Load tx opts
+	// Load transaction signing credentials from the process environment.
+	privateKeyHex := strings.TrimPrefix(strings.TrimSpace(os.Getenv("ARCHETYPE_DEPLOY_PRIVATE_KEY")), "0x")
+	if privateKeyHex == "" {
+		panic("ARCHETYPE_DEPLOY_PRIVATE_KEY must be set")
+	}
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
 		panic(err)

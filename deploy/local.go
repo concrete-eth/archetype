@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 
@@ -17,8 +18,7 @@ import (
 )
 
 var (
-	LocalChainId       = big.NewInt(1337)
-	LocalPrivateKeyHex = "504d29ac79864050983ca646570b0bbe158fa5878c1bda7f1fdb0a48bd8b37b6"
+	LocalChainId = big.NewInt(1337)
 )
 
 func NewSimulatedBackend(registry concrete.PrecompileRegistry, gasLimit uint64, devAddresses ...common.Address) *simulated.TickingSimulatedBackend {
@@ -30,10 +30,10 @@ func NewSimulatedBackend(registry concrete.PrecompileRegistry, gasLimit uint64, 
 }
 
 func NewLocalIO(registry concrete.PrecompileRegistry, schemas arch.ArchSchemas, deployer GameContractDeployer, logic common.Address, data []byte, blockTime time.Duration) (*rpc.IO, error) {
-	// Load tx opts
-	privateKey, err := crypto.HexToECDSA(LocalPrivateKeyHex)
+	// Generate an ephemeral signer because this backend never connects to a real chain.
+	privateKey, err := crypto.GenerateKey()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate local signer key: %w", err)
 	}
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, LocalChainId)
 	if err != nil {

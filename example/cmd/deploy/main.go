@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/concrete-eth/archetype/deploy"
 	game_contract "github.com/concrete-eth/archetype/example/gogen/abigen/game"
@@ -13,9 +15,8 @@ import (
 )
 
 var (
-	privateKeyHex = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-	pcAddr        = common.HexToAddress("0x80")
-	rpcUrl        = "ws://localhost:9546"
+	pcAddr = common.HexToAddress("0x80")
+	rpcUrl = "ws://localhost:9546"
 )
 
 func main() {
@@ -26,8 +27,12 @@ func main() {
 		panic(err)
 	}
 
-	// Load tx opts
+	// Load transaction signing credentials from the process environment.
 	fmt.Println("Loading private key")
+	privateKeyHex := strings.TrimPrefix(strings.TrimSpace(os.Getenv("ARCHETYPE_DEPLOY_PRIVATE_KEY")), "0x")
+	if privateKeyHex == "" {
+		panic("ARCHETYPE_DEPLOY_PRIVATE_KEY must be set")
+	}
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
 		panic(err)
